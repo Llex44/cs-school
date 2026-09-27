@@ -1,0 +1,944 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>APIs &amp; integrations · CS School</title>
+<meta name="description" content="Course 206: how apps talk to each other, with requests, responses, status codes, API keys, rate limits and webhooks.">
+<link rel="icon" href="../assets/favicon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="../assets/cs-school.css">
+<style>
+/* ---------- hero ---------- */
+#heroArt .t-lbl{font-family:var(--f-display); font-weight:800; font-size:14px}
+#heroArt .t-sub{font-family:var(--f-display); font-weight:700; font-size:12px}
+#heroArt .t-pill{font-family:var(--f-mono); font-weight:600; font-size:12.5px}
+
+/* ---------- part 1: the restaurant ---------- */
+.scene-card{border-radius:20px; padding:14px 14px 16px}
+.scene-lbls{display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); text-align:center; font-size:.95rem; color:var(--ink-2); line-height:1.3; margin-top:4px}
+.scene-lbls b{display:block; font-family:var(--f-display); font-weight:800; color:var(--ink); font-size:1rem}
+.scene{display:block; width:100%; height:auto}
+.scene .t-lbl{font-family:var(--f-display); font-weight:800; font-size:15px}
+.scene .t-sub{font-family:var(--f-body); font-size:13.5px}
+.scene .legs line{transform-box:fill-box; transform-origin:top center}
+.scene .walking .leg1{animation:legA .36s ease-in-out infinite alternate}
+.scene .walking .leg2{animation:legA .36s ease-in-out infinite alternate-reverse}
+@keyframes legA{from{transform:rotate(16deg)} to{transform:rotate(-16deg)}}
+.scene .steam path{opacity:0; transition:opacity .4s}
+.scene.cooking .steam path{opacity:.8; animation:steam 1s ease-in-out infinite}
+.scene.cooking .steam path:nth-child(2){animation-delay:.3s}
+.scene.cooking .steam path:nth-child(3){animation-delay:.6s}
+@keyframes steam{0%{transform:translateY(4px)} 100%{transform:translateY(-6px)}}
+.scene .fire{opacity:0; transition:opacity .3s}
+.scene.burning .fire{opacity:1; animation:flick .25s ease-in-out infinite alternate}
+@keyframes flick{from{transform:scaleY(.85)} to{transform:scaleY(1.1)}}
+.scene .fire{transform-box:fill-box; transform-origin:bottom center}
+.scene .dbglow{opacity:0; transition:opacity .4s}
+.scene.pantry .dbglow{opacity:.35}
+.menu-card .opts2{display:flex; flex-direction:column; gap:8px}
+.menu-card .btn{justify-content:space-between; width:100%; text-align:left}
+.menu-card .btn .m{font-family:var(--f-mono); font-size:.9rem; font-weight:600; color:var(--ink-2); flex:none}
+.tickets{display:grid; grid-template-columns:minmax(0,1fr); gap:14px}
+.ticket{background:var(--term); color:var(--term-ink); border-radius:14px; padding:12px 14px; font-family:var(--f-mono); font-size:.9rem; line-height:1.6; white-space:pre-wrap; overflow-wrap:anywhere; min-height:96px; box-shadow:var(--float)}
+.ticket .lbl{display:block; font-family:var(--f-display); font-weight:700; font-size:.9rem; color:var(--term-dim); margin-bottom:6px; white-space:normal}
+.ticket .dim{color:var(--term-dim)} .ticket .m{color:#7CC4FF; font-weight:600} .ticket .k{color:#C4A7FF} .ticket .s{color:#8BF0A8} .ticket .n{color:#FFC53D}
+.ticket .st2{color:#8BF0A8; font-weight:600} .ticket .st4{color:#FFC53D; font-weight:600} .ticket .st5{color:#FF9A8A; font-weight:600}
+.ticket.fresh{animation:rise .4s}
+.codes{display:grid; grid-template-columns:minmax(0,1fr) minmax(0,1fr); gap:24px; align-items:start}
+.mini table{min-width:0}
+.sc{display:inline-flex; align-items:center; font-family:var(--f-mono); font-weight:600; font-size:.9rem; border-radius:99px; padding:1px 9px; white-space:nowrap}
+.sc.s2{background:var(--good-bg); color:var(--good)} .sc.s4{background:var(--tip-bg); color:var(--tip)} .sc.s5{background:var(--bad-bg); color:var(--bad)}
+
+/* ---------- part 2: request builder ---------- */
+.field{display:flex; flex-direction:column; gap:6px; margin-top:14px}
+.field:first-of-type{margin-top:0}
+.flabel{font-family:var(--f-display); font-weight:800; font-size:1rem}
+.base{font-family:var(--f-mono); font-size:.9rem; color:var(--ink-2); word-break:break-all}
+.mono{font-family:var(--f-mono)!important}
+.quick{display:flex; flex-wrap:wrap; gap:6px}
+.quick button{font-family:var(--f-mono); font-size:.9rem; font-weight:600; color:var(--ink); background:color-mix(in srgb, var(--ink) 7%, transparent); border:0; border-radius:99px; padding:6px 12px; min-height:36px; cursor:pointer}
+.quick button:hover{background:color-mix(in srgb, var(--ink) 13%, transparent)}
+.hdr{display:flex; align-items:center; justify-content:space-between; gap:10px; background:var(--glass-strong); border-radius:12px; padding:6px 6px 6px 12px; transition:opacity .2s}
+.hdr code{background:none; padding:0; font-size:.9rem; overflow-wrap:anywhere}
+.hdr.off code{opacity:.5}
+.hdr .btn{flex:none; min-height:40px; padding:6px 12px}
+#bBody{min-height:84px; resize:vertical; font-size:.95rem}
+.resp-card{background:var(--term); color:var(--term-ink); border-radius:16px; box-shadow:var(--float); overflow:hidden}
+.resp-head{display:flex; align-items:center; gap:10px; flex-wrap:wrap; padding:12px 16px; background:var(--term-2); font-family:var(--f-display); font-weight:700; font-size:.95rem; color:var(--term-dim)}
+.resp-head .req{font-family:var(--f-mono); color:#ECEFF3; font-weight:600; word-break:break-all}
+.pill{display:inline-flex; align-items:center; gap:6px; border-radius:99px; padding:2px 10px; font-family:var(--f-mono); font-weight:600; font-size:.9rem}
+.pill.s2{background:rgba(91,217,147,.18); color:#8BF0A8} .pill.s4{background:rgba(255,197,61,.18); color:#FFC53D} .pill.s5{background:rgba(255,138,120,.18); color:#FF9A8A}
+.resp-body{margin:0; padding:14px 16px; font-family:var(--f-mono); font-size:.9rem; line-height:1.6; white-space:pre-wrap; word-break:break-word; min-height:200px; max-height:340px; overflow:auto}
+.resp-body .dim{color:var(--term-dim)} .resp-body .k{color:#C4A7FF} .resp-body .s{color:#8BF0A8} .resp-body .n{color:#FFC53D} .resp-body .h{color:#7CC4FF}
+.reqlog{list-style:none; margin:0; padding:8px 16px 12px; border-top:1px solid #2B313B; font-family:var(--f-mono); font-size:.9rem; display:flex; flex-direction:column; gap:2px}
+.reqlog li{display:flex; gap:10px; align-items:center; color:var(--term-dim); animation:rise .3s}
+.reqlog li .pill{padding:0 8px}
+.meter-card .dots{display:flex; gap:8px; margin-top:4px}
+.meter-card .dots i{width:22px; height:22px; border-radius:50%; background:var(--l3); transition:background .3s, transform .3s}
+.meter-card .dots i.used{background:color-mix(in srgb, var(--ink) 12%, transparent); transform:scale(.8)}
+.meter-card .reset{margin-top:8px; font-size:.95rem; color:var(--ink-2); min-height:1.5em}
+/* webhooks */
+.hook-top{display:flex; flex-wrap:wrap; gap:12px 16px; align-items:center; margin-bottom:10px}
+.seq{display:block; width:100%; height:auto}
+.seq .t-lbl{font-family:var(--f-display); font-weight:800; font-size:16px}
+.seq .t-sm{font-family:var(--f-display); font-weight:700; font-size:14.5px}
+.hook-stats{display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:12px; margin-top:12px}
+.stat{background:var(--glass-strong); border-radius:12px; padding:10px 14px}
+.stat .lbl{font-family:var(--f-display); font-weight:700; font-size:.9rem; color:var(--ink-2)}
+.stat .big{font-family:var(--f-display); font-weight:900; font-size:1.6rem; line-height:1.15; font-variant-numeric:tabular-nums}
+.inbox{display:flex; flex-direction:column; gap:10px}
+.hookmsg{background:var(--term); color:var(--term-ink); border-radius:12px; padding:10px 14px; font-family:var(--f-mono); font-size:.9rem; line-height:1.55; white-space:pre-wrap; word-break:break-word; animation:rise .35s}
+.hookmsg .dim{color:var(--term-dim)} .hookmsg .h{color:#7CC4FF} .hookmsg .bad{color:#FF9A8A} .hookmsg .ok{color:#8BF0A8}
+.hookmsg .verdict{display:block; margin-top:6px; font-family:var(--f-body); font-size:.95rem; white-space:normal}
+.switch{display:inline-flex; align-items:center; gap:10px; font-family:var(--f-display); font-weight:700; cursor:pointer; background:none; border:0; color:var(--ink); padding:4px 0; min-height:44px; font-size:1rem}
+.switch .track{width:46px; height:28px; border-radius:99px; background:color-mix(in srgb, var(--ink) 18%, transparent); position:relative; transition:background .2s; flex:none}
+.switch .track::after{content:""; position:absolute; top:3px; left:3px; width:22px; height:22px; border-radius:50%; background:var(--paper); box-shadow:0 1px 3px rgba(0,0,0,.25); transition:transform .2s}
+.switch[aria-checked="true"] .track{background:var(--good)}
+.switch[aria-checked="true"] .track::after{transform:translateX(18px)}
+
+/* ---------- part 3 ---------- */
+.docs-list{display:flex; flex-direction:column; gap:6px; font-size:.95rem}
+.docs-list .ep{display:flex; gap:10px; align-items:baseline; flex-wrap:wrap}
+.docs-list .ep code{background:none; padding:0}
+.mth{display:inline-block; min-width:4.6em; font-family:var(--f-mono); font-weight:600; font-size:.85rem; border-radius:6px; padding:1px 6px; text-align:center}
+.mth.get{background:color-mix(in srgb, var(--l2) 16%, transparent)} .mth.post{background:color-mix(in srgb, var(--l3) 18%, transparent)} .mth.del{background:color-mix(in srgb, var(--l1) 16%, transparent)}
+.docs-meta{margin-top:12px; font-size:.95rem; color:var(--ink-2); display:flex; flex-direction:column; gap:4px}
+.anat{display:flex; flex-direction:column; gap:8px; margin-top:12px}
+.anat div{display:flex; gap:12px; align-items:baseline; font-size:.95rem}
+.anat code{flex:none; min-width:6.5em}
+
+@media (max-width:900px){
+  .codes{grid-template-columns:minmax(0,1fr)}
+  .pg-col > *{align-self:stretch}
+}
+@media (max-width:640px){
+  .hook-stats{grid-template-columns:minmax(0,1fr) minmax(0,1fr)}
+  .hook-stats .stat:last-child{grid-column:1 / -1}
+}
+</style>
+</head>
+<body>
+<main id="top">
+  <section class="wrap hero">
+    <div>
+      <div class="kicker">Core curriculum · Course 206 · APIs &amp; integrations</div>
+      <h1>An API is a waiter for software.</h1>
+      <p class="lede">Your app can't walk into another company's kitchen. It sends a <b>request</b> through their API and gets a <b>response</b> back. You'll learn what's in a request, what the status codes mean, how keys and rate limits work, and how webhooks let other services call you.</p>
+      <ul class="facts">
+        <li>About 15 minutes</li>
+        <li>5 parts</li>
+        <li>Practice terminal</li>
+        <li>No coding experience needed</li>
+      </ul>
+      <div class="row hero-cta"><a class="btn primary" href="#p1">Start the lesson</a></div>
+    </div>
+    <figure style="margin:0">
+      <div class="hero-visual glass">
+        <svg id="heroArt" role="img" aria-label="An animated diagram: requests travel from your app to the bakery's API along the top path, and responses with status codes like 200 OK and 404 Not Found travel back along the bottom path."></svg>
+        <div class="legend"><span><i style="background:var(--l2)"></i>request</span><span><i style="background:var(--l3)"></i>success</span><span><i style="background:var(--l4)"></i>your mistake</span><span><i style="background:var(--l1)"></i>their mistake</span></div>
+      </div>
+      <div class="hero-caption glass" aria-hidden="true"><span>$</span><span id="heroCap">curl api.sunnybakery.example/v1/cakes</span></div>
+    </figure>
+  </section>
+
+  <div class="wrap">
+  <!-- PART 1 -->
+  <section class="part" id="p1">
+    <span class="bullet glass" data-p="p1">1</span>
+    <div class="part-head">
+      <div class="kicker">Part 1 of 5</div>
+      <h2>Requests and responses</h2>
+      <p>An <b>API</b> (application programming interface) is how one program asks another for something. Your app is the customer, the API is the waiter, and the other company's server is the kitchen you never get to see.</p>
+    </div>
+
+    <div class="chat" aria-label="Example conversation">
+      <div class="msg me"><span class="who">You</span>Can our party app let people order a cake from Sunny Bakery?</div>
+      <div class="msg ai"><span class="who">AI assistant</span>Yes, they have an API. I'll POST to their /orders endpoint. I'll need an API key, and we should handle 4xx and 5xx errors.</div>
+      <div class="msg me"><span class="who">You</span>…a post to their what? And what are 4xx errors?</div>
+    </div>
+
+    <div class="task glass" data-part="p1">
+      <h3>Your task</h3>
+      <ol>
+        <li data-t="menu"><span>Ask the waiter for the menu.</span></li>
+        <li data-t="order"><span>Order a cake.</span></li>
+        <li data-t="404"><span>Ask for a cake that isn't on the menu.</span></li>
+        <li data-t="500"><span>Order the soufflé. The kitchen is having a bad day.</span></li>
+      </ol>
+    </div>
+
+    <div class="pg">
+      <div class="pg-col">
+        <div class="o1 ctl glass menu-card">
+          <h3 class="ctl-title">What do you ask the waiter?</h3>
+          <p class="ctl-sub">Each choice becomes a real request. The small label is its method and address.</p>
+          <div class="opts2" id="menuBtns"></div>
+        </div>
+        <div class="o4 note" id="p1Note" aria-live="polite">Pick something to ask for. Watch the waiter carry your request to the kitchen and bring back a response.</div>
+        <details class="deeper glass o6">
+          <summary>Under the hood: JSON <small>optional</small></summary>
+          <div>
+            <p>Most APIs speak <b>JSON</b>, a plain-text format for data. Curly braces hold named values, square brackets hold lists, and text goes in double quotes: <code>{"name": "Lemon drizzle", "price": 18}</code>.</p>
+            <p>When an AI says "the API returns JSON", it means your code gets text like this and turns it into data it can use.</p>
+          </div>
+        </details>
+      </div>
+      <div class="pg-col">
+        <div class="o2 scene-card glass">
+          <svg class="scene" id="scene" viewBox="0 36 640 176" role="img" aria-label="A restaurant: your app sits at a table on the left, the API waiter stands in the middle, and the server's kitchen with its database pantry is on the right."></svg>
+          <div class="scene-lbls" aria-hidden="true"><span><b>Your app</b>the customer</span><span><b>The API</b>the waiter</span><span><b>The server</b>kitchen + database</span></div>
+        </div>
+        <div class="o3 tickets">
+          <div class="ticket" id="reqTicket"><span class="lbl">The request (your order ticket)</span><span class="dim">Nothing sent yet.</span></div>
+          <div class="ticket" id="resTicket"><span class="lbl">The response (what comes back)</span><span class="dim">Waiting for a request.</span></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="stack" style="margin-top:56px">
+      <h3>What the waiter understands</h3>
+      <p class="muted">Every request has a <b>method</b> (what you want done) and an <b>address</b> (what you want it done to). Every response starts with a <b>status code</b>, a three-digit number that says how it went. The first digit tells you whose problem it is.</p>
+      <div class="codes">
+        <div class="table-wrap glass mini">
+          <table>
+            <thead><tr><th>Method</th><th>Means</th></tr></thead>
+            <tbody>
+              <tr><td><code>GET</code></td><td>Read something. Never changes anything.</td></tr>
+              <tr><td><code>POST</code></td><td>Create something new, like an order.</td></tr>
+              <tr><td><code>PUT</code> / <code>PATCH</code></td><td>Change something that exists.</td></tr>
+              <tr><td><code>DELETE</code></td><td>Remove something, like cancelling an order.</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="table-wrap glass mini">
+          <table>
+            <thead><tr><th>Status</th><th>Means</th></tr></thead>
+            <tbody>
+              <tr><td><span class="sc s2">2xx</span></td><td><b>It worked.</b> 200 OK, 201 Created.</td></tr>
+              <tr><td><span class="sc s4">4xx</span></td><td><b>Your request was wrong.</b> Fix it before trying again. 400, 401, 404, 429.</td></tr>
+              <tr><td><span class="sc s5">5xx</span></td><td><b>Their server failed.</b> Not your fault. Wait and retry. 500, 503.</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- PART 2 -->
+  <section class="part" id="p2">
+    <span class="bullet glass" data-p="p2">2</span>
+    <div class="part-head">
+      <div class="kicker">Part 2 of 5</div>
+      <h2>Keys, limits and callbacks</h2>
+      <p>Real APIs want to know who's asking, limit how often you can ask, and can tap you on the shoulder when something happens. Build a request yourself and meet all three.</p>
+    </div>
+
+    <div class="task glass" data-part="p2">
+      <h3>Your task</h3>
+      <ol>
+        <li data-t="401"><span>Ask the API for its cakes, and read the error.</span></li>
+        <li data-t="200"><span>Add your API key and try again.</span></li>
+        <li data-t="201"><span>Order a cake with POST and a JSON body.</span></li>
+        <li data-t="429"><span>Send requests until you hit the rate limit.</span></li>
+        <li data-t="hook"><span>Replace polling with a webhook, then catch a fake one.</span></li>
+      </ol>
+    </div>
+
+    <div class="pg">
+      <div class="pg-col">
+        <div class="o1 ctl glass">
+          <h3 class="ctl-title">Build a request</h3>
+          <div class="field"><span class="flabel" id="mLbl">Method</span>
+            <div class="seg-control" id="bMethod" role="group" aria-labelledby="mLbl"><button aria-pressed="true" data-m="GET">GET</button><button aria-pressed="false" data-m="POST">POST</button><button aria-pressed="false" data-m="DELETE">DELETE</button></div>
+          </div>
+          <div class="field"><label class="flabel" for="bPath">Address</label>
+            <span class="base">https://api.sunnybakery.example/v1</span>
+            <input class="input mono" id="bPath" value="/cakes" autocomplete="off" spellcheck="false" autocapitalize="off">
+            <div class="quick" id="quick"><button data-p="/cakes">/cakes</button><button data-p="/cakes/2">/cakes/2</button><button data-p="/orders">/orders</button><button data-p="/orders/1042">/orders/1042</button></div>
+          </div>
+          <div class="field"><span class="flabel">Headers</span>
+            <div class="hdr off" id="hAuth"><code>Authorization: Bearer sk_test_7f3a9c21</code><button class="btn" data-h="auth">Add</button></div>
+            <div class="hdr off" id="hCT"><code>Content-Type: application/json</code><button class="btn" data-h="ct">Add</button></div>
+          </div>
+          <div class="field" id="bodyField"><label class="flabel" for="bBody">Body (JSON)</label>
+            <textarea class="input mono" id="bBody" spellcheck="false">{"cake_id": 2, "quantity": 1}</textarea>
+          </div>
+          <p class="small muted" id="noBody" style="margin-top:14px">GET and DELETE requests don't carry a body. Everything they need is in the address.</p>
+          <div class="row" style="margin-top:16px"><button class="btn primary" id="sendBtn">Send request</button><button class="btn" id="burstBtn">Send 6 in a row</button></div>
+        </div>
+      </div>
+      <div class="pg-col">
+        <div class="o2 resp-card" aria-live="polite">
+          <div class="resp-head"><span>Response</span><span id="respPill"></span><span class="req" id="respReq"></span></div>
+          <pre class="resp-body" id="respBody"><span class="dim">Build a request, then press Send.</span></pre>
+          <ol class="reqlog" id="reqLog" hidden></ol>
+        </div>
+        <div class="o3 note" id="respNote" aria-live="polite">Start simple: the method is GET and the address is /cakes. Press <b>Send request</b>.</div>
+        <div class="o4 ctl glass meter-card">
+          <h3 class="ctl-title">Rate limit: 5 requests per 20 seconds</h3>
+          <div class="dots" id="dots" aria-hidden="true"></div>
+          <div class="reset" id="resetTxt" aria-live="polite">Only requests with a valid key count.</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="stack" style="margin-top:32px">
+      <p>An <b>API key</b> is like a membership card: a long secret string that tells the API who is asking, so it can bill you, limit you, and block you if needed. That's why it goes in a header on every request, and why it must stay secret. Part 4 shows where AI tools tend to leak it.</p>
+      <details class="deeper glass">
+        <summary>Under the hood: headers and "Bearer" <small>optional</small></summary>
+        <div>
+          <p><b>Headers</b> are labelled notes attached to a request or response, like <code>Content-Type: application/json</code> ("the body is JSON"). <code>Authorization: Bearer &lt;key&gt;</code> means "whoever bears this key is allowed in".</p>
+          <p>Responses have headers too. <code>Retry-After: 12</code> on a 429 tells you how many seconds to wait. Good code reads it instead of guessing.</p>
+        </div>
+      </details>
+    </div>
+
+    <div class="stack" style="margin-top:56px">
+      <h3>Don't call us, we'll call you: webhooks</h3>
+      <p class="muted" style="margin-top:-8px">A customer pays for their cake through Payly, a payment service. Paying takes a few seconds. How does your app find out it worked?</p>
+      <div class="ctl glass">
+        <div class="hook-top">
+          <div class="seg-control" id="hookMode" role="group" aria-label="How your app finds out"><button aria-pressed="true" data-mode="poll">Keep asking (polling)</button><button aria-pressed="false" data-mode="hook">Webhook</button></div>
+          <button class="btn primary" id="payBtn">Customer pays</button>
+        </div>
+        <svg class="seq" id="seq" viewBox="0 0 640 190" role="img" aria-label="A timeline with your app on the top line and Payly on the bottom line. Arrows show each request between them."></svg>
+        <div class="hook-stats">
+          <div class="stat"><div class="lbl">Requests sent</div><div class="big" id="hsReq">–</div></div>
+          <div class="stat"><div class="lbl">Wasted</div><div class="big" id="hsWaste">–</div></div>
+          <div class="stat"><div class="lbl">Heard about it</div><div class="big" id="hsDelay">–</div></div>
+        </div>
+      </div>
+      <div class="note" id="hookNote" aria-live="polite">First try the way many AI tools write it: ask Payly "paid yet?" every second. Press <b>Customer pays</b>.</div>
+
+      <div class="ctl glass" id="inboxCard" hidden>
+        <h3 class="ctl-title">Your webhook inbox</h3>
+        <p class="ctl-sub">Your webhook address is public, so anyone can send a request to it. Payly signs each real webhook with a secret that only you and Payly know.</p>
+        <div class="row" style="margin-bottom:12px">
+          <button class="switch" id="sigSwitch" role="switch" aria-checked="false"><span class="track"></span>Check signatures</button>
+          <button class="btn" id="fakeBtn">A stranger sends a fake webhook</button>
+        </div>
+        <div class="inbox" id="inbox"></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- PART 3 -->
+  <section class="part" id="p3">
+    <span class="bullet glass" data-p="p3">3</span>
+    <div class="part-head">
+      <div class="kicker">Part 3 of 5</div>
+      <h2>Try it: talk to an API with curl</h2>
+      <p><b>curl</b> is a command-line tool for sending requests. AI tools use it constantly to test APIs, and API docs show examples in it. This practice terminal talks to a pretend Sunny Bakery. Nothing here is real.</p>
+    </div>
+
+    <div class="lab">
+      <div class="a-mission ctl glass">
+        <h3 class="ctl-title">Your mission</h3>
+        <p class="ctl-sub" style="margin-top:0">Order a chocolate fudge cake for a party, the way your app will do it behind the scenes.</p>
+        <ol class="mission" id="mission"></ol>
+      </div>
+      <div class="a-work" id="term"></div>
+      <div class="a-side ctl glass">
+        <h3 class="ctl-title">Sunny Bakery API docs</h3>
+        <div class="docs-list">
+          <div class="ep"><span class="mth get">GET</span><code>/cakes</code><span class="muted">list cakes</span></div>
+          <div class="ep"><span class="mth get">GET</span><code>/cakes/{id}</code><span class="muted">one cake</span></div>
+          <div class="ep"><span class="mth post">POST</span><code>/orders</code><span class="muted">order a cake</span></div>
+          <div class="ep"><span class="mth get">GET</span><code>/orders/{id}</code><span class="muted">check an order</span></div>
+          <div class="ep"><span class="mth del">DELETE</span><code>/orders/{id}</code><span class="muted">cancel it</span></div>
+        </div>
+        <div class="docs-meta">
+          <span><b>Base URL</b> <code>https://api.sunnybakery.example/v1</code></span>
+          <span><b>Auth</b> header <code>Authorization: Bearer &lt;key&gt;</code></span>
+          <span><b>Order body</b> <code>{"cake_id": 2, "quantity": 1}</code></span>
+          <span><b>Rate limit</b> 60 requests a minute</span>
+        </div>
+      </div>
+      <div class="a-extra ctl glass">
+        <h3 class="ctl-title">Reading a curl command</h3>
+        <div class="code">curl <span class="k">-X POST</span> \
+  <span class="f">-H "Authorization: Bearer $BAKERY_KEY"</span> \
+  <span class="f">-H "Content-Type: application/json"</span> \
+  <span class="s">-d '{"cake_id": 2}'</span> \
+  <span class="n">https://api.sunnybakery.example/v1/orders</span></div>
+        <div class="anat">
+          <div><code>-X POST</code><span>the method (GET if you leave it out)</span></div>
+          <div><code>-H "…"</code><span>a header. Add as many as you need.</span></div>
+          <div><code>-d '…'</code><span>the body, often JSON</span></div>
+          <div><code>-i</code><span>also show the status line and headers</span></div>
+          <div><code>\</code><span>"continued on the next line"</span></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- PART 4 -->
+  <section class="part" id="p4">
+    <span class="bullet glass" data-p="p4">4</span>
+    <div class="part-head">
+      <div class="kicker">Part 4 of 5</div>
+      <h2>Steer the AI</h2>
+      <p>Integrations are where AI-written code most often works in the demo and fails in real life. Pick the reply you'd send.</p>
+    </div>
+    <p class="counter" id="steerCount"></p>
+    <div id="steer"></div>
+  </section>
+
+  <!-- PART 5 -->
+  <section class="part" id="p5">
+    <span class="bullet glass" data-p="p5">5</span>
+    <div class="part-head">
+      <div class="kicker">Part 5 of 5</div>
+      <h2>Check your understanding</h2>
+      <p>Five quick questions. Each answer explains itself.</p>
+    </div>
+    <div id="quiz"></div>
+    <div id="doneCard" aria-live="polite"></div>
+  </section>
+  </div>
+
+  <section class="after" id="cheat">
+    <div class="wrap stack">
+      <h2>Cheat sheet</h2>
+      <p class="muted">What you'll see when your app talks to other services, and what to tell the AI.</p>
+      <div class="table-wrap glass">
+        <table>
+          <thead><tr><th>You see</th><th>It means</th><th>Tell the AI</th></tr></thead>
+          <tbody>
+            <tr><td><span class="sc s2">200</span> <span class="sc s2">201</span></td><td>It worked. 201 means something new was created.</td><td>"Only show success after a 2xx."</td></tr>
+            <tr><td><span class="sc s4">400</span> <span class="sc s4">422</span></td><td>The request was malformed or missing something.</td><td>"Log the response body. It usually says what's wrong."</td></tr>
+            <tr><td><span class="sc s4">401</span> <span class="sc s4">403</span></td><td>Missing or wrong key (401), or not allowed (403).</td><td>"Check the key is loaded from the environment on the server."</td></tr>
+            <tr><td><span class="sc s4">404</span></td><td>Nothing at that address.</td><td>"Check the URL and the ID against the docs."</td></tr>
+            <tr><td><span class="sc s4">429</span></td><td>Too many requests. Slow down.</td><td>"Respect Retry-After and back off exponentially."</td></tr>
+            <tr><td><span class="sc s5">500</span> <span class="sc s5">503</span></td><td>Their server failed.</td><td>"Retry a few times with backoff, then show a friendly error."</td></tr>
+            <tr><td>API key</td><td>A secret that identifies your app to the API.</td><td>"Keep it on the server in an environment variable, never in frontend code."</td></tr>
+            <tr><td>Webhook</td><td>The other service calls your URL when something happens.</td><td>"Use their webhook instead of polling, and verify the signature."</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+</main>
+<script src="../assets/cs-school.js"></script>
+<script>
+(() => {
+const { $, $$, esc, reduce } = CS;
+
+CS.lesson({
+  id: '206',
+  parts: [
+    { id: 'p1', title: 'Requests and responses' },
+    { id: 'p2', title: 'Keys, limits and callbacks' },
+    { id: 'p3', title: 'Try it' },
+    { id: 'p4', title: 'Steer the AI' },
+    { id: 'p5', title: 'Check' }
+  ]
+});
+
+const BASE = 'https://api.sunnybakery.example/v1';
+const KEY = 'sk_test_7f3a9c21';
+const STATUS = { 200: 'OK', 201: 'Created', 400: 'Bad Request', 401: 'Unauthorized', 404: 'Not Found', 405: 'Method Not Allowed', 415: 'Unsupported Media Type', 422: 'Unprocessable Content', 429: 'Too Many Requests', 500: 'Internal Server Error' };
+const fam = s => s >= 500 ? 's5' : s >= 400 ? 's4' : 's2';
+const sleep = ms => new Promise(r => setTimeout(r, reduce ? 0 : ms));
+/* colour JSON for dark panels */
+function jsonHTML(v, ind = 0) {
+  const pad = '  '.repeat(ind);
+  const flat = x => x === null || typeof x !== 'object';
+  if (v && typeof v === 'object' && Object.values(v).every(flat) && JSON.stringify(v).length < 64) {
+    const ks = Object.keys(v);
+    if (!ks.length) return Array.isArray(v) ? '[]' : '{}';
+    return Array.isArray(v) ? '[' + v.map(x => jsonHTML(x)).join(', ') + ']' : '{ ' + ks.map(k => `<span class="h">"${esc(k)}"</span>: ${jsonHTML(v[k])}`).join(', ') + ' }';
+  }
+  if (v === null) return '<span class="k">null</span>';
+  if (Array.isArray(v)) return v.length ? '[\n' + v.map(x => pad + '  ' + jsonHTML(x, ind + 1)).join(',\n') + '\n' + pad + ']' : '[]';
+  if (typeof v === 'object') { const ks = Object.keys(v); return ks.length ? '{\n' + ks.map(k => `${pad}  <span class="h">"${esc(k)}"</span>: ${jsonHTML(v[k], ind + 1)}`).join(',\n') + '\n' + pad + '}' : '{}'; }
+  if (typeof v === 'string') return `<span class="s">"${esc(v)}"</span>`;
+  if (typeof v === 'boolean') return `<span class="k">${v}</span>`;
+  return `<span class="n">${v}</span>`;
+}
+
+/* ---------------- hero: requests out, responses back ---------------- */
+(function hero() {
+  const svg = $('#heroArt');
+  svg.setAttribute('viewBox', '0 0 560 300');
+  const phone = `<rect x="74" y="112" width="42" height="72" rx="9" fill="none" style="stroke:var(--ink)" stroke-width="2.5"/><path d="M88 120H102" style="stroke:var(--ink-2)" stroke-width="2" stroke-linecap="round"/><rect x="82" y="132" width="26" height="6" rx="3" style="fill:var(--l2)" opacity=".7"/><rect x="82" y="144" width="18" height="6" rx="3" style="fill:var(--ink-2)" opacity=".35"/><rect x="82" y="156" width="22" height="6" rx="3" style="fill:var(--ink-2)" opacity=".35"/>`;
+  const server = [0, 1, 2].map(i => `<rect x="436" y="${116 + i * 22}" width="64" height="16" rx="5" fill="none" style="stroke:var(--ink)" stroke-width="2.5"/><circle cx="447" cy="${124 + i * 22}" r="2.6" style="fill:var(--l3)"/><path d="M458 ${124 + i * 22}H488" style="stroke:var(--ink-2)" stroke-width="2" stroke-linecap="round" opacity=".5"/>`).join('');
+  svg.innerHTML = `
+    <rect x="30" y="92" width="130" height="112" rx="22" style="fill:var(--glass-strong);stroke:var(--glass-edge)"/>${phone}
+    <rect x="400" y="92" width="136" height="112" rx="22" style="fill:var(--glass-strong);stroke:var(--glass-edge)"/>${server}
+    <text class="t-lbl" x="95" y="232" text-anchor="middle" style="fill:var(--ink)">your app</text>
+    <text class="t-lbl" x="468" y="232" text-anchor="middle" style="fill:var(--ink)">bakery API</text>
+    <path id="hReq" d="M162 124C250 50 312 50 398 124" fill="none" style="stroke:var(--ink-2)" stroke-width="2" stroke-dasharray="2 7" stroke-linecap="round" opacity=".6"/>
+    <path id="hRes" d="M398 176C312 250 250 250 162 176" fill="none" style="stroke:var(--ink-2)" stroke-width="2" stroke-dasharray="2 7" stroke-linecap="round" opacity=".6"/>
+    <circle id="hGlowA" cx="95" cy="148" r="64" style="fill:var(--l3)" opacity="0"/>
+    <g id="hPill"><rect rx="13" height="26" y="-13"/><text class="t-pill" y="4.5" text-anchor="middle" style="fill:#fff"></text></g>`;
+  const pill = $('#hPill'), pr = $('rect', pill), pt = $('text', pill), glow = $('#hGlowA');
+  const COL = { b: 'var(--l2)', g: 'var(--l3)', t: 'var(--l4)', r: 'var(--l1)' };
+  const setPill = (txt, c) => { pt.textContent = txt; const w = txt.length * 7.9 + 26; pr.setAttribute('x', -w / 2); pr.setAttribute('width', w); pr.style.fill = COL[c]; pt.style.fill = c === 't' ? '#241a00' : '#fff'; };
+  const place = (path, t) => { const L = path.getTotalLength(), p = path.getPointAtLength(L * t); pill.setAttribute('transform', `translate(${p.x} ${p.y})`); };
+  const SCRIPT = [
+    ['GET /cakes', '200 OK', 'g', 'curl …/v1/cakes  →  200 OK'],
+    ['POST /orders', '201 Created', 'g', 'curl -X POST …/v1/orders  →  201 Created'],
+    ['GET /cakes/99', '404 Not Found', 't', 'curl …/v1/cakes/99  →  404 Not Found'],
+    ['GET /cakes', '429 Too Many', 't', 'request #61 this minute  →  429'],
+    ['POST /orders', '500 Error', 'r', 'the kitchen had a bad day  →  500']
+  ];
+  setPill('GET /cakes', 'b'); place($('#hReq'), .5);
+  if (reduce) return;
+  const tween = (path, dur) => new Promise(res => { const t0 = performance.now(); const f = t => { const k = Math.min(1, (t - t0) / dur); place(path, k < .5 ? 2 * k * k : 1 - Math.pow(-2 * k + 2, 2) / 2); if (k < 1) requestAnimationFrame(f); else res(); }; requestAnimationFrame(f); });
+  (async function loop() {
+    for (let i = 0; ; i = (i + 1) % SCRIPT.length) {
+      const [rq, rs, c, cap] = SCRIPT[i];
+      $('#heroCap').textContent = cap.split('→')[0].trim();
+      setPill(rq, 'b'); await tween($('#hReq'), 1300);
+      await new Promise(r => setTimeout(r, 350));
+      setPill(rs, c); $('#heroCap').textContent = cap; await tween($('#hRes'), 1300);
+      glow.style.fill = COL[c]; glow.animate([{ opacity: .3 }, { opacity: 0 }], { duration: 900 });
+      await new Promise(r => setTimeout(r, 1200));
+    }
+  })();
+})();
+
+/* ---------------- part 1: the restaurant ---------------- */
+(function buildScene() {
+  $('#scene').innerHTML = `
+    <!-- customer at a table -->
+    <circle cx="74" cy="92" r="17" style="fill:var(--l2)"/>
+    <rect x="54" y="112" width="40" height="52" rx="16" style="fill:var(--l2)" opacity=".85"/>
+    <rect x="22" y="160" width="160" height="10" rx="5" style="fill:var(--ink-2)" opacity=".45"/>
+    <path d="M40 170V204M164 170V204" style="stroke:var(--ink-2)" stroke-width="4" stroke-linecap="round" opacity=".45"/>
+    <rect id="device" x="118" y="132" width="38" height="26" rx="5" style="fill:var(--glass-strong);stroke:var(--ink-2)" stroke-width="2"/>
+    <path d="M124 140H146M124 146H140" style="stroke:var(--ink-2)" stroke-width="2" stroke-linecap="round" opacity=".6"/>
+    <!-- kitchen and pantry -->
+    <g id="kitchen">
+      <g class="steam" style="stroke:var(--ink-2)" stroke-width="2.5" fill="none" stroke-linecap="round">
+        <path d="M514 76c-6-8 6-12 0-20"/><path d="M530 72c-6-8 6-12 0-20"/><path d="M546 76c-6-8 6-12 0-20"/>
+      </g>
+      <path class="fire" d="M512 86c2-12 10-10 8-22 8 6 12 14 10 22 4-4 4-10 3-14 8 6 10 14 6 20z" style="fill:var(--l1)"/>
+      <rect id="pot" x="500" y="84" width="60" height="36" rx="9" style="fill:var(--l1)"/>
+      <path d="M492 92H500M560 92H568" style="stroke:var(--l1)" stroke-width="5" stroke-linecap="round"/>
+      <rect x="470" y="120" width="136" height="12" rx="6" style="fill:var(--ink-2)" opacity=".5"/>
+      <circle class="dbglow" cx="538" cy="170" r="42" style="fill:var(--l3)"/>
+      <path d="M512 152v30c0 5 12 9 26 9s26-4 26-9v-30" style="fill:var(--l3);stroke:var(--l3)" fill-opacity=".22" stroke-width="2.5"/>
+      <ellipse cx="538" cy="152" rx="26" ry="8" style="fill:var(--l3);stroke:var(--l3)" fill-opacity=".35" stroke-width="2.5"/>
+      <path d="M512 167c0 5 12 9 26 9s26-4 26-9" fill="none" style="stroke:var(--l3)" stroke-width="2"/>
+    </g>
+    <!-- the waiter -->
+    <g id="waiter">
+      <g class="legs" style="stroke:var(--l4)" stroke-width="7" stroke-linecap="round"><line class="leg1" x1="311" y1="160" x2="311" y2="196"/><line class="leg2" x1="325" y1="160" x2="325" y2="196"/></g>
+      <rect x="300" y="108" width="36" height="58" rx="14" style="fill:var(--l4)"/>
+      <circle cx="318" cy="88" r="16" style="fill:var(--l4)"/>
+      <path d="M332 124L352 112" style="stroke:var(--l4)" stroke-width="7" stroke-linecap="round"/>
+      <ellipse cx="358" cy="108" rx="20" ry="4.5" style="fill:var(--ink-2)"/>
+      <g id="carry" transform="translate(358 100)"></g>
+    </g>
+    <g id="atTable" transform="translate(137 118)"></g>`;
+})();
+const TICKET = `<g><rect x="-11" y="-14" width="22" height="26" rx="3" style="fill:var(--paper);stroke:var(--ink-2)" stroke-width="1.8"/><path d="M-6 -7H6M-6 -1H6M-6 5H2" style="stroke:var(--l2)" stroke-width="2" stroke-linecap="round"/></g>`;
+const PLATE = { s2: `<g><circle r="13" style="fill:var(--l3)"/><path d="M-6 0L-2 5L7 -5" fill="none" stroke="#fff" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/></g>`,
+  s4: `<g><circle r="13" style="fill:var(--l4)"/><path d="M-5 -5L5 5M5 -5L-5 5" fill="none" stroke="#241a00" stroke-width="3" stroke-linecap="round"/></g>`,
+  s5: `<g><circle r="13" style="fill:var(--l1)"/><path d="M0 -7V2" stroke="#fff" stroke-width="3" stroke-linecap="round"/><circle cy="7" r="1.8" fill="#fff"/></g>` };
+const MENU = [
+  { id: 'menu', label: 'Ask for the menu', m: 'GET /cakes', req: ['GET', '/v1/cakes'], status: 200, pantry: true,
+    body: { cakes: [{ id: 1, name: 'Lemon drizzle', price: 18 }, { id: 2, name: 'Chocolate fudge', price: 22 }, { id: 3, name: 'Carrot cake', price: 20 }] },
+    note: '<strong>200 OK.</strong> The waiter took a <b>GET</b> request (read something) to the kitchen, which read the menu from its database and sent it back as JSON. Your app can now show the cakes.' },
+  { id: 'order', label: 'Order a lemon drizzle cake', m: 'POST /orders', req: ['POST', '/v1/orders', { cake_id: 1, quantity: 1 }], status: 201, pantry: true,
+    body: { order_id: 1042, cake: 'Lemon drizzle', status: 'baking' },
+    note: '<strong>201 Created.</strong> A <b>POST</b> request creates something new. The order ticket had a <b>body</b> saying which cake, and the kitchen created order 1042. Hold on to that ID: it\'s how you ask about this order later.' },
+  { id: '404', label: 'Ask for a unicorn cake', m: 'GET /cakes/unicorn', req: ['GET', '/v1/cakes/unicorn'], status: 404,
+    body: { error: 'not_found', message: 'There is no cake called unicorn.' },
+    note: '<strong>404 Not Found.</strong> A 4xx code means your request was the problem: there is nothing at that address. Asking again won\'t help. Fix the request, for example by picking an ID from the menu.' },
+  { id: '500', label: 'Order the soufflé', m: 'POST /orders', req: ['POST', '/v1/orders', { cake_id: 7, quantity: 1 }], status: 500, burn: true,
+    body: { error: 'internal_error', message: 'Something went wrong on our side.' },
+    note: '<strong>500 Internal Server Error.</strong> The kitchen caught fire. A 5xx code means their server failed, not your request. Waiting a moment and retrying may work. Your app should show a friendly "try again" message, not a blank screen.' },
+  { id: 'cancel', label: 'Cancel your order', m: 'DELETE /orders/1042', req: ['DELETE', '/v1/orders/1042'], status: 200, pantry: true,
+    body: { order_id: 1042, status: 'cancelled' },
+    note: '<strong>200 OK.</strong> A <b>DELETE</b> request removes something. The address says which order, so this request needs no body.' }
+];
+$('#menuBtns').innerHTML = MENU.map(o => `<button class="btn" data-o="${o.id}"><span>${o.label}</span><span class="m">${o.m}</span></button>`).join('');
+function reqHTML([m, path, body]) {
+  return `<span class="lbl">The request (your order ticket)</span><span class="m">${m}</span> ${path}\n<span class="dim">Host:</span> api.sunnybakery.example\n<span class="dim">Authorization:</span> Bearer sk_test_…`
+    + (body ? `\n<span class="dim">Content-Type:</span> application/json\n\n${jsonHTML(body).replace(/class="h"/g, 'class="k"')}` : '');
+}
+function resHTML(o) {
+  return `<span class="lbl">The response (what comes back)</span><span class="st${String(o.status)[0]}">${o.status} ${STATUS[o.status]}</span>\n<span class="dim">Content-Type:</span> application/json\n\n${jsonHTML(o.body).replace(/class="h"/g, 'class="k"')}`;
+}
+let busy = false;
+const W0 = 318;
+function moveWaiter(to, dur) {
+  const w = $('#waiter');
+  const from = +(w.dataset.x || W0);
+  w.dataset.x = to;
+  if (reduce || !dur) { w.setAttribute('transform', `translate(${to - W0} 0)`); return Promise.resolve(); }
+  w.classList.add('walking');
+  return new Promise(res => { const t0 = performance.now(); const f = t => { const k = Math.min(1, (t - t0) / dur); const e = k < .5 ? 2 * k * k : 1 - Math.pow(-2 * k + 2, 2) / 2; w.setAttribute('transform', `translate(${from + (to - from) * e - W0} 0)`); if (k < 1) requestAnimationFrame(f); else { w.classList.remove('walking'); res(); } }; requestAnimationFrame(f); });
+}
+async function order(id) {
+  if (busy) return;
+  busy = true; $$('#menuBtns .btn').forEach(b => b.disabled = true);
+  const o = MENU.find(x => x.id === id);
+  const scene = $('#scene');
+  $('#reqTicket').innerHTML = reqHTML(o.req); $('#reqTicket').classList.remove('fresh'); void $('#reqTicket').offsetWidth; $('#reqTicket').classList.add('fresh');
+  $('#resTicket').innerHTML = `<span class="lbl">The response (what comes back)</span><span class="dim">The waiter is on the way…</span>`;
+  $('#device').style.stroke = 'var(--ink-2)';
+  $('#atTable').innerHTML = TICKET;
+  await moveWaiter(200, 500);
+  $('#atTable').innerHTML = ''; $('#carry').innerHTML = TICKET;
+  await moveWaiter(438, 800);
+  $('#carry').innerHTML = '';
+  scene.classList.add(o.burn ? 'burning' : 'cooking'); if (o.pantry) scene.classList.add('pantry');
+  await sleep(o.burn ? 1100 : 800);
+  scene.classList.remove('cooking', 'burning', 'pantry');
+  const f = fam(o.status);
+  $('#carry').innerHTML = PLATE[f];
+  await moveWaiter(200, 800);
+  $('#carry').innerHTML = ''; $('#atTable').innerHTML = PLATE[f];
+  $('#device').style.stroke = f === 's2' ? 'var(--l3)' : f === 's4' ? 'var(--l4)' : 'var(--l1)';
+  $('#resTicket').innerHTML = resHTML(o); $('#resTicket').classList.remove('fresh'); void $('#resTicket').offsetWidth; $('#resTicket').classList.add('fresh');
+  CS.say($('#p1Note'), o.note, f === 's2' ? 'good' : f === 's4' ? '' : 'bad');
+  if (['menu', 'order', '404', '500'].includes(id)) CS.tick('p1', id);
+  await moveWaiter(W0, 500);
+  busy = false; $$('#menuBtns .btn').forEach(b => b.disabled = false);
+}
+$('#menuBtns').addEventListener('click', e => { const b = e.target.closest('[data-o]'); if (b) order(b.dataset.o); });
+
+/* ---------------- the pretend Sunny Bakery API (used by the builder and the terminal) ---------------- */
+const CAKES = [{ id: 1, name: 'Lemon drizzle', price: 18 }, { id: 2, name: 'Chocolate fudge', price: 22 }, { id: 3, name: 'Carrot cake', price: 20 }, { id: 4, name: 'Strawberry sponge', price: 24 }];
+function makeAPI() {
+  const orders = { 1042: { order_id: 1042, cake_id: 1, cake: 'Lemon drizzle', quantity: 1, total: 18, status: 'baking' } };
+  let next = 1043;
+  return function call({ method, path, headers = {}, body }) {
+    const h = {}; Object.keys(headers).forEach(k => { h[k.toLowerCase()] = headers[k]; });
+    const out = (status, b, extra = {}) => ({ status, body: b, headers: { 'Content-Type': 'application/json', ...extra } });
+    let p = path.replace(/^https?:\/\/[^/]+/, '').split('?')[0].replace(/\/+$/, '') || '/';
+    if (!p.startsWith('/v1/') && p !== '/v1') return out(404, { error: 'not_found', message: `No endpoint at ${p}. Every address starts with /v1.` });
+    p = p.slice(3) || '/';
+    const auth = h.authorization;
+    if (!auth) return out(401, { error: 'missing_api_key', message: 'Send your API key in the Authorization header: Bearer <your key>.' });
+    if (auth !== 'Bearer ' + KEY) return out(401, { error: 'invalid_api_key', message: 'That API key is not valid. Check for typos, and that it starts with "Bearer ".' });
+    let m;
+    if (p === '/cakes') return method === 'GET' ? out(200, { cakes: CAKES }) : out(405, { error: 'method_not_allowed', message: `You can't ${method} /cakes. Try GET.` });
+    if ((m = /^\/cakes\/([^/]+)$/.exec(p))) {
+      if (method !== 'GET') return out(405, { error: 'method_not_allowed', message: `You can't ${method} a cake. Try GET.` });
+      const c = CAKES.find(x => String(x.id) === m[1]);
+      return c ? out(200, c) : out(404, { error: 'not_found', message: `There is no cake with id ${m[1]}.` });
+    }
+    if (p === '/orders') {
+      if (method === 'GET') return out(200, { orders: Object.values(orders) });
+      if (method !== 'POST') return out(405, { error: 'method_not_allowed', message: `To create an order, POST to /orders.` });
+      const ct = (h['content-type'] || '').toLowerCase();
+      if (!ct.includes('application/json')) return out(415, { error: 'unsupported_media_type', message: 'Send the body as JSON, with the header Content-Type: application/json.' });
+      let data;
+      try { data = JSON.parse(body || ''); } catch (e) { return out(400, { error: 'invalid_json', message: 'The body is not valid JSON. Check the quotes, commas and braces.' }); }
+      if (!data || typeof data !== 'object' || data.cake_id === undefined) return out(422, { error: 'validation_error', message: 'cake_id is required.' });
+      if (String(data.cake_id) === '7') return out(500, { error: 'internal_error', message: 'Something went wrong on our side.' });
+      const c = CAKES.find(x => String(x.id) === String(data.cake_id));
+      if (!c) return out(404, { error: 'not_found', message: `There is no cake with id ${data.cake_id}.` });
+      const q = data.quantity === undefined ? 1 : Number(data.quantity);
+      if (!Number.isInteger(q) || q < 1 || q > 20) return out(422, { error: 'validation_error', message: 'quantity must be a whole number from 1 to 20.' });
+      const o = { order_id: next++, cake_id: c.id, cake: c.name, quantity: q, total: c.price * q, status: 'received' };
+      orders[o.order_id] = o;
+      return out(201, o, { Location: `/v1/orders/${o.order_id}` });
+    }
+    if ((m = /^\/orders\/([^/]+)$/.exec(p))) {
+      const o = orders[m[1]];
+      if (!o) return out(404, { error: 'not_found', message: `There is no order ${m[1]}.` });
+      if (method === 'GET') { if (o.status === 'received') o.status = 'baking'; return out(200, o); }
+      if (method === 'DELETE') { o.status = 'cancelled'; return out(200, { order_id: o.order_id, status: 'cancelled' }); }
+      return out(405, { error: 'method_not_allowed', message: 'Use GET to check an order or DELETE to cancel it.' });
+    }
+    return out(404, { error: 'not_found', message: `No endpoint at /v1${p}.` });
+  };
+}
+
+/* ---------------- part 2: request builder ---------------- */
+const api2 = makeAPI();
+const B = { method: 'GET', auth: false, ct: false, used: 0, windowEnd: 0, timer: null };
+const LIMIT = 5, WINDOW = 20000;
+function paintDots() {
+  $('#dots').innerHTML = Array.from({ length: LIMIT }, (_, i) => `<i class="${i < B.used ? 'used' : ''}"></i>`).join('');
+}
+function windowTick() {
+  clearInterval(B.timer);
+  B.timer = setInterval(() => {
+    const left = Math.ceil((B.windowEnd - Date.now()) / 1000);
+    if (left <= 0) { clearInterval(B.timer); B.used = 0; paintDots(); $('#resetTxt').textContent = 'Fresh window: 5 requests available.'; return; }
+    $('#resetTxt').textContent = `${LIMIT - B.used} left. The window resets in ${left} s.`;
+  }, 250);
+}
+function builderUI() {
+  $$('#bMethod button').forEach(b => b.setAttribute('aria-pressed', b.dataset.m === B.method));
+  const post = B.method === 'POST';
+  $('#bodyField').hidden = !post; $('#noBody').hidden = post;
+  $('#hAuth').classList.toggle('off', !B.auth); $('[data-h="auth"]').textContent = B.auth ? 'Remove' : 'Add';
+  $('#hCT').classList.toggle('off', !B.ct); $('[data-h="ct"]').textContent = B.ct ? 'Remove' : 'Add';
+}
+function send(quiet) {
+  let path = $('#bPath').value.trim() || '/';
+  if (!path.startsWith('/')) path = '/' + path;
+  path = path.replace(/^\/?(https?:\/\/[^/]+)?\/v1(?=\/|$)/, '');
+  const headers = {};
+  if (B.auth) headers.Authorization = 'Bearer ' + KEY;
+  if (B.ct) headers['Content-Type'] = 'application/json';
+  let res;
+  const counts = B.auth;
+  if (counts && B.used >= LIMIT) {
+    const wait = Math.max(1, Math.ceil((B.windowEnd - Date.now()) / 1000));
+    res = { status: 429, headers: { 'Content-Type': 'application/json', 'Retry-After': String(wait), 'X-RateLimit-Remaining': '0' }, body: { error: 'rate_limited', message: `Too many requests. Try again in ${wait} seconds.` } };
+  } else {
+    if (counts) { if (!B.used) { B.windowEnd = Date.now() + WINDOW; windowTick(); } B.used++; paintDots(); }
+    res = api2({ method: B.method, path: '/v1' + path, headers, body: B.method === 'POST' ? $('#bBody').value : undefined });
+    if (counts && res.status !== 401) { res.headers['X-RateLimit-Limit'] = String(LIMIT); res.headers['X-RateLimit-Remaining'] = String(LIMIT - B.used); }
+  }
+  const f = fam(res.status);
+  $('#respPill').innerHTML = `<span class="pill ${f}">${res.status} ${STATUS[res.status]}</span>`;
+  $('#respReq').textContent = `${B.method} /v1${path}`;
+  $('#respBody').innerHTML = Object.entries(res.headers).map(([k, v]) => `<span class="dim">${k}:</span> ${esc(v)}`).join('\n') + '\n\n' + jsonHTML(res.body);
+  const log = $('#reqLog'); log.hidden = false;
+  log.insertAdjacentHTML('afterbegin', `<li><span class="pill ${f}">${res.status}</span>${B.method} ${esc(path)}</li>`);
+  while (log.children.length > 6) log.lastElementChild.remove();
+  if (!quiet) explain(res, path);
+  // tasks
+  if (res.status === 401 && /^\/cakes/.test(path)) CS.tick('p2', '401');
+  if (res.status === 200 && B.method === 'GET' && /^\/cakes/.test(path)) { CS.tick('p2', '401'); CS.tick('p2', '200'); }
+  if (res.status === 201) CS.tick('p2', '201');
+  if (res.status === 429) CS.tick('p2', '429');
+  return res;
+}
+function explain(res, path) {
+  const n = $('#respNote'), b = res.body || {};
+  const say = (h, k) => CS.say(n, h, k);
+  switch (res.status) {
+    case 401: return say(b.error === 'missing_api_key' ? `<strong>401 Unauthorized.</strong> The API doesn't know who you are, so it won't serve you. The response body says why: <code>missing_api_key</code>. Add the <b>Authorization</b> header with your key and send again.` : `<strong>401 Unauthorized.</strong> ${esc(b.message)}`, '');
+    case 200: return say(B.method === 'DELETE' ? `<strong>200 OK.</strong> Order cancelled. DELETE removed it, and the response confirms the new status.` : `<strong>200 OK.</strong> Your key was accepted and the API sent back JSON. Notice the <code>X-RateLimit-Remaining</code> header: every request uses up one of your five. ${CS.ticked('p2', '201') ? '' : 'Next, switch to <b>POST</b> and order a cake from <b>/orders</b>.'}`, 'good');
+    case 201: return say(`<strong>201 Created.</strong> Order ${b.order_id} exists now. The <code>Location</code> header tells you its address, so you can check on it with GET <code>/orders/${b.order_id}</code>.`, 'good');
+    case 415: return say(`<strong>415 Unsupported Media Type.</strong> The API wants JSON, but the request didn't say that's what the body is. Add the <b>Content-Type: application/json</b> header.`, '');
+    case 400: return say(`<strong>400 Bad Request.</strong> The body isn't valid JSON. Names and text need double quotes, like <code>{"cake_id": 2}</code>.`, '');
+    case 422: return say(`<strong>422.</strong> The JSON is fine, but something in it isn't: ${esc(b.message)}`, '');
+    case 404: return say(`<strong>404 Not Found.</strong> ${esc(b.message)} Check the address against the quick buttons.`, '');
+    case 405: return say(`<strong>405 Method Not Allowed.</strong> The address exists, but not for this method. ${esc(b.message)}`, '');
+    case 429: return say(`<strong>429 Too Many Requests.</strong> You used up the limit. The <code>Retry-After</code> header says how many seconds to wait. Well-behaved code waits that long instead of hammering the API, or the provider may block the key.`, 'bad');
+    case 500: return say(`<strong>500.</strong> Their server failed. Not your fault, but your app still has to handle it.`, 'bad');
+  }
+}
+$('#bMethod').addEventListener('click', e => {
+  const b = e.target.closest('[data-m]'); if (!b) return;
+  B.method = b.dataset.m;
+  if (B.method === 'POST') { if (!/^\/orders\/?$/.test($('#bPath').value)) $('#bPath').value = '/orders'; }
+  if (B.method === 'DELETE' && !/^\/orders\/\d+/.test($('#bPath').value)) $('#bPath').value = '/orders/1042';
+  builderUI();
+});
+$('#quick').addEventListener('click', e => { const b = e.target.closest('[data-p]'); if (b) { $('#bPath').value = b.dataset.p; $('#bPath').focus(); } });
+$$('[data-h]').forEach(b => b.addEventListener('click', () => { B[b.dataset.h] = !B[b.dataset.h]; builderUI(); }));
+$('#sendBtn').addEventListener('click', () => send());
+$('#bPath').addEventListener('keydown', e => { if (e.key === 'Enter') send(); });
+$('#burstBtn').addEventListener('click', async () => {
+  const bb = $('#burstBtn'); bb.disabled = true; $('#sendBtn').disabled = true;
+  let last;
+  for (let i = 0; i < 6; i++) { last = send(true); await sleep(260); }
+  explain(last, '');
+  if (last.status !== 429) {
+    if (!B.auth) CS.say($('#respNote'), `<strong>Six 401s in a row.</strong> Requests without a valid key are turned away before they count. Add your key, then try again.`, '');
+  }
+  bb.disabled = false; $('#sendBtn').disabled = false;
+});
+builderUI(); paintDots();
+
+/* ---------------- part 2: polling vs webhooks ---------------- */
+const H = { mode: 'poll', runs: { poll: false, hook: false }, busy: false, sig: false };
+let X0 = 108, X1 = 620, SW = 640, NARROW = false;
+const TMAX = 8, PAY = 5.3;
+const tx = t => X0 + (X1 - X0) * t / TMAX;
+const YA = 46, YB = 146;
+function seqBase() {
+  const svg = $('#seq');
+  SW = Math.round(Math.max(300, svg.clientWidth || 640)); NARROW = SW < 520;
+  X0 = NARROW ? 62 : 108; X1 = SW - 18;
+  svg.setAttribute('viewBox', `0 0 ${SW} 190`);
+  let s = `<text class="t-lbl" x="0" y="${YA + 5}" style="fill:var(--ink)">${NARROW ? 'App' : 'Your app'}</text><text class="t-lbl" x="0" y="${YB + 5}" style="fill:var(--ink)">Payly</text>
+    <line x1="${X0}" x2="${X1}" y1="${YA}" y2="${YA}" style="stroke:var(--ink-2)" stroke-width="2" opacity=".35"/>
+    <line x1="${X0}" x2="${X1}" y1="${YB}" y2="${YB}" style="stroke:var(--ink-2)" stroke-width="2" opacity=".35"/>`;
+  for (let t = 0; t <= TMAX; t += NARROW ? 4 : 2) s += `<text class="t-sm" x="${tx(t)}" y="182" text-anchor="${t === 0 ? 'start' : t === TMAX ? 'end' : 'middle'}" style="fill:var(--ink-2)">${t} s</text>`;
+  s += `<g id="payMark" opacity="0"><line x1="${tx(PAY)}" x2="${tx(PAY)}" y1="${YA - 22}" y2="${YB + 14}" style="stroke:var(--l3)" stroke-width="2" stroke-dasharray="4 5"/><circle cx="${tx(PAY)}" cy="${YB}" r="7" style="fill:var(--l3)"/><text class="t-sm" x="${tx(PAY) - 12}" y="${YB + 22}" text-anchor="end" style="fill:var(--l3)">customer paid</text></g>
+    <g id="seqEv"></g><line id="cursor" x1="${X0}" x2="${X0}" y1="${YA - 16}" y2="${YB + 12}" style="stroke:var(--ink)" stroke-width="2" opacity="0"/>`;
+  svg.innerHTML = s;
+}
+addEventListener('resize', () => { if (!H.busy && Math.abs(($('#seq').clientWidth || 640) - SW) > 40) seqBase(); });
+const arrow = (x1, y1, x2, y2, col, dash) => `<path d="M${x1} ${y1}L${x2} ${y2}" style="stroke:${col}" stroke-width="2.5" stroke-linecap="round" ${dash ? 'stroke-dasharray="3 5"' : ''}/><circle cx="${x2}" cy="${y2}" r="4.5" style="fill:${col}"/>`;
+function stats(req, waste, heard) { $('#hsReq').textContent = req; $('#hsWaste').textContent = waste; $('#hsDelay').textContent = heard; }
+async function runPayment() {
+  if (H.busy) return;
+  H.busy = true; $('#payBtn').disabled = true;
+  seqBase();
+  const ev = $('#seqEv'), cur = $('#cursor');
+  cur.setAttribute('opacity', 1);
+  const events = [];
+  if (H.mode === 'poll') {
+    for (let t = 0; t <= 6; t++) events.push({ t, html: arrow(tx(t), YA, tx(t + .3), YB, 'var(--l2)') + arrow(tx(t + .3), YB, tx(t + .6), YA, t >= PAY ? 'var(--l3)' : 'var(--ink-2)', t < PAY) });
+  } else {
+    events.push({ t: 0, html: arrow(tx(0), YA, tx(.3), YB, 'var(--l2)', true) + `<text class="t-sm" x="${tx(.45)}" y="${YA + 28}" style="fill:var(--ink-2)">${NARROW ? 'my address' : '"here\'s my address"'}</text>` });
+    events.push({ t: PAY, html: arrow(tx(PAY), YB, tx(PAY + .25), YA, 'var(--l3)') + `<text class="t-sm" x="${tx(PAY) - 10}" y="${YB - 16}" text-anchor="end" style="fill:var(--l3)">${NARROW ? 'webhook' : 'POST /webhooks/payly'}</text>` });
+  }
+  let req = 0;
+  const dur = reduce ? 0 : 3400, t0 = performance.now();
+  await new Promise(res => {
+    const f = now => {
+      const t = dur ? Math.min(TMAX * .85, (now - t0) / dur * TMAX * .85) : TMAX * .85;
+      cur.setAttribute('x1', tx(t)); cur.setAttribute('x2', tx(t));
+      while (events.length && events[0].t <= t) { ev.insertAdjacentHTML('beforeend', events.shift().html); req++; }
+      if (t >= PAY) $('#payMark').setAttribute('opacity', 1);
+      if (H.mode === 'poll') stats(req, Math.max(0, req - (t >= 6 ? 1 : 0)), t >= 6 ? '0.7 s late' : '…');
+      else stats(t >= PAY ? 1 : 0, 0, t >= PAY ? 'instantly' : '…');
+      if (t < TMAX * .85) requestAnimationFrame(f); else res();
+    };
+    requestAnimationFrame(f);
+  });
+  cur.setAttribute('opacity', 0);
+  H.runs[H.mode] = true;
+  if (H.mode === 'poll') {
+    stats(7, 6, 'up to 1 s late');
+    CS.say($('#hookNote'), `<strong>7 requests, 6 of them wasted.</strong> Your app asked "paid yet?" every second and heard "no" six times. Now picture 2,000 customers checking out: that's 2,000 requests a second, and Payly starts answering <b>429 Too Many Requests</b>. Switch to <b>Webhook</b> and try again.`, '');
+  } else {
+    stats(1, 0, 'instantly');
+    CS.say($('#hookNote'), `<strong>One request, at exactly the right moment.</strong> You gave Payly an address once. When the payment went through, Payly sent a POST to it. That's a <b>webhook</b>: the API calls you back. Now look at your webhook inbox below.`, 'good');
+    $('#inboxCard').hidden = false;
+    addHook(true);
+  }
+  H.busy = false; $('#payBtn').disabled = false;
+}
+let hookN = 0;
+function addHook(real) {
+  const id = real ? 1042 : 1043;
+  const sig = real ? 't=1790000000,v1=9c1f4e7a2b…' : 't=1790000000,v1=0000000000…';
+  let verdict, cls;
+  if (real) { verdict = `<span class="ok">Signature matches. Order 1042 marked as paid.</span>`; cls = 'ok'; }
+  else if (H.sig) { verdict = `<span class="ok">Rejected with 401: the signature doesn't match, so this didn't come from Payly. Order 1043 stays unpaid.</span>`; cls = 'ok'; }
+  else { verdict = `<span class="bad">Accepted without checking. Order 1043 marked as paid, but nobody paid. The stranger just got a free cake.</span>`; cls = 'bad'; }
+  $('#inbox').insertAdjacentHTML('afterbegin', `<div class="hookmsg"><span class="h">POST</span> /webhooks/payly  <span class="dim">from ${real ? 'Payly' : 'somewhere on the internet'}</span>
+<span class="dim">Payly-Signature:</span> ${sig}
+{ "type": "payment.succeeded", "order_id": ${id}, "amount": ${real ? 1800 : 2200} }<span class="verdict">${verdict}</span></div>`);
+  while ($('#inbox').children.length > 4) $('#inbox').lastElementChild.remove();
+  if (!real) {
+    if (H.sig) { CS.say($('#hookNote'), `<strong>Caught it.</strong> Your code recomputed the signature with the shared webhook secret, and it didn't match. Always verify webhook signatures: anyone can find your address and post to it.`, 'good'); CS.tick('p2', 'hook'); }
+    else CS.say($('#hookNote'), `<strong>Your app believed a stranger.</strong> Without checking the signature, any request that looks right is trusted. Turn on <b>Check signatures</b> and have the stranger try again.`, 'bad');
+  }
+}
+$('#hookMode').addEventListener('click', e => {
+  const b = e.target.closest('[data-mode]'); if (!b || H.busy) return;
+  H.mode = b.dataset.mode;
+  $$('#hookMode button').forEach(x => x.setAttribute('aria-pressed', x === b));
+  seqBase(); stats('–', '–', '–');
+  CS.say($('#hookNote'), H.mode === 'hook' ? 'Webhook mode: your app hands Payly an address to call when the payment goes through. Press <b>Customer pays</b>.' : 'Polling mode: your app asks "paid yet?" every second. Press <b>Customer pays</b>.', '');
+});
+$('#payBtn').addEventListener('click', runPayment);
+$('#sigSwitch').addEventListener('click', () => { H.sig = !H.sig; $('#sigSwitch').setAttribute('aria-checked', H.sig); });
+$('#fakeBtn').addEventListener('click', () => addHook(false));
+seqBase();
+
+/* ---------------- part 3: curl terminal ---------------- */
+const api3 = makeAPI();
+const ENV = { BAKERY_KEY: KEY };
+const T = { lastOrder: null };
+const expand = s => s.replace(/\$\{?([A-Z_]+)\}?/g, (m, k) => ENV[k] !== undefined ? ENV[k] : '');
+function curl(argv, io) {
+  const a = argv.slice(1);
+  let method = null, url = null, data = null, inc = false, verbose = false; const headers = {};
+  for (let i = 0; i < a.length; i++) {
+    const x = a[i];
+    if (x === '-X' || x === '--request') method = (a[++i] || '').toUpperCase();
+    else if (x === '-H' || x === '--header') { const h = expand(a[++i] || ''); const k = h.indexOf(':'); if (k > 0) headers[h.slice(0, k).trim()] = h.slice(k + 1).trim(); else { io.print(`curl: bad header "${esc(h)}"`, 'r'); io.tutor('A header looks like <b>"Name: value"</b>, in quotes.'); return null; } }
+    else if (x === '-d' || x === '--data' || x === '--data-raw') data = a[++i] || '';
+    else if (x === '--json') { data = a[++i] || ''; headers['Content-Type'] = 'application/json'; headers.Accept = 'application/json'; }
+    else if (x === '-i' || x === '--include') inc = true;
+    else if (x === '-v' || x === '--verbose') { verbose = true; inc = true; }
+    else if (x === '-s' || x === '--silent' || x === '-L') { /* fine */ }
+    else if (/^-[a-zA-Z]{2,}$/.test(x)) { if (x.includes('i')) inc = true; if (x.includes('v')) { verbose = true; inc = true; } }
+    else if (x.startsWith('-')) { io.print(`curl: option ${esc(x)}: is unknown`, 'r'); io.tutor('This practice curl knows <b>-X</b>, <b>-H</b>, <b>-d</b>, <b>--json</b> and <b>-i</b>.'); return null; }
+    else url = expand(x);
+  }
+  if (!url) { io.print('curl: no URL specified!', 'r'); io.tutor('Put the address at the end, like <b>https://api.sunnybakery.example/v1/cakes</b>.'); return null; }
+  if (!/^https?:\/\//.test(url)) url = 'https://' + url;
+  const host = url.replace(/^https?:\/\//, '').split('/')[0];
+  if (host !== 'api.sunnybakery.example') {
+    io.print(`curl: (6) Could not resolve host: ${esc(host)}`, 'r');
+    io.tutor(CS.lev(host, 'api.sunnybakery.example') <= 3 ? 'Close! Check the spelling: <b>api.sunnybakery.example</b>.' : 'In this practice terminal only <b>api.sunnybakery.example</b> exists.');
+    return null;
+  }
+  if (data !== null && !method) method = 'POST';
+  method = method || 'GET';
+  if (data !== null && !headers['Content-Type'] && !Object.keys(headers).some(k => k.toLowerCase() === 'content-type')) headers['Content-Type'] = 'application/x-www-form-urlencoded';
+  const path = url.replace(/^https?:\/\/[^/]+/, '') || '/';
+  const res = api3({ method, path, headers, body: data });
+  if (verbose) io.print([`> ${method} ${esc(path)} HTTP/1.1`, `> Host: ${host}`, ...Object.entries(headers).map(([k, v]) => `> ${esc(k)}: ${esc(k.toLowerCase() === 'authorization' ? v.replace(/(sk_test_\w{3})\w+/, '$1…') : v)}`)].join('\n'), 'dim');
+  if (inc) io.print(`<span class="${res.status >= 400 ? (res.status >= 500 ? 'r' : 'y') : 'g'}">HTTP/1.1 ${res.status} ${STATUS[res.status]}</span>\n` + Object.entries(res.headers).map(([k, v]) => `<span class="dim">${k}:</span> ${esc(v)}`).join('\n') + '\n');
+  io.print(jsonHTML(res.body).replace(/class="h"/g, 'class="b"').replace(/class="s"/g, 'class="g"').replace(/class="n"/g, 'class="y"').replace(/class="k"/g, 'class="y"'));
+  // tutoring
+  const b = res.body || {};
+  if (res.status === 401 && b.error === 'missing_api_key') io.tutor(`curl only prints the body, and it says <b>missing_api_key</b>: this was a <b>401 Unauthorized</b>. The API wants a key.${ENV.BAKERY_KEY ? ' Yours is in an environment variable called <b>BAKERY_KEY</b>.' : ''}`);
+  else if (res.status === 401) io.tutor('The key was rejected. Use <b>"Authorization: Bearer $BAKERY_KEY"</b>, with the word Bearer and a space.');
+  else if (res.status === 415) io.tutor('Without a Content-Type header, curl labels the body as a web form. Add <b>-H "Content-Type: application/json"</b>.');
+  else if (res.status === 400) io.tutor('The body must be valid JSON. Wrap it in single quotes on the outside and use double quotes inside: <b>\'{"cake_id": 2}\'</b>.');
+  else if (res.status === 201) { T.lastOrder = b.order_id; io.tutor(`Order <b>${b.order_id}</b> created. Hold on to that ID.`); }
+  else if (res.status === 404) io.tutor('404: nothing at that address. Compare it with the docs on the side.');
+  return { k: 'curl', method, path: path.replace(/^\/v1/, ''), status: res.status, inc, body: b };
+}
+CS.terminal($('#term'), {
+  part: 'p3', mission: $('#mission'),
+  prompt: () => '~/party-app $',
+  intro: 'A pretend Sunny Bakery API is listening. Type a command and press Enter.\nStuck? Press "Show a hint", or type <span class="y">help</span>.',
+  steps: [
+    { t: 'Ask for the cakes', how: 'Send a GET request to /cakes with curl.', cmd: `curl ${BASE}/cakes`, done: a => a.k === 'curl' && a.path === '/cakes' },
+    { t: 'Find your API key', how: 'It lives in an environment variable. Print it.', cmd: 'echo $BAKERY_KEY', done: a => a.k === 'echo' && a.key },
+    { t: 'Send the key', how: 'Ask for the cakes again with an Authorization header.', cmd: `curl -H "Authorization: Bearer $BAKERY_KEY" ${BASE}/cakes`, done: a => a.k === 'curl' && a.status === 200 && a.path === '/cakes' },
+    { t: 'See the status line', how: 'Get cake 2, and add -i to see the status and headers.', cmd: `curl -i -H "Authorization: Bearer $BAKERY_KEY" ${BASE}/cakes/2`, done: a => a.k === 'curl' && a.inc && a.status === 200 },
+    { t: 'Order the cake', how: 'POST JSON to /orders. Remember the Content-Type header.', cmd: `curl -X POST -H "Authorization: Bearer $BAKERY_KEY" -H "Content-Type: application/json" -d '{"cake_id": 2, "quantity": 1}' ${BASE}/orders`, done: a => a.k === 'curl' && a.status === 201 },
+    { t: 'Check on your order', how: 'GET your new order by its ID.', cmd: () => `curl -H "Authorization: Bearer $BAKERY_KEY" ${BASE}/orders/${T.lastOrder || 1043}`, done: a => a.k === 'curl' && a.status === 200 && /^\/orders\/\d+$/.test(a.path) }
+  ],
+  run(argv, line, io) {
+    const c = argv[0];
+    if (c === 'help') { io.print(`Commands you can use here:\n  <span class="y">curl &lt;url&gt;</span>                     send a GET request\n  <span class="y">curl -H "Name: value" &lt;url&gt;</span>     add a header\n  <span class="y">curl -X POST -d '{…}' &lt;url&gt;</span>     send a body\n  <span class="y">curl -i …</span>                        show status and headers\n  <span class="y">echo $BAKERY_KEY</span>                 print an environment variable\n  <span class="y">env</span>  <span class="y">clear</span>  <span class="y">hint</span>`); return null; }
+    if (c === 'echo') { const out = expand(argv.slice(1).join(' ')); io.print(esc(out)); if (/\$|BAKERY/.test(line) && out.includes(KEY)) io.tutor('That\'s your key. It lives in an <b>environment variable</b>, a setting outside your code, so it never gets committed to git or shipped to browsers. In commands, write <b>$BAKERY_KEY</b> instead of pasting it.'); else if (/BAKERY_KEY/.test(line) && !/\$/.test(line)) io.tutor('Put a <b>$</b> in front of a variable name to use its value: <b>echo $BAKERY_KEY</b>.'); return { k: 'echo', key: out.includes(KEY) }; }
+    if (c === 'env' || c === 'printenv') { io.print(Object.entries(ENV).map(([k, v]) => `${k}=${esc(v)}`).join('\n') + '\nSHELL=/bin/zsh'); return null; }
+    if (c === 'export') { const m = /^export\s+([A-Z_]+)=(.*)$/.exec(line); if (m) { ENV[m[1]] = m[2].replace(/^["']|["']$/g, ''); return null; } io.print('usage: export NAME=value'); return null; }
+    if (c === 'ls') { io.print('app.js  package.json  .env'); io.tutor('<b>.env</b> is where the key is stored on your machine. It is listed in .gitignore, so it never gets committed.'); return null; }
+    if (c === 'cat' && argv[1] === '.env') { io.print(`BAKERY_KEY=${KEY}`); return null; }
+    if (c === 'curl') return curl(argv, io);
+    if (CS.lev(c, 'curl') <= 1) { io.print(`zsh: command not found: ${esc(c)}`, 'r'); io.tutor("Close! It's spelled <b>curl</b>."); return null; }
+    return undefined;
+  },
+  doneHTML: '<b>Mission complete.</b> Try <code>curl -v …</code> to see the request too, or cancel the order with <code>-X DELETE</code>.',
+  doneTutor: '<b>Mission complete!</b> You read an error, used a key from an environment variable, and created and checked an order. That\'s every API integration in miniature.'
+});
+
+/* ---------------- part 4: steer the AI ---------------- */
+CS.steer($('#steer'), [
+  { ai: "Checkout works! I put the Payly secret key in the React checkout component so the browser can charge the card directly.",
+    opts: [["Fine, the code gets minified, so nobody can read it.", 0, "Minified code is still readable. Anyone can open the browser's developer tools and copy the key."],
+           ["Move it to a .env file in the frontend project instead.", 0, "Tempting, but frontend build tools copy those values into the JavaScript sent to every visitor. It's still public."],
+           ["Secret keys must never reach the browser. Call Payly from our backend, with the key in a server environment variable.", 1, "Right. Anything sent to the browser is public. The server makes the call, and the key never leaves it."]] },
+  { ai: "The order form sends the request and shows 'Your cake is on its way!'. I skipped error handling to keep it short, and if a request fails I just retry it immediately until it works.",
+    opts: [["Check the status code: only confirm on a 2xx, show a clear message on 4xx, and retry 429 and 5xx a few times with growing waits.", 1, "Yes. 4xx means fix the request, 5xx and 429 may pass if you wait. Backing off (1 s, 2 s, 4 s…) and respecting Retry-After avoids making things worse."],
+           ["Looks good, errors are rare.", 0, "Then the day the bakery's server hiccups, customers see 'on its way' for cakes that were never ordered."],
+           ["Wrap it in try/catch and hide any errors so users don't see them.", 0, "Hiding errors doesn't fix them. The customer still thinks they ordered, and you get no clue anything failed."]] },
+  { ai: "To know when a payment completes, I'll call Payly's API every second to check the status.",
+    opts: [["Great, every second is nice and responsive.", 0, "Most of those calls are wasted, and with many customers you'll hit Payly's rate limit and start getting 429s."],
+           ["Use Payly's webhook: they call our endpoint when the payment succeeds.", 1, "Exactly. One request, at the right moment, with no wasted calls. Just remember to verify its signature."],
+           ["Check every 100 milliseconds so it's even faster.", 0, "Ten times the waste, and you'll be rate limited even sooner."]] },
+  { ai: "The Payly webhook endpoint is live. When a request says payment.succeeded, I mark the order as paid.",
+    opts: [["Perfect, that's what webhooks are for.", 0, "The endpoint is public. Anyone who finds it can post a fake 'payment.succeeded' and get free cakes."],
+           ["Verify the Payly-Signature header with our webhook secret before trusting it, and reject anything that doesn't match.", 1, "Right. The signature proves the request came from Payly. Their docs and SDKs show exactly how to check it."],
+           ["Keep the webhook URL secret so nobody can find it.", 0, "Hidden isn't safe. URLs leak through logs, screenshots and code. A signature check is what actually protects you."]] }
+], { part: 'p4', counter: $('#steerCount') });
+
+/* ---------------- part 5: quiz ---------------- */
+CS.quiz($('#quiz'), [
+  { q: 'Your app gets 401 Unauthorized from an API. What is the most likely cause?', a: [['Their server crashed', 0], ['The API key is missing or wrong', 1], ['The address has a typo', 0]], why: '401 means the API does not know who you are. A typo in the address usually gives 404, and a server crash gives a 5xx.' },
+  { q: 'Which status codes mean the problem is on the other company\'s side?', a: [['2xx', 0], ['4xx', 0], ['5xx', 1]], why: '5xx codes mean their server failed. Waiting and retrying may work. 4xx codes mean your request needs fixing.' },
+  { q: 'Where should a secret API key live?', a: [['In the frontend code, so the browser can use it', 0], ['On your server, in an environment variable', 1], ['In the git repository, so the team has it', 0]], why: 'Anything in frontend code or git history can be read by others. The server reads the key from its environment and makes the call.' },
+  { q: 'What is a webhook?', a: [['The other service calls your URL when something happens', 1], ['Your app asking the other service for news every second', 0], ['A kind of API key', 0]], why: 'Instead of you asking over and over (polling), the service sends one request to your address the moment something happens.' },
+  { q: 'An API answers 429 Too Many Requests with Retry-After: 30. What should your code do?', a: [['Retry immediately in a loop', 0], ['Give up and show an error forever', 0], ['Wait 30 seconds, then retry, backing off if it happens again', 1]], why: 'Rate limits reset over time. Waiting as told, and waiting longer after each failure, gets you through without getting blocked.' }
+], { part: 'p5', doneCard: $('#doneCard'), doneTitle: 'You can read an API conversation now.', doneText: 'You know requests, responses, methods and status codes, why keys stay on the server, how rate limits work, and why webhooks beat polling when they are verified.' });
+})();
+</script>
+</body>
+</html>

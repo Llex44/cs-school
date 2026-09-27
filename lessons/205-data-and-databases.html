@@ -1,0 +1,1153 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Data &amp; databases · CS School</title>
+<meta name="description" content="Course 205: tables, documents, key-value and vector stores, and how to pick the right shape for your app's data.">
+<link rel="icon" href="../assets/favicon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="../assets/cs-school.css">
+<style>
+/* ---------- hero ---------- */
+#heroArt .hd{transition:transform 1s cubic-bezier(.6,0,.2,1), opacity .6s}
+#heroArt .hf{transition:opacity .6s}
+#heroArt .t-title{font-family:var(--f-display); font-weight:800; font-size:17px}
+#heroArt .t-lbl{font-family:var(--f-display); font-weight:700; font-size:12.5px}
+#heroArt .t-mono{font-family:var(--f-mono); font-size:11.5px}
+
+/* ---------- part 1: shapes ---------- */
+.shape-pick{display:grid; grid-template-columns:1fr 1fr; gap:8px}
+.shape-btn{display:flex; gap:12px; align-items:center; text-align:left; font:inherit; color:var(--ink); background:var(--glass-strong); border:1px solid var(--hair); border-radius:14px; padding:10px 12px; min-height:60px; cursor:pointer; transition:background .2s, color .2s, transform .1s}
+.shape-btn:hover{background:var(--paper)}
+.shape-btn:active{transform:translateY(1px)}
+.shape-btn svg{flex:none; width:38px; height:30px}
+.shape-btn b{display:block; font-family:var(--f-display); font-weight:800; font-size:1.02rem; line-height:1.2}
+.shape-btn small{display:block; font-size:.9rem; color:var(--ink-2); line-height:1.3}
+.shape-btn[aria-pressed="true"]{background:var(--ink); color:var(--paper); border-color:var(--ink)}
+.shape-btn[aria-pressed="true"] small{color:color-mix(in srgb, var(--paper) 78%, transparent)}
+.shape-btn[aria-pressed="true"] .gl{stroke:var(--paper)}
+.qs{display:flex; flex-direction:column; gap:8px}
+.q-btn{justify-content:flex-start; text-align:left; width:100%; font-family:var(--f-body); font-weight:700}
+.q-btn .qn{flex:none; display:grid; place-items:center; width:26px; height:26px; border-radius:50%; background:color-mix(in srgb, var(--ink) 9%, transparent); font-family:var(--f-display); font-size:.85rem}
+.q-btn[aria-pressed="true"]{background:var(--ink); color:var(--paper); border-color:var(--ink)}
+.q-btn[aria-pressed="true"] .qn{background:color-mix(in srgb, var(--paper) 22%, transparent)}
+.verdict ol{margin:8px 0 0; padding-left:1.3em; display:flex; flex-direction:column; gap:2px}
+.verdict .ans{margin-top:8px; font-family:var(--f-display); font-weight:700}
+
+.stage{border-radius:20px; padding:18px 18px 20px}
+.stage-head{display:flex; flex-direction:column; gap:2px; margin-bottom:14px}
+.stage-title{font-family:var(--f-display); font-weight:900; font-size:1.35rem; line-height:1.2}
+.stage-sub{font-size:1rem; color:var(--ink-2)}
+.stage-body{position:relative}
+.v{display:inline-block}
+.bgin{animation:bgin .6s .15s backwards}
+@keyframes bgin{from{background-color:transparent; box-shadow:none}}
+.fadein{animation:fadein .5s .3s backwards}
+@keyframes fadein{from{opacity:0}}
+.hit{background:color-mix(in srgb, var(--l4) 40%, transparent)!important}
+/* mini tables */
+.mts{display:grid; grid-template-columns:minmax(0,1fr) minmax(0,1fr); gap:12px}
+.mt{background:var(--glass-strong); border-radius:14px; padding:10px 10px 8px; min-width:0}
+.mt-name{display:flex; align-items:center; gap:8px; font-family:var(--f-display); font-weight:800; font-size:1rem; margin:0 4px 6px}
+.mt-name i{width:9px; height:9px; border-radius:50%; flex:none}
+.mt-row{display:grid; grid-template-columns:var(--tpl); gap:8px; padding:4px 6px; border-radius:8px; font-size:.92rem; line-height:1.3; transition:background .3s, box-shadow .3s}
+.mt-row > *{min-width:0}
+.mt-head{font-family:var(--f-mono); font-size:.9rem; color:var(--ink-2); padding-block:2px}
+.mt-row .id{font-family:var(--f-mono)}
+/* documents */
+.docs{display:flex; flex-direction:column; gap:10px}
+.doc{background:var(--glass-strong); border-radius:14px; padding:10px 14px; font-family:var(--f-mono); font-size:.9rem; line-height:1.65; transition:background .3s, box-shadow .3s}
+.doc .dl{padding-left:0}
+.doc .in{padding-left:1.4em} .doc .in2{padding-left:2.8em}
+.doc .p{color:var(--ink-2)}
+.doc .s{color:var(--l3)} .doc .n{color:var(--l5)}
+.doc .cpy{border-radius:4px; background:color-mix(in srgb, var(--l2) 12%, transparent); padding:0 3px}
+/* key-value */
+.kvs{display:flex; flex-direction:column; gap:6px}
+.kv-row{display:flex; align-items:center; gap:10px; padding:5px 6px; border-radius:10px; transition:background .3s, box-shadow .3s; min-width:0}
+.kv-row .key{flex:none; font-family:var(--f-mono); font-weight:600; font-size:.9rem; background:var(--glass-strong); border:1px solid var(--hair); border-radius:99px; padding:3px 12px}
+.kv-arrow{flex:none; width:22px; height:2px; background:var(--ink-2); opacity:.5; position:relative}
+.kv-arrow::after{content:""; position:absolute; right:-1px; top:-4px; border:5px solid transparent; border-left-color:var(--ink-2); border-right:0}
+.kv-row .blob{flex:1; min-width:0; font-family:var(--f-mono); font-size:.9rem; color:var(--ink-2); background:color-mix(in srgb, var(--ink) 7%, transparent); border-radius:8px; padding:3px 10px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis}
+/* vectors */
+.vmap{position:relative; height:300px; border-radius:14px; background:var(--glass-strong); overflow:hidden}
+.vmap svg{position:absolute; inset:0; width:100%; height:100%}
+.vpt{position:absolute; translate:-50% -8px; display:flex; flex-direction:column; align-items:center; gap:4px; max-width:46%; border-radius:10px; padding:0 6px 3px; transition:background .3s, box-shadow .3s}
+.vpt i{width:14px; height:14px; border-radius:50%; background:var(--l2); box-shadow:0 0 0 3px var(--paper)}
+.vpt .vt{font-family:var(--f-display); font-weight:700; font-size:.92rem; line-height:1.2; text-align:center}
+.vnote{margin-top:10px; font-size:.95rem; color:var(--ink-2)}
+.vline{stroke:var(--l4); stroke-width:3; stroke-dasharray:6 6; opacity:0; transition:opacity .4s}
+.vline.on{opacity:1}
+/* scoreboard */
+.sb{display:flex; flex-direction:column; gap:12px}
+.sb-grid{display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:6px}
+.sb-head span{font-family:var(--f-display); font-weight:700; font-size:.9rem; color:var(--ink-2); text-align:center}
+.sb-q{font-size:.95rem; font-weight:700; margin-bottom:5px; line-height:1.3}
+.sb-cell{border-radius:9px; background:color-mix(in srgb, var(--ink) 6%, transparent); min-height:34px; display:flex; align-items:center; justify-content:center; gap:6px; font-family:var(--f-display); font-weight:700; font-size:.9rem; color:var(--ink-2); transition:background .3s}
+.sb-cell.best{background:var(--good-bg); color:var(--good)}
+.sb-cell.ok{background:color-mix(in srgb, var(--l2) 15%, transparent); color:var(--ink)}
+.sb-cell.awk{background:var(--tip-bg); color:var(--tip)}
+.sb-cell.no{background:var(--bad-bg); color:var(--bad)}
+.sb-cell.new{animation:pop .35s cubic-bezier(.3,1.6,.5,1)}
+
+/* ---------- part 2 ---------- */
+.p2-block{margin-top:48px}
+.p2-block > h3{margin-bottom:8px}
+.p2-block > p{margin-bottom:18px}
+.drift .ctl{min-width:0}
+.jdoc{font-family:var(--f-mono); font-size:.9rem; line-height:1.7; background:var(--glass-strong); border-radius:12px; padding:12px 14px; overflow-x:auto; white-space:nowrap}
+.jdoc .p{color:var(--ink-2)}
+.cellv{display:inline-block; border-radius:5px; padding:0 4px; transition:background .4s}
+.cellv.fresh{background:var(--good-bg); color:var(--good)}
+.cellv.stale{background:var(--bad-bg); color:var(--bad)}
+.cellv.link{background:color-mix(in srgb, var(--l2) 18%, transparent)}
+.pkh{color:var(--ink); font-weight:700}
+.fkh{color:var(--l2); font-weight:600}
+.keys-legend{display:flex; flex-direction:column; gap:2px; margin-top:12px; font-size:.95rem; color:var(--ink-2)}
+.keys-legend b{font-family:var(--f-mono); font-size:.9rem; margin-right:6px}
+.drift .mt{margin-top:10px}
+.drift .mt:first-of-type{margin-top:0}
+.did{font-size:.95rem; color:var(--ink-2); margin-top:12px; min-height:1.6em}
+.did code{font-size:.85em}
+/* index */
+.idx-top{display:flex; flex-wrap:wrap; gap:12px 18px; align-items:center; margin-bottom:14px}
+.idx-svg{display:block; width:100%; height:auto; margin:6px 0}
+.idx-lbl{font-family:var(--f-display); font-weight:700; font-size:.95rem; color:var(--ink-2); transition:opacity .3s}
+#idxStripLbl{opacity:.45}
+.idx-stats{display:grid; grid-template-columns:minmax(0,1fr) minmax(0,1fr); gap:12px; margin-top:14px}
+.stat{background:var(--glass-strong); border-radius:12px; padding:10px 14px}
+.stat .lbl{font-family:var(--f-display); font-weight:700; font-size:.9rem; color:var(--ink-2)}
+.stat .big{font-family:var(--f-display); font-weight:900; font-size:1.7rem; line-height:1.1; font-variant-numeric:tabular-nums}
+.stat .bar{height:8px; border-radius:4px; background:color-mix(in srgb, var(--ink) 8%, transparent); margin-top:8px; overflow:hidden}
+.stat .bar i{display:block; height:100%; border-radius:4px; width:0; transition:width .6s}
+/* migration */
+.mig{display:grid; grid-template-columns:minmax(0,1fr) minmax(0,1fr); gap:24px; align-items:start}
+.mig .chat{margin-bottom:12px}
+.mig .msg{max-width:100%}
+.mig-table .mt-row{--tpl:2.2em 1fr 1fr}
+.gone{text-decoration:line-through; opacity:.35; transition:opacity .5s}
+.backups{font-size:.95rem; color:var(--ink-2); margin-top:10px}
+.backups b{color:var(--ink)}
+
+/* ---------- part 3: SQL lab ---------- */
+#lab .cl-out{max-height:380px}
+.sqlres{overflow-x:auto; margin-top:2px}
+.sqlres table{min-width:0; width:auto; font-family:var(--f-mono); font-size:.9rem; border-collapse:collapse}
+.sqlres th{background:transparent; color:#FFC53D; font-family:var(--f-mono); font-weight:600; padding:3px 18px 5px 0; border-bottom:1px solid #3A424E; white-space:nowrap}
+.sqlres td{padding:3px 18px 3px 0; border-bottom:1px solid #232933; color:#ECEFF3; white-space:nowrap}
+.sqlres tr:last-child td{border-bottom:0}
+.sqlres .cnt{display:block; color:var(--term-dim); margin-top:6px}
+.sqlmin{display:grid; grid-template-columns:max-content 1fr; gap:2px 28px; white-space:normal}
+.schema{display:flex; flex-direction:column; gap:12px}
+.schema .tbl{background:var(--glass-strong); border-radius:12px; padding:10px 12px}
+.schema .tn{font-family:var(--f-mono); font-weight:600; display:flex; align-items:center; gap:8px}
+.schema .tn i{width:9px; height:9px; border-radius:50%}
+.schema .cols{display:flex; flex-wrap:wrap; gap:4px 10px; margin-top:4px; font-family:var(--f-mono); font-size:.9rem; color:var(--ink-2)}
+.schema .pk{color:var(--ink); font-weight:600}
+.schema .fk{color:var(--l2)}
+
+@media (max-width:900px){
+  .mig{grid-template-columns:minmax(0,1fr)}
+  .pg-col > *{align-self:stretch}
+}
+@media (max-width:640px){
+  .mts{grid-template-columns:minmax(0,1fr)}
+  .shape-pick{grid-template-columns:minmax(0,1fr)}
+  .idx-stats{grid-template-columns:minmax(0,1fr)}
+  .vmap{height:340px}
+  .sqlmin{grid-template-columns:minmax(0,1fr); gap:0}
+  .sqlmin .c{margin-bottom:6px}
+}
+</style>
+</head>
+<body>
+<main id="top">
+  <section class="wrap hero">
+    <div>
+      <div class="kicker">Core curriculum · Course 205 · Data &amp; databases</div>
+      <h1>The shape of your data decides what's easy.</h1>
+      <p class="lede">Every app remembers things: customers, orders, messages. How it stores them decides which questions are instant, which are painful, and which data quietly goes wrong. You'll learn the four main database shapes and how to tell your AI which one fits.</p>
+      <ul class="facts">
+        <li>About 15 minutes</li>
+        <li>5 parts</li>
+        <li>SQL lab</li>
+        <li>No coding experience needed</li>
+      </ul>
+      <div class="row hero-cta"><a class="btn primary" href="#p1">Start the lesson</a></div>
+    </div>
+    <figure style="margin:0">
+      <div class="hero-visual glass">
+        <svg id="heroArt" role="img" aria-label="An animated diagram: the same customers, orders and books pour from linked tables into nested documents, then into a key-value list, then onto a map of meaning used by vector search."></svg>
+        <div class="legend"><span><i style="background:var(--l1)"></i>customers</span><span><i style="background:var(--l3)"></i>orders</span><span><i style="background:var(--l2)"></i>books</span></div>
+      </div>
+      <div class="hero-caption glass" aria-hidden="true"><span>&gt;</span><span id="heroCap">SELECT name FROM customers</span></div>
+    </figure>
+  </section>
+
+  <div class="wrap">
+  <!-- PART 1 -->
+  <section class="part" id="p1">
+    <span class="bullet glass" data-p="p1">1</span>
+    <div class="part-head">
+      <div class="kicker">Part 1 of 5</div>
+      <h2>One bookshop, four shapes</h2>
+      <p>A <b>database</b> is where an app keeps what it needs to remember. Databases come in different shapes, and each shape makes some questions easy and others hard.</p>
+    </div>
+
+    <div class="chat" aria-label="Example conversation">
+      <div class="msg me"><span class="who">You</span>Build me an app for my bookshop. Customers, books and orders.</div>
+      <div class="msg ai"><span class="who">AI assistant</span>Happy to! Which database should I use: PostgreSQL, MongoDB, Redis or Pinecone?</div>
+      <div class="msg me"><span class="who">You</span>Um. Which one would you pick?</div>
+    </div>
+
+    <div class="task glass" data-part="p1">
+      <h3>Your task</h3>
+      <ol>
+        <li data-t="pour"><span>Pour the bookshop's data into all four shapes.</span></li>
+        <li data-t="compare"><span>Ask one question in two different shapes and compare.</span></li>
+        <li data-t="best"><span>Find the best shape for each of the four questions.</span></li>
+      </ol>
+    </div>
+
+    <div class="pg">
+      <div class="pg-col">
+        <div class="o1 ctl glass">
+          <h3 class="ctl-title">Pick a shape</h3>
+          <div class="shape-pick" id="shapePick"></div>
+        </div>
+        <div class="o3 ctl glass">
+          <h3 class="ctl-title">Ask a question</h3>
+          <p class="ctl-sub">The question stays selected, so you can switch shapes and watch each one try.</p>
+          <div class="qs" id="qs"></div>
+        </div>
+        <div class="o4 note verdict" id="verdict" aria-live="polite">Pick a question. The shape you chose will try to answer it.</div>
+        <div class="o6 ctl glass">
+          <h3 class="ctl-title">Scoreboard</h3>
+          <p class="ctl-sub">Every question you try in a shape lands here. Find the <b>Best</b> for each row.</p>
+          <div class="sb" id="sb"></div>
+        </div>
+      </div>
+      <div class="pg-col">
+        <div class="o2 stage glass" id="stage">
+          <div class="stage-head"><span class="stage-title" id="stageTitle"></span><span class="stage-sub" id="stageSub"></span></div>
+          <div class="stage-body" id="stageBody"></div>
+        </div>
+        <details class="deeper glass o7">
+          <summary>Under the hood: SQL and NoSQL <small>optional</small></summary>
+          <div>
+            <p>Relational databases are often called <b>SQL databases</b>, after the language you use to ask them questions (you'll write some in part 3). Document, key-value and vector stores are often lumped together as <b>NoSQL</b>.</p>
+            <p>The line is blurry. PostgreSQL can store JSON documents and, with the pgvector extension, vectors. MongoDB can combine documents from different collections. So the question is less "which product?" and more "which shape does most of my data have?"</p>
+          </div>
+        </details>
+      </div>
+    </div>
+
+    <div class="stack" style="margin-top:56px">
+      <h3>Which shape, when</h3>
+      <p class="muted">Every shape holds the same facts. What changes is which questions are cheap to ask.</p>
+      <div class="table-wrap glass">
+        <table>
+          <thead><tr><th>Shape</th><th>Picture it as</th><th>Great at</th><th>Struggles with</th><th>You'll hear</th></tr></thead>
+          <tbody>
+            <tr><td><span class="chip" style="--c:var(--l1)"><i></i>Relational</span></td><td>Spreadsheets that point at each other by ID</td><td>Questions that cross between things: who bought what, totals, reports</td><td>Data with no fixed shape</td><td>PostgreSQL, MySQL, SQLite</td></tr>
+            <tr><td><span class="chip" style="--c:var(--l3)"><i></i>Document</span></td><td>One folder of nested notes per thing</td><td>Loading one whole thing at once, like a profile page</td><td>Questions across many documents; copies drifting apart</td><td>MongoDB, Firestore</td></tr>
+            <tr><td><span class="chip" style="--c:var(--l4)"><i></i>Key-value</span></td><td>A giant coat check: hand in a ticket, get the coat</td><td>Very fast lookups by an exact key: sessions, carts, caches</td><td>Any question that isn't "give me key X"</td><td>Redis, Memcached</td></tr>
+            <tr><td><span class="chip" style="--c:var(--l5)"><i></i>Vector</span></td><td>A map where similar things sit close together</td><td>"Find things like this": search by meaning, AI memory</td><td>Exact facts, counts, who owns what</td><td>pgvector, Pinecone, Chroma</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="note info"><strong>Not sure? Start relational.</strong> One PostgreSQL database (or SQLite for a small project) fits most apps, and it can hold JSON documents and vectors too. Add a second kind of database only when you can name the question it answers better.</div>
+    </div>
+  </section>
+
+  <!-- PART 2 -->
+  <section class="part" id="p2">
+    <span class="bullet glass" data-p="p2">2</span>
+    <div class="part-head">
+      <div class="kicker">Part 2 of 5</div>
+      <h2>Keys, copies and speed</h2>
+      <p>Three ideas decide whether your data stays correct and fast as the shop grows: link things by <b>keys</b> instead of copying them, add <b>indexes</b> for the searches you do often, and change the database's shape <b>carefully</b>.</p>
+    </div>
+
+    <div class="task glass" data-part="p2">
+      <h3>Your task</h3>
+      <ol>
+        <li data-t="drift"><span>Change Ana's email in both designs, then send her a receipt.</span></li>
+        <li data-t="index"><span>Search 100,000 orders without an index, then with one.</span></li>
+        <li data-t="migrate"><span>Run the AI's migration, then get the lost data back.</span></li>
+      </ol>
+    </div>
+
+    <div class="stack drift">
+      <h3>Copy it, or link it?</h3>
+      <p class="muted" style="margin-top:-8px">Two ways to remember Ana's email for her orders. One copies it into every order. The other stores it once and points at it.</p>
+      <div class="row">
+        <button class="btn primary" id="emailBtn">Ana changes her email</button>
+        <button class="btn" id="receiptBtn">Send the receipt for order 2</button>
+        <button class="btn" id="driftReset" hidden>Start over</button>
+      </div>
+      <div class="cards">
+        <div class="ctl glass">
+          <h3 class="ctl-title">Copied into every order</h3>
+          <div class="jdoc" id="copied"></div>
+          <div class="did" id="copiedDid"></div>
+        </div>
+        <div class="ctl glass">
+          <h3 class="ctl-title">Linked by keys</h3>
+          <div id="linked"></div>
+          <div class="did" id="linkedDid"></div>
+        </div>
+      </div>
+      <div class="note" id="driftNote" aria-live="polite">Press <b>Ana changes her email</b>. The app's code will update the customer record, like most code does.</div>
+      <p>Every row gets a <b>primary key</b>: an ID that is unique and never changes, like <code>customers.id = 1</code>. When another table needs to refer to that row, it stores the ID in a <b>foreign key</b> column, like <code>orders.customer_id</code>. One fact lives in one place, so it can't drift out of sync.</p>
+      <p>Copying isn't always wrong. An order should keep the price the customer actually paid, even if the book's price changes later. The skill is knowing which facts should stay linked and which should be frozen at the moment they happened.</p>
+    </div>
+
+    <div class="stack p2-block">
+      <h3>Indexes: the search that gets fast</h3>
+      <p class="muted" style="margin-top:-8px">Your shop now has 100,000 orders. A customer asks to see theirs. How does the database find them?</p>
+      <div class="ctl glass">
+        <div class="idx-top">
+          <div class="seg-control" id="idxSize" role="group" aria-label="Number of orders">
+            <button aria-pressed="false" data-n="1000">1,000</button><button aria-pressed="true" data-n="100000">100,000</button><button aria-pressed="false" data-n="10000000">10 million</button>
+          </div>
+          <button class="btn" id="idxToggle" aria-pressed="false">Add an index on email</button>
+          <button class="btn primary" id="idxGo">Find ana@mail.example's orders</button>
+        </div>
+        <div class="idx-lbl" id="idxStripLbl">Index on email, sorted A to Z</div>
+        <svg class="idx-svg" id="idxSvg" role="img" aria-label="Every order in the database, drawn as squares. The search lights up the squares it has to check."></svg>
+        <div class="idx-lbl" id="idxCellLbl"></div>
+        <div class="idx-stats">
+          <div class="stat"><div class="lbl">Without an index</div><div class="big" id="statScan">–</div><div class="bar"><i id="barScan" style="background:var(--l4)"></i></div></div>
+          <div class="stat"><div class="lbl">With an index</div><div class="big" id="statIdx">–</div><div class="bar"><i id="barIdx" style="background:var(--l3)"></i></div></div>
+        </div>
+      </div>
+      <div class="note" id="idxNote" aria-live="polite">Search once with no index. Watch how many orders the database has to look at.</div>
+      <details class="deeper glass">
+        <summary>Under the hood: what an index really is <small>optional</small></summary>
+        <div>
+          <p>An index is a second, sorted copy of one column (like every order's email), with a pointer back to each row. Because it's sorted, the database can halve the search area at each step, like finding a word in a dictionary. Real databases use a structure called a <b>B-tree</b> to do this.</p>
+          <p>Indexes aren't free. Each one takes disk space, and every new order has to be added to it, which slows writing a little. Add them for columns you search, sort or join on often. When your AI says "I'll add an index on <code>orders.customer_id</code>", this is why.</p>
+        </div>
+      </details>
+    </div>
+
+    <div class="stack p2-block">
+      <h3>Changing the shape later: migrations</h3>
+      <p class="muted" style="margin-top:-8px">A <b>migration</b> is a small script that changes the database's structure: add a column, rename one, remove one. AI tools write them all the time. Some can't be undone.</p>
+      <div class="mig">
+        <div>
+          <div class="chat" aria-label="The AI's proposal">
+            <div class="msg ai"><span class="who">AI assistant</span>The <code>city</code> column looks unused, so I wrote a migration to drop it and tidy up.</div>
+          </div>
+          <div class="code"><span class="c">-- migrations/0007_tidy_customers.sql</span>
+<span class="k">ALTER TABLE</span> customers <span class="r">DROP COLUMN</span> city;</div>
+          <div class="row" style="margin-top:14px">
+            <button class="btn" id="bkBtn">Take a backup</button>
+            <button class="btn primary" id="runBtn">Run the migration</button>
+            <button class="btn" id="restoreBtn" disabled>Restore the backup</button>
+            <button class="btn" id="migReset" hidden>Reset the demo</button>
+          </div>
+          <div class="backups" id="backups"></div>
+        </div>
+        <div class="ctl glass">
+          <h3 class="ctl-title">The live customers table</h3>
+          <div class="mig-table" id="migTable"></div>
+        </div>
+      </div>
+      <div class="note" id="migNote" aria-live="polite">Try it. What could go wrong with deleting a column?</div>
+    </div>
+  </section>
+
+  <!-- PART 3 -->
+  <section class="part" id="p3">
+    <span class="bullet glass" data-p="p3">3</span>
+    <div class="part-head">
+      <div class="kicker">Part 3 of 5</div>
+      <h2>Try it: ask the database questions in SQL</h2>
+      <p><b>SQL</b> is the language relational databases speak. AI tools write it for you, but reading it lets you check what they're asking. This mini database runs right here on the page. Nothing can break.</p>
+    </div>
+
+    <div class="lab">
+      <div class="a-mission ctl glass">
+        <h3 class="ctl-title">Your mission</h3>
+        <p class="ctl-sub" style="margin-top:0">The bookshop's owner has five questions. Answer each one with a query.</p>
+        <ol class="mission" id="mission"></ol>
+      </div>
+      <div class="a-work" id="lab"></div>
+      <div class="a-side ctl glass">
+        <h3 class="ctl-title">Tables in this database</h3>
+        <div class="schema" id="schema"></div>
+        <p class="small muted" style="margin-top:12px"><strong style="color:var(--ink)">Bold</strong> marks a primary key. <span style="color:var(--l2)">Blue</span> columns are foreign keys pointing at another table.</p>
+      </div>
+      <div class="a-extra stack">
+        <div class="ctl glass">
+          <h3 class="ctl-title">SQL in one minute</h3>
+          <div class="code sqlmin"><span><span class="k">SELECT</span> title, price</span><span class="c">-- which columns</span><span><span class="k">FROM</span> books</span><span class="c">-- which table</span><span><span class="k">WHERE</span> price &lt; <span class="n">15</span></span><span class="c">-- which rows</span><span><span class="k">ORDER BY</span> price</span><span class="c">-- sorted how</span><span><span class="k">LIMIT</span> <span class="n">3</span>;</span><span class="c">-- how many</span></div>
+        </div>
+        <details class="deeper glass">
+          <summary>Under the hood: when the AI doesn't show you SQL <small>optional</small></summary>
+          <div>
+            <p>Many projects use an <b>ORM</b> (like Prisma, Drizzle or SQLAlchemy), a library that writes SQL from code such as <code>db.book.findMany({ where: { price: { lt: 15 } } })</code>. It's still SQL underneath.</p>
+            <p>If a page is slow or shows the wrong data, ask the AI: "Show me the SQL this runs, and whether it uses an index."</p>
+          </div>
+        </details>
+      </div>
+    </div>
+  </section>
+
+  <!-- PART 4 -->
+  <section class="part" id="p4">
+    <span class="bullet glass" data-p="p4">4</span>
+    <div class="part-head">
+      <div class="kicker">Part 4 of 5</div>
+      <h2>Steer the AI</h2>
+      <p>AI tools make database choices quickly and quietly. These four come up all the time. Pick the reply you'd send.</p>
+    </div>
+    <p class="counter" id="steerCount"></p>
+    <div id="steer"></div>
+  </section>
+
+  <!-- PART 5 -->
+  <section class="part" id="p5">
+    <span class="bullet glass" data-p="p5">5</span>
+    <div class="part-head">
+      <div class="kicker">Part 5 of 5</div>
+      <h2>Check your understanding</h2>
+      <p>Five quick questions. Each answer explains itself.</p>
+    </div>
+    <div id="quiz"></div>
+    <div id="doneCard" aria-live="polite"></div>
+  </section>
+  </div>
+
+  <section class="after" id="cheat">
+    <div class="wrap stack">
+      <h2>Key terms</h2>
+      <p class="muted">The words your AI will use when it talks about data, in plain language.</p>
+      <dl class="terms">
+        <div class="glass"><dt>Database</dt><dd>The place an app keeps what it needs to remember, so it survives restarts and can be shared by every user.</dd></div>
+        <div class="glass"><dt>Table, row, column</dt><dd>A table holds one kind of thing (books). Each row is one of them. Each column is one fact about it (price).</dd></div>
+        <div class="glass"><dt>Primary key</dt><dd>A unique ID for each row that never changes, like <code>books.id</code>.</dd></div>
+        <div class="glass"><dt>Foreign key</dt><dd>A column that stores another table's ID, like <code>orders.book_id</code>. It links rows without copying them.</dd></div>
+        <div class="glass"><dt>Join</dt><dd>Combining rows from two tables by matching keys, to answer questions like "who bought what".</dd></div>
+        <div class="glass"><dt>Query</dt><dd>A question you ask the database. In relational databases it's written in SQL: <code>SELECT … FROM … WHERE …</code></dd></div>
+        <div class="glass"><dt>Index</dt><dd>A sorted lookup for one column that makes searches on it fast, at a small cost when writing.</dd></div>
+        <div class="glass"><dt>Migration</dt><dd>A script that changes the database's structure. Dropping a column or table deletes that data for good.</dd></div>
+        <div class="glass"><dt>Backup</dt><dd>A copy of the data you can restore. It only counts if you have tested restoring it.</dd></div>
+        <div class="glass"><dt>Document, key-value, vector</dt><dd>Other shapes: nested records per thing, exact lookups by key, and search by similar meaning.</dd></div>
+      </dl>
+    </div>
+  </section>
+</main>
+<script src="../assets/cs-school.js"></script>
+<script>
+(() => {
+const { $, $$, esc, reduce } = CS;
+
+CS.lesson({
+  id: '205',
+  parts: [
+    { id: 'p1', title: 'Four shapes' },
+    { id: 'p2', title: 'Keys, copies and speed' },
+    { id: 'p3', title: 'Try it' },
+    { id: 'p4', title: 'Steer the AI' },
+    { id: 'p5', title: 'Check' }
+  ]
+});
+
+const NS = 'http://www.w3.org/2000/svg';
+const fmt = n => n.toLocaleString('en-US');
+
+/* ---------------- hero: the same records poured into four shapes ---------------- */
+(function hero() {
+  const svg = $('#heroArt');
+  svg.setAttribute('viewBox', '0 0 560 316');
+  const DOTS = [['c', 1], ['c', 2], ['c', 3], ['o', 1], ['o', 2], ['o', 3], ['o', 4], ['b', 1], ['b', 2], ['b', 3], ['b', 4]];
+  const COL = { c: 'var(--l1)', o: 'var(--l3)', b: 'var(--l2)' };
+  const OC = { 1: 1, 2: 1, 3: 2, 4: 3 }, OB = { 1: 2, 2: 4, 3: 1, 4: 3 };
+  const TX = { c: 20, o: 210, b: 400 }, TW = 140;
+  const rowY = r => 104 + r * 44;
+  const ph = (x1, x2, y, o = .3) => `<line x1="${x1}" y1="${y}" x2="${x2}" y2="${y}" style="stroke:var(--ink-2)" stroke-width="4" stroke-linecap="round" opacity="${o}"/>`;
+  const L = {}, F = {};
+  // tables
+  L.tables = DOTS.map(([t, n]) => [TX[t] + 18, rowY(n - 1) + 15, 1]);
+  F.tables = [['c', 'customers', 3], ['o', 'orders', 4], ['b', 'books', 4]].map(([t, name, rows]) => {
+    const x = TX[t];
+    let s = `<rect x="${x}" y="62" width="${TW}" height="28" rx="14" style="fill:var(--glass-strong);stroke:var(--hair)"/><circle cx="${x + 15}" cy="76" r="4.5" style="fill:${COL[t]}"/><text class="t-lbl" x="${x + 27}" y="80.5" style="fill:var(--ink)">${name}</text>`;
+    for (let r = 0; r < rows; r++) s += `<rect x="${x}" y="${rowY(r)}" width="${TW}" height="30" rx="8" style="fill:var(--ink)" opacity=".05"/>` + ph(x + 34, x + 84, rowY(r) + 15) + ph(x + 96, x + 124, rowY(r) + 15, .2);
+    return s;
+  }).join('') + [1, 2, 3, 4].map(o => {
+    const y = rowY(o - 1) + 15, cy = rowY(OC[o] - 1) + 15, by = rowY(OB[o] - 1) + 15;
+    return `<path d="M${TX.o} ${y}C${TX.o - 26} ${y} ${TX.c + TW + 26} ${cy} ${TX.c + TW} ${cy}" fill="none" style="stroke:var(--l1)" stroke-width="1.6" opacity=".55"/><path d="M${TX.o + TW} ${y}C${TX.b - 24} ${y} ${TX.o + TW + 24} ${by} ${TX.b} ${by}" fill="none" style="stroke:var(--l2)" stroke-width="1.6" opacity=".55"/>`;
+  }).join('');
+  // documents: one card per customer, orders nested inside, each order's book nested one deeper
+  const DX = [20, 200, 380];
+  const pos = {};
+  let fd = '';
+  [1, 2, 3].forEach((c, i) => {
+    const x = DX[i];
+    const orders = [1, 2, 3, 4].filter(o => OC[o] === c);
+    const h = 62 + orders.length * 54 + 12;
+    fd += `<rect x="${x}" y="62" width="160" height="${h}" rx="14" style="fill:var(--glass-strong);stroke:var(--hair)"/>`;
+    pos['c' + c] = [x + 22, 88];
+    fd += ph(x + 38, x + 110, 88) + ph(x + 38, x + 80, 104, .2);
+    fd += `<path d="M${x + 22} 96V${118 + (orders.length - 1) * 54}" style="stroke:var(--ink-2)" stroke-width="1.5" opacity=".4" fill="none"/>`;
+    orders.forEach((o, k) => {
+      const y = 118 + k * 54;
+      pos['o' + o] = [x + 42, y]; pos['b' + OB[o]] = [x + 62, y + 24];
+      fd += `<path d="M${x + 22} ${y}H${x + 34}M${x + 42} ${y + 7}V${y + 24}H${x + 54}" style="stroke:var(--ink-2)" stroke-width="1.5" opacity=".4" fill="none"/>` + ph(x + 56, x + 120, y, .25) + ph(x + 76, x + 138, y + 24, .25);
+    });
+  });
+  F.docs = fd;
+  L.docs = DOTS.map(([t, n]) => [...pos[t + n], 1]);
+  // key-value: two columns of key -> value rows
+  const KEYS = { c: 'customer', o: 'order', b: 'book' };
+  let fk = '';
+  L.kv = DOTS.map(([t, n], i) => {
+    const col = i < 6 ? 0 : 1, r = col ? i - 6 : i;
+    const x = col ? 292 : 24, y = 84 + r * 40;
+    fk += `<rect x="${x}" y="${y - 12}" width="112" height="24" rx="12" style="fill:var(--glass-strong);stroke:var(--hair)"/><text class="t-mono" x="${x + 12}" y="${y + 4}" style="fill:var(--ink)">${KEYS[t]}:${n}</text>`
+      + `<path d="M${x + 120} ${y}H${x + 144}M${x + 139} ${y - 4}L${x + 145} ${y}L${x + 139} ${y + 4}" fill="none" style="stroke:var(--ink-2)" stroke-width="1.6" opacity=".6"/>`
+      + `<rect x="${x + 152}" y="${y - 11}" width="92" height="22" rx="11" style="fill:var(--ink)" opacity=".07"/>` + ph(x + 180, x + 232, y, .25);
+    return [x + 166, y, 1];
+  });
+  F.kv = fk;
+  // vectors: books placed by meaning; customers and orders don't live here
+  const VB = { 1: [412, 110], 2: [168, 136], 3: [212, 178], 4: [424, 250] };
+  let fv = '';
+  [[190, 156, 70, 'var(--l2)'], [418, 118, 56, 'var(--l5)'], [420, 250, 48, 'var(--l4)']].forEach(([x, y, r, c]) => { fv += `<circle cx="${x}" cy="${y}" r="${r}" style="fill:${c}" opacity=".09"/>`; });
+  const seed = [[150, 118], [228, 128], [140, 186], [236, 208], [182, 214], [392, 86], [446, 132], [430, 92], [388, 140], [402, 236], [446, 262], [300, 90], [320, 240], [90, 260], [500, 190], [110, 90]];
+  seed.forEach(([x, y]) => { fv += `<circle cx="${x}" cy="${y}" r="3.5" style="fill:var(--ink-2)" opacity=".28"/>`; });
+  fv += `<circle cx="196" cy="150" r="26" fill="none" style="stroke:var(--l4)" stroke-width="2" stroke-dasharray="4 5"/><circle cx="196" cy="150" r="6" style="fill:var(--l4)"/>`
+    + `<path d="M196 150L${VB[2][0]} ${VB[2][1]}M196 150L${VB[3][0]} ${VB[3][1]}" style="stroke:var(--l4)" stroke-width="2" stroke-dasharray="3 4"/>`
+    + `<text class="t-lbl" x="232" y="116" style="fill:var(--ink-2)">"cozy mystery"</text>`;
+  F.vec = fv;
+  L.vec = DOTS.map(([t, n], i) => t === 'b' ? [...VB[n], 1] : [...L.docs[i].slice(0, 2), 0]);
+  const TITLE = { tables: 'Relational tables', docs: 'Documents', kv: 'Key-value', vec: 'Vectors' };
+  const CAP = {
+    tables: 'SELECT name FROM customers JOIN orders ON …',
+    docs: 'db.customers.findOne({ name: "Ana" })',
+    kv: 'GET customer:1',
+    vec: 'nearest(embed("cozy mystery"), 3)'
+  };
+  const order = ['tables', 'docs', 'kv', 'vec'];
+  svg.innerHTML = order.map(s => `<g class="hf" data-s="${s}" opacity="0">${F[s]}</g>`).join('')
+    + `<text class="t-title" x="20" y="36" style="fill:var(--ink)" id="heroTitle"></text>`
+    + DOTS.map(([t, n], i) => `<g class="hd" style="transition-delay:${i * 45}ms"><circle r="7" style="fill:${COL[t]};stroke:var(--paper)" stroke-width="2.5"/></g>`).join('');
+  const dots = $$('.hd', svg), frames = $$('.hf', svg);
+  const show = s => {
+    frames.forEach(f => f.setAttribute('opacity', f.dataset.s === s ? 1 : 0));
+    dots.forEach((d, i) => { const [x, y, o] = L[s][i]; d.style.transform = `translate(${x}px, ${y}px)`; d.style.opacity = o; });
+    $('#heroTitle').textContent = TITLE[s];
+    $('#heroCap').textContent = CAP[s];
+  };
+  show('tables');
+  if (reduce) return;
+  let k = 0;
+  setInterval(() => { k = (k + 1) % order.length; show(order[k]); }, 3600);
+})();
+
+/* ---------------- part 1: one bookshop, four shapes ---------------- */
+const C = [{ id: 1, name: 'Ana', city: 'Leeds' }, { id: 2, name: 'Ben', city: 'Bristol' }, { id: 3, name: 'Chloé', city: 'York' }];
+const B = [
+  { id: 1, title: 'Stars Over Mars', price: 18, x: 74, y: 22 },
+  { id: 2, title: 'The Cozy Café Mystery', price: 12, x: 27, y: 18 },
+  { id: 3, title: 'Murder at the Tea Shop', price: 11, x: 33, y: 50 },
+  { id: 4, title: 'Bread for Beginners', price: 24, x: 70, y: 76 }
+];
+const O = [{ id: 1, c: 1, b: 1 }, { id: 2, c: 1, b: 2 }, { id: 3, c: 2, b: 1 }, { id: 4, c: 3, b: 4 }];
+const CART = { c: 3, b: 3 };
+const bk = id => B.find(b => b.id === id);
+const v = (key, html, cls = '') => `<span class="v ${cls}" data-k="${key}">${html}</span>`;
+
+const GLYPH = {
+  tables: `<svg viewBox="0 0 38 30" aria-hidden="true"><rect class="gl" x="3" y="4" width="32" height="22" rx="4" fill="none" style="stroke:var(--ink-2)" stroke-width="2"/><path class="gl" d="M3 11.5H35M3 18.5H35M14 4V26" fill="none" style="stroke:var(--ink-2)" stroke-width="2"/><circle cx="8.5" cy="15" r="2.6" style="fill:var(--l1)"/></svg>`,
+  docs: `<svg viewBox="0 0 38 30" aria-hidden="true"><path class="gl" d="M9 4C5 4 6 9 6 12S3 15 3 15S6 15 6 18S5 26 9 26M29 4C33 4 32 9 32 12S35 15 35 15S32 15 32 18S33 26 29 26" fill="none" style="stroke:var(--ink-2)" stroke-width="2" stroke-linecap="round"/><path class="gl" d="M12 10H24M15 15H26M15 20H22" style="stroke:var(--ink-2)" stroke-width="2" stroke-linecap="round"/><circle cx="12" cy="17.5" r="2.6" style="fill:var(--l3)"/></svg>`,
+  kv: `<svg viewBox="0 0 38 30" aria-hidden="true"><rect class="gl" x="2" y="9" width="16" height="12" rx="6" fill="none" style="stroke:var(--ink-2)" stroke-width="2"/><path class="gl" d="M21 15H29M26 11.5L29.5 15L26 18.5" fill="none" style="stroke:var(--ink-2)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><circle cx="33.5" cy="15" r="3.4" style="fill:var(--l4)"/></svg>`,
+  vec: `<svg viewBox="0 0 38 30" aria-hidden="true"><circle class="gl" cx="14" cy="13" r="8" fill="none" style="stroke:var(--ink-2)" stroke-width="2" stroke-dasharray="3 3"/><circle cx="14" cy="13" r="2.8" style="fill:var(--l5)"/><circle cx="19" cy="17" r="2.4" style="fill:var(--l5)"/><circle cx="31" cy="7" r="2.4" class="gl" style="fill:var(--ink-2)"/><circle cx="29" cy="24" r="2.4" style="fill:var(--ink-2)"/></svg>`
+};
+const SHAPES = {
+  tables: { name: 'Relational tables', short: 'Tables', tag: 'Rows linked by IDs', sub: 'Each kind of thing gets its own table. Orders point at customers and books by their ID.' },
+  docs: { name: 'Documents', short: 'Documents', sb: 'Docs', tag: 'Nested records', sub: 'One nested record per customer, with their orders tucked inside. Notice the copied book titles.' },
+  kv: { name: 'Key-value', short: 'Key-value', tag: 'Lookup by key', sub: 'A giant dictionary. Give it an exact key, get back a value it can\'t see inside.' },
+  vec: { name: 'Vectors', short: 'Vectors', tag: 'Search by meaning', sub: 'Each book becomes a point on a map of meaning. Similar books sit close together.' }
+};
+const ORDER = ['tables', 'docs', 'kv', 'vec'];
+
+function renderTables() {
+  const mt = (name, color, cols, tpl, rows) => `<div class="mt bgin" role="table" aria-label="${name} table"><div class="mt-name fadein"><i style="background:${color}"></i>${name}</div>
+    <div class="mt-row mt-head fadein" role="row" style="--tpl:${tpl}">${cols.map(c => `<span role="columnheader">${c}</span>`).join('')}</div>${rows.join('')}</div>`;
+  const row = (r, tpl, cells) => `<div class="mt-row" role="row" data-r="${r}" style="--tpl:${tpl}">${cells.map(c => `<span role="cell">${c}</span>`).join('')}</div>`;
+  const t1 = '2em 1fr 1fr', t2 = '2em 1fr auto', t3 = '2em 7.4em 1fr', t4 = '7.4em 1fr';
+  return `<div class="mts">
+    ${mt('customers', 'var(--l1)', ['id', 'name', 'city'], t1, C.map(c => row('c' + c.id, t1, [v(`c${c.id}.id`, c.id, 'id'), v(`c${c.id}.name`, esc(c.name)), v(`c${c.id}.city`, esc(c.city))])))}
+    ${mt('books', 'var(--l2)', ['id', 'title', 'price'], t2, B.map(b => row('b' + b.id, t2, [v(`b${b.id}.id`, b.id, 'id'), v(`b${b.id}.title`, esc(b.title)), v(`b${b.id}.price`, '$' + b.price)])))}
+    ${mt('orders', 'var(--l3)', ['id', 'customer_id', 'book_id'], t3, O.map(o => row('o' + o.id, t3, [v(`o${o.id}.id`, o.id, 'id'), v(`o${o.id}.cid`, o.c, 'id'), v(`o${o.id}.bid`, o.b, 'id')])))}
+    ${mt('carts', 'var(--l4)', ['customer_id', 'book_id'], t4, [row('t3', t4, [v('t3.cid', CART.c, 'id'), v('t3.bid', CART.b, 'id')])])}
+  </div>`;
+}
+function renderDocs() {
+  return `<div class="docs">${C.map(c => {
+    const os = O.filter(o => o.c === c.id);
+    const cart = CART.c === c.id ? [bk(CART.b)] : [];
+    return `<div class="doc bgin" data-r="d${c.id}">
+      <div class="dl"><span class="p">{</span> name: ${v(`c${c.id}.name`, `"${esc(c.name)}"`, 's')}, city: ${v(`c${c.id}.city`, `"${esc(c.city)}"`, 's')},</div>
+      <div class="dl in">orders: <span class="p">[</span></div>
+      ${os.map((o, i) => { const b = bk(o.b); return `<div class="dl in2"><span class="p">{</span> title: ${v(`b${b.id}.title`, `"${esc(b.title)}"`, 's cpy')}, price: ${v(`b${b.id}.price`, b.price, 'n cpy')} <span class="p">}${i < os.length - 1 ? ',' : ''}</span></div>`; }).join('')}
+      <div class="dl in"><span class="p">],</span> cart: <span class="p">[</span>${cart.map(b => ' ' + v(`b${b.id}.title`, `"${esc(b.title)}"`, 's cpy') + ' ').join('')}<span class="p">]</span> <span class="p">}</span></div>
+    </div>`;
+  }).join('')}</div>`;
+}
+function renderKV() {
+  const blob = c => JSON.stringify({ name: c.name, city: c.city, orders: O.filter(o => o.c === c.id).map(o => ({ title: bk(o.b).title, price: bk(o.b).price })) });
+  const rows = [
+    ...C.map(c => [`customer:${c.id}`, `c${c.id}.id`, `c${c.id}.name`, blob(c)]),
+    [`cart:${CART.c}`, 't3.cid', 't3.bid', JSON.stringify([bk(CART.b).title])],
+    ...B.map(b => [`book:${b.id}`, `b${b.id}.id`, `b${b.id}.title`, JSON.stringify({ title: b.title, price: b.price })])
+  ];
+  return `<div class="kvs">${rows.map(([key, kk, kv, val]) => `<div class="kv-row" data-r="k-${key}">${v(kk, key, 'key')}<span class="kv-arrow fadein" aria-hidden="true"></span>${v(kv, esc(val), 'blob')}</div>`).join('')}</div>`;
+}
+function renderVec() {
+  const faint = [[18, 34], [40, 26], [22, 64], [44, 70], [80, 12], [86, 36], [64, 30], [58, 86], [80, 88], [52, 12], [12, 88], [92, 60], [50, 46]];
+  return `<div class="vmap bgin" role="img" aria-label="A map of meaning. The two mystery books sit close together, the space novel is far away at the top right, and the cookbook is alone at the bottom.">
+    <svg class="fadein" aria-hidden="true">
+      <circle cx="30%" cy="34%" r="22%" style="fill:var(--l2)" opacity=".08"/><circle cx="74%" cy="26%" r="16%" style="fill:var(--l5)" opacity=".08"/><circle cx="70%" cy="80%" r="14%" style="fill:var(--l4)" opacity=".1"/>
+      ${faint.map(([x, y]) => `<circle cx="${x}%" cy="${y}%" r="3.5" style="fill:var(--ink-2)" opacity=".3"/>`).join('')}
+      <line class="vline" id="vline" x1="${bk(2).x}%" y1="${bk(2).y}%" x2="${bk(3).x}%" y2="${bk(3).y}%" stroke-linecap="round"/>
+    </svg>
+    ${B.map(b => `<span class="vpt" data-r="v${b.id}" style="left:${b.x}%; top:${b.y}%"><i></i>${v(`b${b.id}.title`, esc(b.title), 'vt')}</span>`).join('')}
+  </div>
+  <p class="vnote fadein">Customers, orders and carts aren't here. A vector store holds things you search by meaning, and usually sits beside your main database.</p>`;
+}
+const RENDER = { tables: renderTables, docs: renderDocs, kv: renderKV, vec: renderVec };
+
+const QS = [
+  { id: 'profile', q: "Show Ana's page: her details and all her orders", best: 'docs', answer: 'Ana, Leeds. Orders: Stars Over Mars, The Cozy Café Mystery.' },
+  { id: 'buyers', q: 'Who bought Stars Over Mars?', best: 'tables', answer: 'Ana and Ben.' },
+  { id: 'cart', q: "What's in Chloé's cart right now?", best: 'kv', answer: 'Murder at the Tea Shop.' },
+  { id: 'similar', q: 'Find books like The Cozy Café Mystery', best: 'vec', answer: 'Murder at the Tea Shop.' }
+];
+const VERD = { best: ['Best', 'good'], ok: ['Works', 'info'], awk: ['Awkward', ''], no: ["Can't", 'bad'] };
+// [verdict, steps [[text, rows to light up]], why]
+const PLAY = {
+  profile: {
+    tables: ['ok', [['Find Ana in customers (id 1)', ['c1']], ['Find orders with customer_id = 1', ['o1', 'o2']], ['Look up each book_id in books', ['b1', 'b2']]], 'Three tables combined in one query, called a join. A little more work than one read, and nothing had to be copied.'],
+    docs: ['best', [["Open Ana's document. Everything is already inside.", ['d1']]], 'One read. The document is shaped exactly like the page you want to show.'],
+    kv: ['ok', [['Look up the exact key customer:1', ['k-customer:1']], ['Unpack the value in your own code', ['k-customer:1']]], "Fast, but only because you knew Ana's key. The store can't find her by name or by city."],
+    vec: ['no', [], "A vector store only answers \"what's similar to this?\". It doesn't hold Ana's details or her orders."]
+  },
+  buyers: {
+    tables: ['best', [['Find Stars Over Mars in books (id 1)', ['b1']], ['Find orders with book_id = 1', ['o1', 'o3']], ['Follow each customer_id to customers', ['c1', 'c2']]], 'Tables are built for questions that cross from one kind of thing to another. The database follows the IDs for you in one query.'],
+    docs: ['awk', [["Open Ana's document and search her orders", ['d1']], ["Open Ben's document and search his", ['d2']], ["Open Chloé's too, just in case", ['d3']]], 'The orders are buried inside each customer, so every document has to be searched. Fine for three customers, slow for 300,000 unless you add a special index.'],
+    kv: ['awk', [["The store can't look inside values", []], ['Fetch every customer:… key', ['k-customer:1', 'k-customer:2', 'k-customer:3']], ['Unpack and search each one in your own code', []]], 'A key-value store only finds things by exact key, so your code has to fetch everything and search it by hand.'],
+    vec: ['no', [], "Similar in meaning isn't the same as \"bought by\". A vector store doesn't know who bought what."]
+  },
+  cart: {
+    tables: ['ok', [['Find customer_id 3 in carts', ['t3']], ['Look up book_id 3 in books', ['b3']]], 'A quick query. Busy shops often move carts and logins to a key-value store anyway, because they are read constantly.'],
+    docs: ['ok', [["Open Chloé's document and read her cart", ['d3']]], 'One read, as long as the cart lives inside her document.'],
+    kv: ['best', [['Look up the exact key cart:3', ['k-cart:3']]], 'One key, one answer. Stores like Redis keep this in memory and reply in well under a millisecond. Ideal for carts, logins and caches.'],
+    vec: ['no', [], "A cart is an exact list, not a question of similarity. Vectors can't answer it."]
+  },
+  similar: {
+    tables: ['awk', [["Search titles for a shared word: title LIKE '%Mystery%'", ['b2']]], "SQL matches words, not meaning. It finds only the book you started with and misses Murder at the Tea Shop, which shares no keyword."],
+    docs: ['awk', [['Search every title for the word "Mystery"', ['d1']]], 'Documents match exact words too, so they find the same book again and miss the obvious match.'],
+    kv: ['no', [], "You'd need the exact key of a book you haven't found yet. Key-value stores can't search at all."],
+    vec: ['best', [['Find The Cozy Café Mystery on the map', ['v2']], ['Pick the nearest point', ['v3']]], 'Books about similar things sit close together, so the nearest point is Murder at the Tea Shop, with no words in common.']
+  }
+};
+let shape = 'tables', curQ = null, hitTimers = [];
+const visited = new Set(['tables']);
+const tried = {}; QS.forEach(q => { tried[q.id] = {}; });
+
+$('#shapePick').innerHTML = ORDER.map(s => `<button class="shape-btn" data-shape="${s}" aria-pressed="${s === shape}">${GLYPH[s]}<span><b>${SHAPES[s].short}</b><small>${SHAPES[s].tag}</small></span></button>`).join('');
+$('#qs').innerHTML = QS.map((q, i) => `<button class="btn q-btn" data-q="${q.id}" aria-pressed="false"><span class="qn">${i + 1}</span>${esc(q.q)}</button>`).join('');
+
+function flip(renderFn) {
+  const body = $('#stageBody');
+  const old = {};
+  $$('[data-k]', body).forEach(el => { if (!old[el.dataset.k]) old[el.dataset.k] = el.getBoundingClientRect(); });
+  body.innerHTML = renderFn();
+  if (reduce) return;
+  $$('[data-k]', body).forEach((el, i) => {
+    const o = old[el.dataset.k];
+    if (!o) { el.animate([{ opacity: 0, transform: 'scale(.6)' }, { opacity: 1, transform: 'none' }], { duration: 450, delay: 350, easing: 'ease-out', fill: 'backwards' }); return; }
+    const n = el.getBoundingClientRect();
+    el.animate([{ transform: `translate(${o.left - n.left}px, ${o.top - n.top}px)` }, { transform: 'none' }], { duration: 750, delay: i * 12, easing: 'cubic-bezier(.55,0,.2,1)', fill: 'backwards' });
+  });
+}
+function setShape(s) {
+  if (s === shape && $('#stageBody').innerHTML) return;
+  shape = s;
+  $$('.shape-btn').forEach(b => b.setAttribute('aria-pressed', b.dataset.shape === s));
+  $('#stageTitle').textContent = SHAPES[s].name;
+  $('#stageSub').textContent = SHAPES[s].sub;
+  clearHits();
+  flip(RENDER[s]);
+  visited.add(s);
+  if (visited.size === 4) CS.tick('p1', 'pour');
+  if (curQ) setTimeout(() => ask(curQ), reduce ? 0 : 800);
+}
+function clearHits() { hitTimers.forEach(clearTimeout); hitTimers = []; $$('.hit').forEach(e => e.classList.remove('hit')); const l = $('#vline'); if (l) l.classList.remove('on'); }
+function ask(qid) {
+  curQ = qid;
+  $$('.q-btn').forEach(b => b.setAttribute('aria-pressed', b.dataset.q === qid));
+  clearHits();
+  const q = QS.find(x => x.id === qid);
+  const [verdict, steps, why] = PLAY[qid][shape];
+  steps.forEach(([, rows], i) => {
+    hitTimers.push(setTimeout(() => {
+      rows.forEach(r => { const el = $(`[data-r="${r}"]`, $('#stageBody')); if (el) el.classList.add('hit'); });
+      if (qid === 'similar' && shape === 'vec' && i === 1) $('#vline').classList.add('on');
+    }, reduce ? 0 : 150 + i * 650));
+  });
+  const [word, kind] = VERD[verdict];
+  CS.say($('#verdict'), `<strong>${word}: ${SHAPES[shape].name.toLowerCase()}.</strong> ${why}`
+    + (steps.length ? `<ol>${steps.map(s => `<li>${esc(s[0])}</li>`).join('')}</ol>` : '')
+    + (verdict !== 'no' ? `<div class="ans">Answer: ${esc(q.answer)}</div>` : ''), kind);
+  $('#verdict').classList.add('o4', 'verdict');
+  const isNew = !tried[qid][shape];
+  tried[qid][shape] = verdict;
+  renderSB(isNew ? qid + shape : null);
+  if (Object.keys(tried[qid]).length >= 2) CS.tick('p1', 'compare');
+  if (QS.every(x => tried[x.id][x.best])) CS.tick('p1', 'best');
+}
+function renderSB(fresh) {
+  $('#sb').innerHTML = `<div class="sb-grid sb-head" aria-hidden="true">${ORDER.map(s => `<span>${SHAPES[s].sb || SHAPES[s].short}</span>`).join('')}</div>`
+    + QS.map((q, i) => `<div><div class="sb-q">${i + 1}. ${esc(q.q)}</div><div class="sb-grid">${ORDER.map(s => {
+      const r = tried[q.id][s];
+      return `<span class="sb-cell ${r || ''}${fresh === q.id + s ? ' new' : ''}" aria-label="${SHAPES[s].short}: ${r ? VERD[r][0] : 'not tried yet'}">${r ? VERD[r][0] : '·'}</span>`;
+    }).join('')}</div></div>`).join('');
+}
+$('#shapePick').addEventListener('click', e => { const b = e.target.closest('[data-shape]'); if (b) setShape(b.dataset.shape); });
+$('#qs').addEventListener('click', e => { const b = e.target.closest('[data-q]'); if (b) ask(b.dataset.q); });
+$('#stageTitle').textContent = SHAPES[shape].name;
+$('#stageSub').textContent = SHAPES[shape].sub;
+$('#stageBody').innerHTML = renderTables();
+renderSB();
+
+/* ---------------- part 2a: copies drift, keys don't ---------------- */
+const OLD = 'ana@mail.example', NEW = 'ana.b@mail.example';
+const D = { changed: false, sent: false };
+function renderDrift(flash) {
+  const cur = D.changed ? NEW : OLD;
+  const cv = (val, cls) => `<span class="cellv ${cls || ''}">"${val}"</span>`;
+  const oc = D.changed ? 'stale' : '';
+  $('#copied').innerHTML = `<span class="p">customer: {</span><br>&nbsp;&nbsp;id: 1, name: "Ana",<br>&nbsp;&nbsp;email: ${cv(cur, D.changed ? 'fresh' : '')}<br><span class="p">}</span><br>`
+    + `<span class="p">orders: [</span><br>&nbsp;&nbsp;<span class="p">{</span> order: 1,<br>&nbsp;&nbsp;&nbsp;&nbsp;email: ${cv(OLD, oc)} <span class="p">},</span><br>&nbsp;&nbsp;<span class="p">{</span> order: 2,<br>&nbsp;&nbsp;&nbsp;&nbsp;email: ${cv(OLD, oc)} <span class="p">}</span><br><span class="p">]</span>`;
+  const link = flash === 'receipt' ? 'link' : '';
+  $('#linked').innerHTML = `<div class="mt"><div class="mt-name"><i style="background:var(--l1)"></i>customers</div>
+    <div class="mt-row mt-head" style="--tpl:2em 3em 1fr"><span class="pkh">id</span><span>name</span><span>email</span></div>
+    <div class="mt-row" style="--tpl:2em 3em 1fr"><span class="id"><span class="cellv ${link}">1</span></span><span>Ana</span><span><span class="cellv ${D.changed ? 'fresh' : ''}">${cur}</span></span></div></div>
+    <div class="mt"><div class="mt-name"><i style="background:var(--l3)"></i>orders</div>
+    <div class="mt-row mt-head" style="--tpl:2em 1fr"><span class="pkh">id</span><span class="fkh">customer_id</span></div>
+    ${[1, 2].map(o => `<div class="mt-row" style="--tpl:2em 1fr"><span class="id">${o}</span><span class="id"><span class="cellv ${link && o === 2 ? 'link' : ''}">1</span></span></div>`).join('')}</div>
+    <p class="keys-legend"><span><b class="pkh">id</b> primary key: unique, never changes</span><span><b class="fkh">customer_id</b> foreign key: points at customers.id</span></p>`;
+  $('#copiedDid').innerHTML = D.changed ? `The code ran <code>customer.email = "${NEW}"</code>. The two copies inside orders weren't touched.` : '';
+  $('#linkedDid').innerHTML = D.changed ? `The code ran <code>UPDATE customers SET email = … WHERE id = 1</code>. The email lives in one place, so that's everything.` : '';
+  $('#emailBtn').disabled = D.changed;
+  $('#driftReset').hidden = !D.changed;
+}
+$('#emailBtn').addEventListener('click', () => {
+  D.changed = true; renderDrift();
+  CS.say($('#driftNote'), `<strong>Updated.</strong> Both designs now show Ana's new email on her profile. But look at the copied design: order 1 and order 2 still hold the old address. Now send her receipt.`, 'info');
+});
+$('#receiptBtn').addEventListener('click', () => {
+  renderDrift('receipt');
+  if (!D.changed) { CS.say($('#driftNote'), `<strong>Both receipts went to ${OLD}.</strong> While nothing changes, both designs agree. Change Ana's email first, then send it again.`, 'info'); return; }
+  D.sent = true;
+  CS.tick('p2', 'drift');
+  CS.say($('#driftNote'), `<strong>Two different answers.</strong> The copied design emailed <b>${OLD}</b>, an address Ana no longer reads, because order 2 kept its own stale copy. The linked design followed <code>customer_id = 1</code> to the customers table and emailed <b>${NEW}</b>. Duplicated data drifts; linked data can't.`, 'good');
+});
+$('#driftReset').addEventListener('click', () => { D.changed = false; D.sent = false; renderDrift(); CS.say($('#driftNote'), 'Back to the start. Press <b>Ana changes her email</b>.', ''); });
+renderDrift();
+
+/* ---------------- part 2b: indexes ---------------- */
+const IDX = { n: 100000, on: false, busy: false, scan: null, idx: null };
+let GC = 40, GR = 5;
+const CELL = 13, GAP = 2, GY = 34, MATCH = [37, 118, 171];
+function buildIdx() {
+  const svg = $('#idxSvg');
+  GC = svg.clientWidth && svg.clientWidth < 520 ? 20 : 40; GR = 200 / GC;
+  const W = GC * (CELL + GAP) - GAP, H = GY + GR * (CELL + GAP);
+  svg.setAttribute('viewBox', `0 0 ${W} ${H}`);
+  let s = `<g id="idxStrip" opacity="${IDX.on ? 1 : .35}"><rect x="0" y="2" width="${W}" height="16" rx="8" style="fill:var(--panel-2)"/>
+    <rect id="idxRange" x="0" y="2" width="${W}" height="16" rx="8" style="fill:var(--l3)" opacity="0"/>
+    <line id="idxMid" x1="0" x2="0" y1="0" y2="20" style="stroke:var(--l3)" stroke-width="2.5" stroke-linecap="round" opacity="0"/></g>`;
+  for (let i = 0; i < GC * GR; i++) {
+    const x = (i % GC) * (CELL + GAP), y = GY + Math.floor(i / GC) * (CELL + GAP);
+    s += `<rect class="ic" x="${x}" y="${y}" width="${CELL}" height="${CELL}" rx="3" style="fill:var(--panel-2)"/>`;
+  }
+  svg.innerHTML = s + '<g id="idxLinks"></g>';
+  cells = $$('#idxSvg .ic');
+}
+let cells = [];
+buildIdx();
+addEventListener('resize', () => { const want = $('#idxSvg').clientWidth < 520 ? 20 : 40; if (want !== GC && !IDX.busy) { buildIdx(); } });
+
+const paintCell = (i, st) => { const c = cells[i]; if (st === 'match') { c.style.fill = 'var(--l3)'; c.setAttribute('opacity', 1); } else if (st === 'seen') { c.style.fill = 'var(--l4)'; c.setAttribute('opacity', .55); } else { c.style.fill = 'var(--panel-2)'; c.setAttribute('opacity', 1); } };
+function idxLabel() { $('#idxCellLbl').textContent = `${fmt(IDX.n)} orders · each square is ${fmt(IDX.n / 200)} of them`; }
+function idxStats() {
+  const max = Math.max(IDX.scan || 0, IDX.idx || 0, 1);
+  $('#statScan').textContent = IDX.scan == null ? '–' : `${fmt(IDX.scan)} checked`;
+  $('#statIdx').textContent = IDX.idx == null ? '–' : `${fmt(IDX.idx)} checked`;
+  $('#barScan').style.width = IDX.scan == null ? 0 : Math.max(1.5, IDX.scan / max * 100) + '%';
+  $('#barIdx').style.width = IDX.idx == null ? 0 : Math.max(1.5, IDX.idx / max * 100) + '%';
+}
+function idxReset() { cells.forEach((_, i) => paintCell(i)); $('#idxRange').setAttribute('opacity', 0); $('#idxMid').setAttribute('opacity', 0); $('#idxLinks').innerHTML = ''; }
+function idxSearch() {
+  if (IDX.busy) return;
+  IDX.busy = true; idxReset();
+  const W = GC * (CELL + GAP) - GAP;
+  const done = () => { IDX.busy = false; $('#idxGo').disabled = false; idxStats(); if (IDX.scan != null && IDX.idx != null) CS.tick('p2', 'index'); };
+  $('#idxGo').disabled = true;
+  if (!IDX.on) {
+    const total = cells.length, dur = reduce ? 0 : 1500, t0 = performance.now();
+    const frame = t => {
+      const k = dur ? Math.min(total, Math.floor((t - t0) / dur * total)) : total;
+      for (let i = 0; i < k; i++) paintCell(i, MATCH.includes(i) ? 'match' : 'seen');
+      $('#statScan').textContent = `${fmt(Math.round(k / total * IDX.n))} checked`;
+      if (k < total) requestAnimationFrame(frame);
+      else {
+        IDX.scan = IDX.n; done();
+        CS.say($('#idxNote'), `<strong>Every single order checked.</strong> With no index the database has no idea where Ana's orders are, so it reads all ${fmt(IDX.n)} rows to find 3 matches. This is called a <b>full table scan</b>. Now add an index and search again.`, '');
+      }
+    };
+    requestAnimationFrame(frame);
+  } else {
+    const steps = Math.ceil(Math.log2(IDX.n));
+    let lo = 0, hi = W, i = 0;
+    const target = W * .137;
+    const tick = () => {
+      if (i < steps) {
+        const mid = (lo + hi) / 2;
+        if (target < mid) hi = mid; else lo = mid;
+        $('#idxRange').setAttribute('x', lo); $('#idxRange').setAttribute('width', Math.max(3, hi - lo)); $('#idxRange').setAttribute('opacity', .45);
+        $('#idxMid').setAttribute('x1', mid); $('#idxMid').setAttribute('x2', mid); $('#idxMid').setAttribute('opacity', 1);
+        $('#statIdx').textContent = `${i + 1} steps`;
+        i++;
+        setTimeout(tick, reduce ? 0 : Math.max(50, 900 / steps));
+        return;
+      }
+      $('#idxMid').setAttribute('opacity', 0);
+      $('#idxLinks').innerHTML = MATCH.map(m => { const x = (m % GC) * (CELL + GAP) + CELL / 2, y = GY + Math.floor(m / GC) * (CELL + GAP); return `<path d="M${target} 20C${target} 34 ${x} ${y - 16} ${x} ${y + CELL / 2}" fill="none" style="stroke:var(--l3)" stroke-width="1.6" stroke-linecap="round"/><circle cx="${x}" cy="${y + CELL / 2}" r="2.5" style="fill:var(--paper)"/>`; }).join('');
+      MATCH.forEach(m => paintCell(m, 'match'));
+      IDX.idx = steps + MATCH.length; done();
+      CS.say($('#idxNote'), `<strong>${steps} steps instead of ${fmt(IDX.n)}.</strong> The index is sorted by email, so each step cuts the search in half. It lands on Ana's entries, which point straight to her 3 orders. Try <b>10 million</b>: the scan grows 100 times, the index needs only a few more steps.`, 'good');
+    };
+    tick();
+  }
+}
+$('#idxSize').addEventListener('click', e => {
+  const b = e.target.closest('[data-n]'); if (!b || IDX.busy) return;
+  $$('#idxSize button').forEach(x => x.setAttribute('aria-pressed', x === b));
+  IDX.n = +b.dataset.n; IDX.scan = null; IDX.idx = null; idxReset(); idxLabel(); idxStats();
+  $('#idxGo').textContent = 'Find ana@mail.example\'s orders';
+});
+$('#idxToggle').addEventListener('click', () => {
+  if (IDX.busy) return;
+  IDX.on = !IDX.on;
+  const t = $('#idxToggle');
+  t.setAttribute('aria-pressed', IDX.on); t.classList.toggle('on', IDX.on);
+  t.textContent = IDX.on ? 'Remove the index' : 'Add an index on email';
+  $('#idxStrip').setAttribute('opacity', IDX.on ? 1 : .35); $('#idxStripLbl').style.opacity = IDX.on ? 1 : .45;
+  idxReset();
+  if (IDX.on) CS.say($('#idxNote'), `<strong>Index added.</strong> The database built a sorted list of every order's email, each with a pointer to its row. In SQL that's <code>CREATE INDEX ON orders (email);</code>. Now search again.`, 'info');
+});
+$('#idxGo').addEventListener('click', idxSearch);
+idxLabel(); idxStats();
+
+/* ---------------- part 2c: migrations and backups ---------------- */
+const CUST = [[1, 'Ana', 'Leeds'], [2, 'Ben', 'Bristol'], [3, 'Chloé', 'York'], [4, 'Dev', 'Leeds']];
+const M = { dropped: false, backup: null, lost: false };
+function renderMig() {
+  const g = M.dropped ? ' gone' : '';
+  $('#migTable').innerHTML = `<div class="mt" role="table" aria-label="customers table"><div class="mt-row mt-head" role="row"><span>id</span><span>name</span><span class="${g}">city</span></div>
+    ${CUST.map(([id, n, c]) => `<div class="mt-row" role="row"><span class="id">${id}</span><span>${n}</span><span class="${g}">${c}</span></div>`).join('')}</div>`;
+  $('#backups').innerHTML = M.backup ? `Backups: <b>${M.backup}</b> · 4 customers, with cities` : 'Backups: <b>none yet</b>';
+  $('#restoreBtn').disabled = !(M.dropped && M.backup);
+  $('#runBtn').disabled = M.dropped;
+  $('#bkBtn').disabled = M.dropped;
+  $('#migReset').hidden = !M.lost;
+}
+$('#bkBtn').addEventListener('click', () => {
+  const d = new Date(); M.backup = `today ${d.toTimeString().slice(0, 5)}`;
+  renderMig();
+  CS.say($('#migNote'), `<strong>Backup saved.</strong> A full copy of the database, taken before the risky change. Now run the migration.`, 'info');
+});
+$('#runBtn').addEventListener('click', () => {
+  M.dropped = true; M.lost = !M.backup;
+  renderMig();
+  CS.say($('#migNote'), M.backup
+    ? `<strong>The city column is gone, and the shipping labels just broke.</strong> They printed "Ship to: Ana, undefined". The AI was wrong: a page used city after all. Good thing you took a backup. Restore it.`
+    : `<strong>The city column is gone, and there's no backup.</strong> The shipping labels now print "Ship to: Ana, undefined", and all four cities are deleted for good. In real life this is where you'd wish you had a backup. Reset the demo and take one before running the migration.`, 'bad');
+});
+$('#restoreBtn').addEventListener('click', () => {
+  M.dropped = false; renderMig();
+  CS.tick('p2', 'migrate');
+  CS.say($('#migNote'), `<strong>Restored.</strong> Every city is back and the labels work again. The safe habit: back up first, test the migration on a copy, and prefer renaming or keeping a column over dropping it. Dropping is the one step you can't undo.`, 'good');
+});
+$('#migReset').addEventListener('click', () => { M.dropped = false; M.backup = null; M.lost = false; renderMig(); CS.say($('#migNote'), 'Reset. This time, take a backup before you run the migration.', ''); });
+renderMig();
+
+/* ---------------- part 3: a tiny SQL engine ---------------- */
+const DB = {
+  customers: { cols: ['id', 'name', 'city', 'email'], rows: [[1, 'Ana', 'Leeds', 'ana@mail.example'], [2, 'Ben', 'Bristol', 'ben@mail.example'], [3, 'Chloé', 'York', 'chloe@mail.example'], [4, 'Dev', 'Leeds', 'dev@mail.example']] },
+  books: { cols: ['id', 'title', 'author', 'genre', 'price', 'stock'], rows: [
+    [1, 'Stars Over Mars', 'R. Okafor', 'sci-fi', 18, 4], [2, 'The Cozy Café Mystery', 'M. Lind', 'mystery', 12, 9],
+    [3, 'Murder at the Tea Shop', 'J. Pryce', 'mystery', 11, 0], [4, 'Bread for Beginners', 'S. Moreau', 'cooking', 24, 3],
+    [5, 'The Last Lighthouse', 'A. Njoroge', 'fiction', 15, 6], [6, 'Tiny Garden, Big Harvest', 'K. Sato', 'gardening', 21, 2],
+    [7, 'Moon Base Nine', 'R. Okafor', 'sci-fi', 14, 7], [8, 'A Pocket Guide to Birds', 'E. Walsh', 'nature', 9, 12]] },
+  orders: { cols: ['id', 'customer_id', 'book_id', 'qty', 'ordered_on'], rows: [
+    [1, 1, 1, 1, '2026-09-01'], [2, 1, 2, 1, '2026-09-03'], [3, 2, 1, 2, '2026-09-04'], [4, 3, 4, 1, '2026-09-10'],
+    [5, 4, 7, 1, '2026-09-12'], [6, 2, 5, 1, '2026-09-15'], [7, 1, 8, 3, '2026-09-20']] }
+};
+const FK = { customer_id: 'customers', book_id: 'books' };
+$('#schema').innerHTML = [['customers', 'var(--l1)'], ['books', 'var(--l2)'], ['orders', 'var(--l3)']].map(([t, c]) => `<div class="tbl"><div class="tn"><i style="background:${c}"></i>${t}</div><div class="cols">${DB[t].cols.map(col => `<span class="${col === 'id' ? 'pk' : FK[col] ? 'fk' : ''}">${col}${FK[col] ? ' → ' + FK[col] : ''}</span>`).join('')}</div></div>`).join('');
+
+const KW = new Set(['SELECT', 'FROM', 'WHERE', 'AND', 'OR', 'NOT', 'ORDER', 'BY', 'ASC', 'DESC', 'LIMIT', 'JOIN', 'INNER', 'LEFT', 'ON', 'AS', 'LIKE', 'IS', 'NULL', 'COUNT', 'DISTINCT']);
+class SqlError extends Error {}
+const bad = m => new SqlError(m);
+function lex(src) {
+  const out = []; let i = 0;
+  src = src.replace(/[“”]/g, '"').replace(/[‘’]/g, "'");
+  while (i < src.length) {
+    const ch = src[i];
+    if (/\s/.test(ch)) { i++; continue; }
+    if (ch === '-' && src[i + 1] === '-') { while (i < src.length && src[i] !== '\n') i++; continue; }
+    if (ch === "'" || ch === '"') {
+      let j = i + 1, s = '';
+      while (j < src.length && !(src[j] === ch && src[j + 1] !== ch)) { if (src[j] === ch) j++; s += src[j]; j++; }
+      if (j >= src.length) throw bad(`A text value is missing its closing quote. Every ${ch}…${ch} needs both ends.`);
+      out.push({ t: 'str', v: s }); i = j + 1; continue;
+    }
+    let m;
+    if ((m = /^\d+(\.\d+)?/.exec(src.slice(i)))) { out.push({ t: 'num', v: +m[0] }); i += m[0].length; continue; }
+    if ((m = /^(<=|>=|<>|!=|=|<|>|,|\(|\)|\*|;)/.exec(src.slice(i)))) { out.push({ t: 'op', v: m[0] }); i += m[0].length; continue; }
+    if ((m = /^[A-Za-z_]\w*(\.(\*|[A-Za-z_]\w*))?/.exec(src.slice(i)))) { out.push({ t: 'id', v: m[0], u: m[0].toUpperCase() }); i += m[0].length; continue; }
+    throw bad(`I don't understand the character "${ch}".`);
+  }
+  return out;
+}
+function parseSQL(src) {
+  const T = lex(src); let i = 0;
+  const peek = () => T[i];
+  const kw = k => T[i] && T[i].t === 'id' && T[i].u === k;
+  const op = o => T[i] && T[i].t === 'op' && T[i].v === o;
+  const need = (k, msg) => { if (!kw(k)) throw bad(msg); i++; };
+  if (!T.length) throw bad('The editor is empty. Try SELECT * FROM books;');
+  need('SELECT', T[0].t === 'id' && CS.lev(T[0].u, 'SELECT') <= 2 ? `Almost: the first word should be SELECT.` : 'Start your query with SELECT, like SELECT * FROM books;');
+  if (kw('DISTINCT')) i++;
+  const cols = [];
+  do {
+    if (op('*')) { i++; cols.push({ star: true }); }
+    else if (kw('COUNT')) { i++; if (!op('(')) throw bad('COUNT needs brackets, like COUNT(*).'); i++; while (T[i] && !op(')')) i++; if (!op(')')) throw bad('COUNT( is missing its closing bracket.'); i++; cols.push({ count: true, label: 'count' }); }
+    else if (peek() && peek().t === 'id' && !KW.has(peek().u)) { const r = peek().v; i++; cols.push(/\.\*$/.test(r) ? { star: true, of: r.slice(0, -2) } : { ref: r }); }
+    else throw bad(kw('FROM') ? 'Say which columns you want before FROM. Use * for all of them.' : 'After SELECT, list the columns you want, separated by commas, or * for all.');
+    if (kw('AS')) { i++; if (!peek() || peek().t !== 'id') throw bad('AS needs a name after it.'); cols[cols.length - 1].label = peek().v; i++; }
+    if (op(',')) { i++; continue; }
+    break;
+  } while (true);
+  if (peek() && peek().t === 'id' && !KW.has(peek().u)) throw bad(`Put a comma between column names: "${cols[cols.length - 1].ref || ''}, ${peek().v}".`);
+  need('FROM', 'After the columns, say which table to read: FROM books');
+  const tref = () => { const t = peek(); if (!t || t.t !== 'id' || KW.has(t.u)) throw bad('Name a table here: customers, books or orders.'); i++; let alias = null; if (kw('AS')) i++; if (peek() && peek().t === 'id' && !KW.has(peek().u)) { alias = peek().v; i++; } return { name: t.v, alias }; };
+  const from = tref();
+  const joins = [];
+  while (kw('JOIN') || kw('INNER') || kw('LEFT')) {
+    if (!kw('JOIN')) i++;
+    need('JOIN', 'Write JOIN before the second table.');
+    const t = tref();
+    need('ON', `Say how the tables connect: JOIN ${t.name} ON orders.${t.name === 'books' ? 'book_id = books.id' : 'customer_id = customers.id'}`);
+    const a = operand(); if (!op('=')) throw bad('Connect the tables with =, like ON orders.book_id = books.id'); i++; const b = operand();
+    joins.push({ t, a, b });
+  }
+  let where = null;
+  if (kw('WHERE')) { i++; where = orExpr(); }
+  const order = [];
+  if (kw('ORDER')) { i++; need('BY', 'It is ORDER BY, two words: ORDER BY price'); do { const c = operand(); let desc = false; if (kw('DESC')) { i++; desc = true; } else if (kw('ASC')) i++; order.push({ c, desc }); if (op(',')) { i++; continue; } break; } while (true); }
+  let limit = null;
+  if (kw('LIMIT')) { i++; if (!peek() || peek().t !== 'num') throw bad('LIMIT needs a number, like LIMIT 3'); limit = peek().v; i++; }
+  if (op(';')) i++;
+  if (peek()) {
+    const t = peek();
+    if (t.t === 'id' && ['WHERE', 'ORDER', 'LIMIT', 'JOIN'].includes(t.u)) throw bad(`${t.u} is in the wrong place. The order is SELECT, FROM, JOIN, WHERE, ORDER BY, LIMIT.`);
+    throw bad(`I didn't expect "${t.v}" here.` + (t.t === 'id' && !KW.has(t.u) && T[i - 1] && T[i - 1].t !== 'op' ? ' If it is text, put it in quotes.' : ''));
+  }
+  return { cols, from, joins, where, order, limit };
+
+  function operand() {
+    const t = peek();
+    if (!t) throw bad('The query ends too early. Something is missing after the last word.');
+    if (t.t === 'str') { i++; return { lit: t.v }; }
+    if (t.t === 'num') { i++; return { lit: t.v }; }
+    if (t.t === 'id' && t.u === 'NULL') { i++; return { lit: null }; }
+    if (t.t === 'id' && !KW.has(t.u)) { i++; return { ref: t.v }; }
+    if (t.v === '=') throw bad('Use a single = to compare, like price = 12.');
+    throw bad(`I expected a column name or a value, but found "${t.v}".`);
+  }
+  function orExpr() { let l = andExpr(); while (kw('OR')) { i++; l = { or: [l, andExpr()] }; } return l; }
+  function andExpr() { let l = cmp(); while (kw('AND')) { i++; l = { and: [l, cmp()] }; } return l; }
+  function cmp() {
+    if (op('(')) { i++; const e = orExpr(); if (!op(')')) throw bad('A bracket is missing its partner.'); i++; return e; }
+    if (kw('NOT')) { i++; return { not: cmp() }; }
+    const a = operand();
+    if (kw('IS')) { i++; let neg = false; if (kw('NOT')) { i++; neg = true; } need('NULL', 'Use IS NULL or IS NOT NULL.'); return { isnull: a, neg }; }
+    let neg = false; if (kw('NOT')) { i++; neg = true; }
+    if (kw('LIKE')) { i++; return { like: [a, operand()], neg }; }
+    const t = peek();
+    if (!t || t.t !== 'op' || !['=', '!=', '<>', '<', '>', '<=', '>='].includes(t.v)) {
+      if (t && t.t === 'id' && t.u === 'EQUALS') throw bad('Use = instead of the word equals.');
+      throw bad(`After ${a.ref || 'a value'}, add a comparison like = 'Ana' or < 15.`);
+    }
+    i++;
+    return { op: t.v === '<>' ? '!=' : t.v, a, b: operand() };
+  }
+}
+function runSQL(src) {
+  const q = parseSQL(src);
+  const tables = [q.from, ...q.joins.map(j => j.t)];
+  const srcs = tables.map(t => {
+    const name = t.name.toLowerCase();
+    if (!DB[name]) {
+      const near = Object.keys(DB).map(k => [k, CS.lev(name, k)]).sort((a, b) => a[1] - b[1])[0];
+      throw bad(`There's no table called "${t.name}".` + (near[1] <= 2 ? ` Did you mean ${near[0]}?` : ' The tables are customers, books and orders.'));
+    }
+    return { name, alias: (t.alias || name).toLowerCase(), cols: DB[name].cols };
+  });
+  const resolve = ref => {
+    const r = ref.toLowerCase();
+    if (r.includes('.')) {
+      const [a, c] = r.split('.');
+      const s = srcs.find(x => x.alias === a || x.name === a);
+      if (!s) throw bad(`"${a}" isn't one of the tables in this query. Add it with FROM or JOIN first.`);
+      if (!s.cols.includes(c)) throw bad(`${s.name} has no column "${c}". Its columns are ${s.cols.join(', ')}.`);
+      return { s: s.alias, c };
+    }
+    const has = srcs.filter(s => s.cols.includes(r));
+    if (has.length > 1) throw bad(`Both ${has.map(s => s.name).join(' and ')} have a column called "${r}". Say which one, like ${has[0].name}.${r}`);
+    if (!has.length) {
+      const all = srcs.flatMap(s => s.cols.map(c => [c, s]));
+      const near = all.map(([c, s]) => [c, s, CS.lev(r, c)]).sort((a, b) => a[2] - b[2])[0];
+      if (near && near[2] <= 2) throw bad(`There's no column "${r}". Did you mean ${near[0]}?`);
+      if (srcs.length === 1 && FK[r]) throw bad(`${srcs[0].name} has no column "${r}". Try the orders table, or JOIN it in.`);
+      throw bad(`There's no column "${r}" in ${srcs.map(s => s.name).join(', ')}. ${srcs.map(s => `${s.name}: ${s.cols.join(', ')}`).join('. ')}.`);
+    }
+    return { s: has[0].alias, c: r };
+  };
+  const val = (o, row) => 'lit' in o ? o.lit : row[o.rs.s][o.rs.c];
+  const prep = e => { if (!e) return; if (e.ref !== undefined) e.rs = resolve(e.ref); ['a', 'b'].forEach(k => e[k] && prep(e[k])); ['and', 'or', 'like'].forEach(k => e[k] && e[k].forEach(prep)); if (e.not) prep(e.not); if (e.isnull) prep(e.isnull); };
+  const objOf = (s, arr) => Object.fromEntries(s.cols.map((c, k) => [c, arr[k]]));
+  let rows = DB[srcs[0].name].rows.map(r => ({ [srcs[0].alias]: objOf(srcs[0], r) }));
+  q.joins.forEach((j, k) => {
+    const s = srcs[k + 1]; prep(j.a); prep(j.b);
+    const next = [];
+    rows.forEach(r => DB[s.name].rows.forEach(r2 => { const m = { ...r, [s.alias]: objOf(s, r2) }; if (val(j.a, m) === val(j.b, m)) next.push(m); }));
+    rows = next;
+  });
+  const whereCols = [];
+  (function collect(e) { if (!e) return; if (e.ref) whereCols.push(e.ref.toLowerCase().split('.').pop()); ['a', 'b', 'not', 'isnull'].forEach(k => e[k] && collect(e[k])); ['and', 'or', 'like'].forEach(k => e[k] && e[k].forEach(collect)); })(q.where);
+  prep(q.where);
+  const cmpv = (x, y) => (typeof x === 'number' && typeof y === 'string' && y.trim() !== '' && !isNaN(+y)) ? [x, +y] : (typeof y === 'number' && typeof x === 'string' && x.trim() !== '' && !isNaN(+x)) ? [+x, y] : [x, y];
+  const test = (e, r) => {
+    if (e.and) return test(e.and[0], r) && test(e.and[1], r);
+    if (e.or) return test(e.or[0], r) || test(e.or[1], r);
+    if (e.not) return !test(e.not, r);
+    if (e.isnull) return (val(e.isnull, r) == null) !== e.neg;
+    if (e.like) { const s = String(val(e.like[0], r)); const p = String(val(e.like[1], r)); const re = new RegExp('^' + p.replace(/[.+?^${}()|[\]\\]/g, '\\$&').replace(/%/g, '.*').replace(/_/g, '.') + '$', 'i'); return re.test(s) !== e.neg; }
+    const [x, y] = cmpv(val(e.a, r), val(e.b, r));
+    switch (e.op) { case '=': return x === y; case '!=': return x !== y; case '<': return x < y; case '>': return x > y; case '<=': return x <= y; case '>=': return x >= y; }
+  };
+  if (q.where) rows = rows.filter(r => test(q.where, r));
+  q.order.forEach(o => prep(o.c));
+  if (q.order.length) rows.sort((r1, r2) => { for (const o of q.order) { const a = val(o.c, r1), b = val(o.c, r2); if (a < b) return o.desc ? 1 : -1; if (a > b) return o.desc ? -1 : 1; } return 0; });
+  if (q.limit != null) rows = rows.slice(0, q.limit);
+  // projection
+  let cols = [], get = [];
+  if (q.cols.some(c => c.count)) {
+    if (q.cols.length > 1) throw bad("COUNT(*) can't be mixed with other columns in this mini database. Try SELECT COUNT(*) FROM books;");
+    return { q, whereCols, cols: ['count'], rows: [[rows.length]], data: [{ count: rows.length }], tables: srcs.map(s => s.name) };
+  }
+  const multi = srcs.length > 1;
+  q.cols.forEach(c => {
+    if (c.star) {
+      const list = c.of ? srcs.filter(s => s.alias === c.of.toLowerCase() || s.name === c.of.toLowerCase()) : srcs;
+      if (c.of && !list.length) throw bad(`"${c.of}" isn't one of the tables in this query.`);
+      list.forEach(s => s.cols.forEach(col => { cols.push(multi ? `${s.name}.${col}` : col); get.push(r => r[s.alias][col]); }));
+    } else { const rs = resolve(c.ref); cols.push(c.label || rs.c); get.push(r => r[rs.s][rs.c]); }
+  });
+  const out = rows.map(r => get.map(g => g(r)));
+  const data = out.map(r => { const o = {}; cols.forEach((c, k) => { o[c.toLowerCase()] = r[k]; o[c.toLowerCase().split('.').pop()] ??= r[k]; }); return o; });
+  return { q, whereCols, cols, rows: out, data, tables: srcs.map(s => s.name) };
+}
+function sqlRun(code) {
+  try {
+    const r = runSQL(code);
+    const html = `<div class="sqlres"><table><thead><tr>${r.cols.map(c => `<th>${esc(c)}</th>`).join('')}</tr></thead><tbody>${r.rows.map(row => `<tr>${row.map(x => `<td>${x == null ? 'NULL' : esc(x)}</td>`).join('')}</tr>`).join('')}</tbody></table><span class="cnt">(${r.rows.length} row${r.rows.length === 1 ? '' : 's'})</span></div>`;
+    let tip = '';
+    if (!r.rows.length && r.q.where) {
+      const lits = []; (function f(e) { if (!e) return; if (e.lit !== undefined && typeof e.lit === 'string') lits.push(e.lit); ['a', 'b', 'not'].forEach(k => e[k] && f(e[k])); ['and', 'or', 'like'].forEach(k => e[k] && e[k].forEach(f)); })(r.q.where);
+      const all = Object.values(DB).flatMap(t => t.rows.flat()).filter(x => typeof x === 'string');
+      const near = lits.find(l => !all.includes(l) && all.some(x => x.toLowerCase() === l.toLowerCase()));
+      if (near) tip = `No rows. To a database, '${esc(near)}' and '${esc(all.find(x => x.toLowerCase() === near.toLowerCase()))}' are different. Capital letters matter.`;
+    }
+    return { ...r, html: html + (tip ? `<span class="tutor"><b>Tutor:</b> ${tip}</span>` : ''), logs: [] };
+  } catch (e) {
+    if (e instanceof SqlError) return { error: e.message, rows: [], cols: [], data: [], q: null };
+    return { error: 'Something went wrong reading that query. Check it against the examples on the right.', rows: [], cols: [], data: [], q: null };
+  }
+}
+const hasCols = (r, ...names) => names.every(n => r.cols.some(c => c.toLowerCase().split('.').pop() === n));
+CS.codeLab($('#lab'), {
+  part: 'p3', mission: $('#mission'), language: 'SQL',
+  starter: '-- Press Run to send this query to the database.\nSELECT * FROM books;',
+  run: sqlRun,
+  steps: [
+    { t: 'See every book', how: 'Press Run. The <code>*</code> means "every column".', hint: 'The starter query already does this: <code>SELECT * FROM books;</code> Press Run.',
+      check: r => r.q && r.tables[0] === 'books' && !r.q.where && r.rows.length === 8 },
+    { t: 'Only books under $15', how: 'Show just the title and price of books that cost less than 15.', hint: 'Try: <code>SELECT title, price FROM books WHERE price &lt; 15;</code>',
+      check: r => r.q && r.tables[0] === 'books' && r.whereCols.includes('price') && (r.rows.length === 4 || r.rows.length === 5),
+      nudge: r => r.q && r.tables[0] === 'books' && !r.q.where ? 'Close. Now add <code>WHERE price &lt; 15</code> before the semicolon to keep only the cheaper books.' : r.q && r.q.where && !r.rows.length ? 'No books matched. <code>price &lt; 15</code> means "price less than 15".' : 'Use the books table and a WHERE on price.' },
+    { t: 'The three cheapest books', how: 'Sort books by price, cheapest first, and keep the first 3.', hint: 'Try: <code>SELECT title, price FROM books ORDER BY price LIMIT 3;</code>',
+      check: r => r.q && r.tables[0] === 'books' && r.q.order.length && (r.q.order[0].c.ref || '').toLowerCase().split('.').pop() === 'price' && !r.q.order[0].desc && r.q.limit != null && r.q.limit <= 5,
+      nudge: r => r.q && r.q.order.length && r.q.order[0].desc ? 'DESC sorts the most expensive first. Leave it off (or write ASC) for cheapest first.' : r.q && r.q.order.length && r.q.limit == null ? 'Sorted! Now add <code>LIMIT 3</code> at the end to keep just the first three.' : 'Add <code>ORDER BY price</code> to sort, then <code>LIMIT 3</code>.' },
+    { t: "Ana's orders", how: "Show every order from Ana. Her customer id is 1.", hint: 'Try: <code>SELECT * FROM orders WHERE customer_id = 1;</code>',
+      check: r => r.q && r.tables.includes('orders') && r.q.where && r.rows.length === 3 && (r.data.every(d => d.customer_id === 1) || r.data.every(d => d.name === 'Ana') || r.whereCols.includes('customer_id') || r.whereCols.includes('name')),
+      nudge: r => r.q && r.tables[0] === 'customers' ? "Customers only holds Ana herself. Her orders live in the orders table, linked by <code>customer_id</code>." : 'Use the orders table and filter on <code>customer_id = 1</code>.' },
+    { t: 'Who bought what', how: 'Join orders to customers and books to list each customer\'s name with a book title.', hint: 'Try this, over four lines:<br><code>SELECT customers.name, books.title</code><br><code>FROM orders</code><br><code>JOIN customers ON orders.customer_id = customers.id</code><br><code>JOIN books ON orders.book_id = books.id;</code>',
+      check: r => r.q && r.tables.length >= 3 && hasCols(r, 'name', 'title') && r.rows.length === 7,
+      nudge: r => r.q && r.tables.length === 2 ? 'One join works! Add a second <code>JOIN books ON orders.book_id = books.id</code> so you can show titles too.' : r.q && r.tables.length >= 3 && !hasCols(r, 'name', 'title') ? 'The join worked. Now pick the columns: <code>SELECT customers.name, books.title</code>' : 'Start <code>FROM orders</code>, then <code>JOIN customers ON orders.customer_id = customers.id</code>.' }
+  ],
+  doneTutor: '<b>Mission complete!</b> You filtered, sorted, limited and joined. When an AI writes SQL for your app, you can now read what it is asking.'
+});
+/* ---------------- part 4: steer the AI ---------------- */
+CS.steer($('#steer'), [
+  { ai: "To keep it simple, I'll store the whole shop as one big JSON blob in a single row: customers, books, orders, everything. Every change rewrites the blob.",
+    opts: [["Simple sounds good. Go ahead.", 0, "Two customers checking out at once will overwrite each other's changes, and every question means loading the whole shop."],
+           ["Use a relational database with separate tables for customers, books and orders, linked by IDs.", 1, "Right. Separate tables let the database handle many changes at once, answer questions with queries, and keep each fact in one place."],
+           ["Use one JSON file per customer instead, with their orders inside.", 0, "Better than one blob, but book details get copied into every order and \"who bought this book?\" means opening every file."]] },
+  { ai: "For looking up orders by order number, I'll add Pinecone, a vector database, so the search is AI-powered.",
+    opts: [["Great, AI-powered search sounds better.", 0, "Order numbers are exact. Vector search returns the most similar match, which for an order number could be the wrong order."],
+           ["Order numbers are exact lookups. Use an indexed column in our existing database. Save vectors for \"find similar\" features.", 1, "Exactly. An index answers exact lookups instantly and correctly, with no extra system to pay for or keep in sync."],
+           ["Use both, just to be safe.", 0, "Two systems means twice the cost and two copies of the data that can drift apart, for no benefit here."]] },
+  { ai: "I wrote a migration that drops the address column and adds a new shipping_address column. It runs automatically on the next deploy.",
+    opts: [["Rename the column instead of dropping it, back up the database first, and test the migration on a copy.", 1, "Yes. Dropping a column deletes every address. A rename keeps the data, and a tested backup means you can recover if anything slips."],
+           ["Ship it. The new name is clearer.", 0, "The new column starts empty. Every customer's address would be deleted on deploy."],
+           ["Run it by hand on the live database so you can watch it.", 0, "Watching doesn't bring deleted data back. The problem is the drop itself, and running it live skips any test."]] },
+  { ai: "Sign-up works! I'm saving each user's email and password in the users table so we can check them at login.",
+    opts: [["Perfect, that's how login works.", 0, "If the table ever leaks, every password is readable, and people reuse passwords on other sites."],
+           ["Encrypt the database disk and it's fine.", 0, "Disk encryption helps if a drive is stolen, but the app can still read every password, so a bug or a leaked query exposes them all."],
+           ["Never store passwords as they are. Store a slow, salted hash with bcrypt or argon2 instead.", 1, "Right. A hash lets you check a password without keeping it. Course 207 on security shows why and how."]] }
+], { part: 'p4', counter: $('#steerCount') });
+
+/* ---------------- part 5: quiz ---------------- */
+CS.quiz($('#quiz'), [
+  { q: 'Your app needs to answer "which customers bought this book?" and "how much did each customer spend?". Which shape fits best?', a: [['Relational tables', 1], ['A key-value store', 0], ['A vector database', 0]], why: 'Both questions cross between customers, orders and books. Tables linked by keys, combined with joins, are built for exactly that.' },
+  { q: 'What is a foreign key?', a: [['A password for the database', 0], ['A column that stores another table\'s ID, linking the rows', 1], ['A key imported from another country\'s server', 0]], why: 'orders.customer_id is a foreign key: it points at a row in customers, so the customer\'s details are stored once and never copied.' },
+  { q: 'The AI copied each customer\'s email into every order. What goes wrong when a customer changes their email?', a: [['Nothing, the database updates every copy automatically', 0], ['The old copies stay behind and drift out of sync', 1], ['The database refuses the change', 0]], why: 'Copies are separate values. Unless the code finds and updates every one, the old email stays in older orders.' },
+  { q: 'Searching 5 million orders by email has become slow. What should you ask the AI for?', a: [['A bigger server', 0], ['A different kind of database', 0], ['An index on the email column', 1]], why: 'Without an index the database checks every row. With one, it jumps to the right rows in a few steps.' },
+  { q: 'When is a vector database the right choice?', a: [['Storing orders and payments', 0], ['Finding items similar in meaning, like "books like this one"', 1], ['Looking up a user by their exact ID', 0]], why: 'Vectors place things on a map of meaning. They shine at "find similar" and are the wrong tool for exact facts.' }
+], { part: 'p5', doneCard: $('#doneCard'), doneTitle: 'You can pick a database shape now.', doneText: 'You know tables, documents, key-value and vector stores, why keys beat copies, what indexes and migrations do, and how to read a SQL query.' });
+})();
+</script>
+</body>
+</html>

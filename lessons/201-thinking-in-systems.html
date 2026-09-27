@@ -1,0 +1,1087 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Thinking in systems · CS School</title>
+<meta name="description" content="Course 201: sketch any app as parts and connections, and see where it breaks.">
+<link rel="icon" href="../assets/favicon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="../assets/cs-school.css">
+<style>
+/* lesson-specific styles: system board (parts + wires), order log, feature health, rush simulator, incident panel */
+.board{position:relative; width:100%; aspect-ratio:16/9; user-select:none; -webkit-user-select:none; -webkit-tap-highlight-color:transparent}
+.board .wires{position:absolute; inset:0; width:100%; height:100%; overflow:visible; pointer-events:none}
+.wire{fill:none; stroke:var(--ink-2); stroke-opacity:.5; stroke-width:2; stroke-linecap:round}
+.wire.new{stroke:var(--l2); stroke-opacity:.8; stroke-dasharray:1; stroke-dashoffset:1; animation:draw .6s ease-out forwards}
+@keyframes draw{to{stroke-dashoffset:0}}
+.wire.dead{stroke:var(--bad); stroke-opacity:.75; stroke-dasharray:4 7}
+.node{position:absolute; left:50%; top:50%; transform:translate(-50%,-50%); display:flex; align-items:center; gap:9px; margin:0;
+  padding:7px 14px 7px 8px; min-height:46px; border-radius:14px; font-family:var(--f-display); font-weight:800; font-size:.95rem; line-height:1.1;
+  color:var(--ink); white-space:nowrap; background:var(--glass-strong); border:1px solid var(--glass-edge);
+  box-shadow:0 10px 24px -12px rgba(18,20,23,.38), 0 1px 3px rgba(18,20,23,.06);
+  -webkit-backdrop-filter:blur(12px); backdrop-filter:blur(12px);
+  transition:transform .3s cubic-bezier(.3,1.5,.5,1), background .3s, color .3s, box-shadow .25s, opacity .35s}
+button.node{cursor:pointer}
+button.node:hover{background:var(--paper)}
+.node .gl{width:30px; height:30px; flex:none; display:grid; place-items:center; border-radius:9px; background:color-mix(in srgb, var(--c) 16%, transparent); color:var(--c); transition:background .3s, color .3s}
+.node .gl svg{width:19px; height:19px; fill:none; stroke:currentColor; stroke-width:2; stroke-linecap:round; stroke-linejoin:round}
+.node .dot{position:absolute; top:-5px; right:-5px; width:13px; height:13px; border-radius:50%; background:var(--good); box-shadow:0 0 0 3px var(--paper); transition:background .3s}
+.node[data-st="none"] .dot{display:none}
+.node[data-st="unknown"] .dot{background:color-mix(in srgb, var(--ink) 30%, transparent)}
+.node[data-st="slow"] .dot{background:var(--l4)}
+.node[data-st="down"] .dot{background:var(--bad)}
+.node[data-st="down"]{background:var(--bad-bg); color:var(--bad)}
+.node[data-st="down"] .gl{background:color-mix(in srgb, var(--bad) 16%, transparent); color:var(--bad)}
+.node.sel{transform:translate(-50%,-50%) scale(1.1); background:color-mix(in srgb, var(--l2) 16%, var(--glass-strong)); box-shadow:0 0 0 8px color-mix(in srgb, var(--l2) 14%, transparent), 0 14px 28px -10px color-mix(in srgb, var(--l2) 60%, transparent)}
+.node.ghost{opacity:0; transform:translate(-50%,-50%) scale(.6); pointer-events:none}
+.node.ping{animation:nping .45s}
+.node.shake{animation:nshake .45s}
+@keyframes nping{40%{transform:translate(-50%,-50%) scale(1.1)}}
+@keyframes nshake{20%,60%{transform:translate(calc(-50% - 7px),-50%)}40%,80%{transform:translate(calc(-50% + 7px),-50%)}}
+.board[data-mode="narrow"] .node{font-size:.9rem; padding:6px 11px 6px 6px; gap:7px; min-height:44px}
+.board[data-mode="narrow"] .node .gl{width:26px; height:26px}
+.board[data-mode="narrow"] .node .gl svg{width:17px; height:17px}
+.hero-visual .board{margin:4px 0 2px}
+.board-card{border-radius:20px; padding:18px 20px; align-self:stretch}
+.pg.wide-left{grid-template-columns:minmax(0,1.55fr) minmax(0,1fr)}
+/* logs */
+.log{font-family:var(--f-mono); font-size:.9rem; line-height:1.55; background:var(--term); color:var(--term-ink); border-radius:14px; padding:12px 14px; height:200px; overflow-y:auto}
+.log.short{height:176px}
+.log .ln{display:flex; gap:12px; animation:rise .3s}
+.log .ts{color:var(--term-dim); flex:none}
+.log .ln.r > span:last-child{color:#FF9A8A} .log .ln.g > span:last-child{color:#8BF0A8} .log .ln.y > span:last-child{color:#FFC53D}
+.log .empty{color:var(--term-dim)}
+.log b{color:#fff}
+/* feature health list */
+.feats{list-style:none; margin:0; padding:0; display:flex; flex-direction:column; gap:2px}
+.feats li{display:flex; align-items:flex-start; gap:12px; padding:6px 0}
+.feats li::before{content:""; flex:none; width:12px; height:12px; margin-top:6px; border-radius:50%; background:var(--good); transition:background .3s}
+.feats li.bad::before{background:var(--bad)} .feats li.wait::before{background:var(--l4)}
+.feats b{font-family:var(--f-display); font-weight:800; display:block; line-height:1.3; font-size:1rem}
+.feats span{display:block; font-size:.95rem; color:var(--good)}
+.feats li.bad span{color:var(--bad)} .feats li.wait span{color:var(--tip)}
+.radius{font-family:var(--f-display); font-weight:800; font-size:1rem; border-radius:99px; padding:3px 12px; background:var(--good-bg); color:var(--good); display:inline-block; margin-bottom:10px}
+.radius.bad{background:var(--bad-bg); color:var(--bad)}
+/* recipe + two kinds of part */
+.steps{list-style:none; margin:0; padding:0; counter-reset:s; display:flex; flex-direction:column; gap:12px}
+.steps li{counter-increment:s; display:flex; gap:14px; align-items:flex-start; font-size:1rem}
+.steps li::before{content:counter(s); flex:none; width:30px; height:30px; border-radius:50%; display:grid; place-items:center; font-family:var(--f-display); font-weight:900; font-size:.95rem; background:var(--ink); color:var(--paper)}
+.steps b{font-family:var(--f-display); font-weight:800}
+.kinds .ctl p{font-size:1rem}
+.kinds .chips{display:flex; flex-wrap:wrap; gap:8px; margin-top:12px}
+/* rush simulator */
+.rate-val{font-family:var(--f-display); font-size:1rem; color:var(--ink-2); margin:-4px 0 8px}
+.rate-val b{font-size:1.9rem; font-weight:900; color:var(--ink); margin-right:6px}
+.policy{display:flex; flex-wrap:wrap; margin-top:6px}
+.field-label{font-family:var(--f-display); font-weight:800; font-size:1rem; margin:18px 0 4px; display:block}
+.loads{display:flex; flex-direction:column; gap:10px}
+.load{display:grid; grid-template-columns:112px minmax(0,1fr) 64px; gap:12px; align-items:center; font-size:1rem}
+.load b{font-family:var(--f-display); font-weight:800}
+.bar{height:12px; border-radius:6px; background:color-mix(in srgb, var(--ink) 9%, transparent); overflow:hidden}
+.bar i{display:block; height:100%; width:0; border-radius:6px; background:var(--good); transition:width .5s, background .3s}
+.bar i.warm{background:var(--l4)} .bar i.hot{background:var(--bad)}
+.load .pct{font-family:var(--f-mono); font-size:.9rem; text-align:right; color:var(--ink-2)}
+.load .pct.hot{color:var(--bad); font-weight:600}
+.stats{display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:10px; margin-top:16px}
+.stat{border-radius:14px; padding:10px 12px; background:var(--glass-strong)}
+.stat b{display:block; font-family:var(--f-display); font-weight:900; font-size:1.45rem; line-height:1.15; font-variant-numeric:tabular-nums}
+.stat span{display:block; font-size:.9rem; color:var(--ink-2); line-height:1.3}
+.spark-head{display:flex; flex-wrap:wrap; justify-content:space-between; align-items:baseline; gap:2px 10px; margin-top:18px; font-size:.95rem; color:var(--ink-2)}
+.spark-head b{font-family:var(--f-display); font-weight:800; color:var(--ink); font-size:1rem}
+.spark{width:100%; height:110px; display:block; margin-top:6px; border-radius:10px; background:color-mix(in srgb, var(--ink) 4%, transparent)}
+/* incident */
+.reports li.fixed::before{background:var(--good)}
+.reports li.fixed span{color:var(--good)}
+.reports li.human::before{background:var(--l4)}
+.reports li.human span{color:var(--tip)}
+.reports li:not(.fixed):not(.human)::before{background:var(--bad)}
+.reports li:not(.fixed):not(.human) span{color:var(--bad)}
+@media (max-width:900px){ .pg.wide-left{display:flex} }
+@media (max-width:640px){
+  .board-card{padding:12px 10px}
+  .load{grid-template-columns:92px minmax(0,1fr) 56px; gap:10px}
+  .stats{grid-template-columns:minmax(0,1fr); gap:6px}
+  .stat{padding:8px 12px; display:flex; align-items:baseline; gap:10px}
+  .stat b{font-size:1.25rem; min-width:3.2em}
+}
+</style>
+</head>
+<body>
+<main id="top">
+  <section class="wrap hero">
+    <div>
+      <div class="kicker">Core curriculum · Course 201 · Thinking in systems</div>
+      <h1>Every app is a few parts passing messages.</h1>
+      <p class="lede">Rosie's bakery app looks like one thing. Underneath, a phone, a web app, a server, a database and two rented services are passing notes to each other. Learn to sketch those parts, and you'll see where things break before your customers do.</p>
+      <ul class="facts">
+        <li>About 15 minutes</li>
+        <li>5 parts</li>
+        <li>Incident simulator</li>
+        <li>No coding experience needed</li>
+      </ul>
+      <div class="row hero-cta"><a class="btn primary" href="#p1">Start the lesson</a></div>
+    </div>
+    <figure style="margin:0">
+      <div class="hero-visual glass">
+        <div id="heroBoard" role="img" aria-label="An animated diagram of a bakery ordering app: a customer's phone, web app, API server, database, payments, email and image storage, with an order travelling along the wires between them. Sometimes the email service fails and the order waits and retries."></div>
+        <div class="legend"><span><i style="background:var(--l2)"></i>Customer</span><span><i style="background:var(--l5)"></i>Your code</span><span><i style="background:var(--l3)"></i>Storage</span><span><i style="background:var(--l4)"></i>Rented services</span></div>
+      </div>
+      <div class="hero-caption glass" aria-hidden="true"><span id="heroClock">12:04:00</span><span id="heroCap">customer taps Order</span></div>
+    </figure>
+  </section>
+
+  <div class="wrap">
+  <!-- PART 1 -->
+  <section class="part" id="p1">
+    <span class="bullet glass" data-p="p1">1</span>
+    <div class="part-head">
+      <div class="kicker">Part 1 of 5</div>
+      <h2>Parts and wires</h2>
+      <p>An app is a set of <b>parts</b>, each with one job, joined by <b>wires</b> that carry messages. Wire up Rosie's bakery app, then send an order through it.</p>
+    </div>
+
+    <div class="chat" aria-label="Example conversation">
+      <div class="msg me"><span class="who">You</span>A customer says they paid, but Rosie never saw the order. Can you fix it?</div>
+      <div class="msg ai"><span class="who">AI assistant</span>Sure. Where should I look first: the web app, the API server, the database, or the payment provider?</div>
+      <div class="msg me"><span class="who">You</span>Honestly? I don't know what half of those are.</div>
+    </div>
+
+    <div class="task glass" data-part="p1">
+      <h3>Your task</h3>
+      <ol>
+        <li data-t="path"><span>Connect the customer's phone all the way to the database.</span></li>
+        <li data-t="extras"><span>Connect payments, email and image storage too.</span></li>
+        <li data-t="run"><span>Place a test order that makes it all the way through.</span></li>
+      </ol>
+    </div>
+
+    <div class="pg wide-left">
+      <div class="pg-col">
+        <div class="o2 board-card glass"><div id="board1" aria-label="Rosie's bakery app. Each part is a button: pick two to wire them together."></div></div>
+      </div>
+      <div class="pg-col">
+        <div class="o1 ctl glass">
+          <h3 class="ctl-title">Build the order flow</h3>
+          <p class="ctl-sub">Click one part, then another, to connect them with a wire. Pick the same pair again to remove it.</p>
+          <div class="row">
+            <button class="btn primary" id="order1">Place a test order</button>
+            <button class="btn" id="clear1">Remove all wires</button>
+          </div>
+        </div>
+        <div class="o3 note" id="note1" aria-live="polite">Start with the customer: click <b>Phone</b>, then <b>Web app</b>.</div>
+        <div class="o4 ctl glass">
+          <h3 class="ctl-title">Order log</h3>
+          <div class="log" id="log1"><span class="empty">Place a test order to see each message here.</span></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="sub stack">
+      <h3>What you just drew</h3>
+      <p>That's a <b>system diagram</b>: boxes for parts, lines for the messages between them. Engineers sketch one before building, and reach for it first when something breaks. It fits on a napkin, and it's the best map you can hand an AI.</p>
+      <div class="cards kinds">
+        <div class="ctl glass">
+          <h4 class="ctl-title">Parts you build</h4>
+          <p>Your own code. You decide what it does, and you fix it when it breaks.</p>
+          <div class="chips"><span class="chip" style="--c:var(--l5)"><i></i>Web app</span><span class="chip" style="--c:var(--l5)"><i></i>API server</span></div>
+        </div>
+        <div class="ctl glass">
+          <h4 class="ctl-title">Parts you rent</h4>
+          <p>Services run by other companies, which your code talks to. When one breaks, it's still your customer who is stuck.</p>
+          <div class="chips"><span class="chip" style="--c:var(--l4)"><i></i>Payments</span><span class="chip" style="--c:var(--l4)"><i></i>Email</span><span class="chip" style="--c:var(--l3)"><i></i>Often the storage too</span></div>
+        </div>
+      </div>
+      <div class="ctl glass">
+        <h4 class="ctl-title">Sketch any app in four steps</h4>
+        <ol class="steps">
+          <li><span><b>Who uses it?</b> Draw the people and their devices: customers on phones, Rosie in the kitchen.</span></li>
+          <li><span><b>What does it remember?</b> Draw a box for each place data lives: the database, image storage.</span></li>
+          <li><span><b>What does it rent?</b> Draw each outside service: payments, email, maps, AI models.</span></li>
+          <li><span><b>Who needs a message from whom?</b> Draw a wire for each, and note what travels on it.</span></li>
+        </ol>
+        <p class="muted" style="margin-top:14px; font-size:1rem; max-width:none">Then point at each box and ask: <i>what happens if this one is down?</i> That's part 2.</p>
+      </div>
+      <details class="deeper glass">
+        <summary>Under the hood: every wire is a request and a response <small>optional</small></summary>
+        <div>
+          <p>Each wire carries two messages: a <b>request</b> ("please charge $18.50") and a <b>response</b> ("approved"). Usually the sender waits for the response before it moves on. That waiting is why one slow part, far away, can make your whole app feel slow.</p>
+          <p>The agreed format for these messages is called an <b>API</b>. Course <a href="206-apis-and-integrations.html">206 APIs &amp; integrations</a> takes them apart.</p>
+        </div>
+      </details>
+    </div>
+  </section>
+
+  <!-- PART 2 -->
+  <section class="part" id="p2">
+    <span class="bullet glass" data-p="p2">2</span>
+    <div class="part-head">
+      <div class="kicker">Part 2 of 5</div>
+      <h2>Where it breaks</h2>
+      <p>Every wire is a <b>dependency</b>: one part needs another to do its job. Take parts down one at a time and see what fails, what keeps working, and what fails in a way you didn't expect.</p>
+    </div>
+
+    <div class="task glass" data-part="p2">
+      <h3>Your task</h3>
+      <ol>
+        <li data-t="db"><span>Take the database down. What stops working?</span></li>
+        <li data-t="email"><span>Bring it back. Take the email service down, then place an order.</span></li>
+        <li data-t="queue"><span>Add a queue so an email outage can't block orders.</span></li>
+      </ol>
+    </div>
+
+    <div class="pg wide-left">
+      <div class="pg-col">
+        <div class="o2 board-card glass"><div id="board2" aria-label="Rosie's bakery app, fully wired. Each part is a button that takes it down or brings it back."></div></div>
+        <div class="o5 ctl glass">
+          <h3 class="ctl-title">Order log</h3>
+          <div class="log short" id="log2"><span class="empty">Place an order to see what happens.</span></div>
+        </div>
+      </div>
+      <div class="pg-col">
+        <div class="o1 ctl glass">
+          <h3 class="ctl-title">Break things</h3>
+          <p class="ctl-sub">Click a part to take it down. Click it again to bring it back.</p>
+          <div class="row">
+            <button class="btn primary" id="order2">Place an order</button>
+            <button class="btn" id="queueBtn" aria-pressed="false">Add a queue for emails</button>
+          </div>
+        </div>
+        <div class="o3 note" id="note2" aria-live="polite">Everything is up. Click <b>Database</b> to take it down.</div>
+        <div class="o4 ctl glass">
+          <h3 class="ctl-title">What customers can do</h3>
+          <span class="radius" id="radius">Blast radius: nothing broken</span>
+          <ul class="feats" id="feats"></ul>
+        </div>
+      </div>
+    </div>
+
+    <div class="stack" style="margin-top:32px">
+      <p><b>Failures travel along the wires.</b> When a part goes down, everything that needs it goes down too. How far the damage spreads is called its <b>blast radius</b>.</p>
+      <p><b>A single point of failure</b> is a part whose failure stops everything. In Rosie's app, that's the API server and the database: every order passes through both.</p>
+      <p><b>A queue</b> is a waiting line between two parts. The sender drops a job in and moves on. The receiver picks jobs up when it can, and retries if it has to. Use one whenever the customer doesn't need to wait for the work: emails, receipts, resizing photos, reports.</p>
+      <details class="deeper glass">
+        <summary>Under the hood: how real apps avoid single points of failure <small>optional</small></summary>
+        <div>
+          <p>Real apps run two or more copies of the API server, with a <b>load balancer</b> in front that spreads requests between them and skips a copy that stops answering. Databases get automatic backups, and often a standby copy that can take over.</p>
+          <p>Hosting platforms do much of this for you, and each extra copy costs money, so it's a choice, not a default. Course <a href="209-shipping-and-running-software.html">209 Shipping &amp; running software</a> covers it.</p>
+        </div>
+      </details>
+    </div>
+
+    <div class="sub stack">
+      <h3>Bottlenecks and feedback loops</h3>
+      <p class="muted">At lunchtime, orders pour in. Every part can only handle so many a minute. Turn up the rush, and watch which part gives out first.</p>
+      <div class="task glass" data-part="p2" style="margin-bottom:0">
+        <h3>Your task</h3>
+        <ol>
+          <li data-t="rush"><span>Turn up the lunch rush until one part can't keep up.</span></li>
+          <li data-t="storm"><span>Make failed requests retry instantly, and watch what happens.</span></li>
+          <li data-t="backoff"><span>Calm it down with retry-with-backoff.</span></li>
+        </ol>
+      </div>
+      <div class="pg">
+        <div class="pg-col">
+          <div class="o1 ctl glass">
+            <label class="ctl-title" for="rate">Lunch rush</label>
+            <div class="rate-val"><b id="rateVal">20</b>orders a minute</div>
+            <input class="range" type="range" id="rate" min="10" max="150" step="5" value="20">
+            <span class="field-label" id="polLabel">When a request fails</span>
+            <div class="seg-control policy" role="group" aria-labelledby="polLabel">
+              <button type="button" data-pol="none" aria-pressed="true">Give up</button>
+              <button type="button" data-pol="instant" aria-pressed="false">Retry instantly</button>
+              <button type="button" data-pol="backoff" aria-pressed="false">Retry with backoff</button>
+            </div>
+            <div class="row" style="margin-top:14px"><button class="btn" id="simReset">Quiet down</button></div>
+          </div>
+          <div class="o3 note" id="note3" aria-live="polite">Drag the slider to the right and watch the bars.</div>
+        </div>
+        <div class="pg-col">
+          <div class="o2 ctl glass">
+            <h3 class="ctl-title">Load on each part</h3>
+            <div class="loads" id="loads"></div>
+            <div class="stats">
+              <div class="stat"><b id="stDone">20</b><span>orders done a minute</span></div>
+              <div class="stat"><b id="stFail">0</b><span>requests failing a minute</span></div>
+              <div class="stat"><b id="stWait">0.4 s</b><span>customer wait</span></div>
+            </div>
+            <div class="spark-head"><b>Database load over time</b><span>dashed line = its limit</span></div>
+            <svg class="spark" id="spark" viewBox="0 0 300 110" preserveAspectRatio="none" role="img" aria-label="Database load over the last 40 moments"></svg>
+          </div>
+        </div>
+      </div>
+      <p><b>A bottleneck</b> is the part that runs out of room first. The whole app can only go as fast as its slowest part on the path, so speeding up any other part changes nothing.</p>
+      <p><b>A feedback loop</b> is a reaction that feeds its own cause. Instant retries turn an overload into a pile-up: failures cause retries, and retries cause more failures. Engineers call it a <b>retry storm</b>, and it's how a busy lunch hour becomes a full outage.</p>
+      <p><b>Retry with backoff</b> waits longer after each failure (1 second, then 2, then 4…) and gives up after a few tries. That gives the struggling part room to recover.</p>
+      <details class="deeper glass">
+        <summary>Under the hood: retries that can't charge twice <small>optional</small></summary>
+        <div>
+          <p>If a charge request times out, you don't know whether it went through. Retrying blindly can bill the customer twice. Payment providers solve this with an <b>idempotency key</b>: a unique ID sent with each charge. If the same ID arrives twice, the provider only charges once.</p>
+          <p>When an AI adds retries around anything that spends money or sends messages, ask it how it avoids doing the thing twice.</p>
+        </div>
+      </details>
+    </div>
+  </section>
+
+  <!-- PART 3 -->
+  <section class="part" id="p3">
+    <span class="bullet glass" data-p="p3">3</span>
+    <div class="part-head">
+      <div class="kicker">Part 3 of 5</div>
+      <h2>Try it: solve an incident</h2>
+      <p>When something breaks, engineers don't guess. They check the health of each part, read the logs, and follow the trail from the symptom to the cause. This console is a simulation. Nothing here can break for real.</p>
+    </div>
+
+    <div class="lab">
+      <div class="a-mission ctl glass">
+        <h3 class="ctl-title">Your mission</h3>
+        <p class="ctl-sub" style="margin-top:0">It's Saturday morning. Rosie's customers are texting her: checkout hangs on "Processing…" for ages, then shows an error. Find the part that failed, fix the cause, and check your fix.</p>
+        <ol class="mission" id="mission"></ol>
+      </div>
+      <div class="a-work" id="term"></div>
+      <div class="a-side">
+        <div class="ctl glass">
+          <h3 class="ctl-title">System health</h3>
+          <p class="ctl-sub">Grey means you haven't checked yet.</p>
+          <div id="board3" role="img" aria-label="Health map of Rosie's app"></div>
+        </div>
+      </div>
+      <div class="a-extra stack" style="gap:18px">
+        <div class="ctl glass">
+          <h3 class="ctl-title">Customer reports</h3>
+          <ul class="feats reports" id="reports"></ul>
+        </div>
+        <details class="deeper glass">
+          <summary>Under the hood: status, logs and alerts <small>optional</small></summary>
+          <div>
+            <p>A <b>health check</b> asks each part "are you there?" every few seconds. It's quick, but shallow: a part can answer and still fail at its real job.</p>
+            <p><b>Logs</b> are each part's diary: one line per thing it did, with the time. <b>Metrics</b> are numbers over time, like response time. <b>Alerts</b> message you when a number crosses a line, so you hear about problems before your customers text you.</p>
+          </div>
+        </details>
+      </div>
+    </div>
+  </section>
+
+  <!-- PART 4 -->
+  <section class="part" id="p4">
+    <span class="bullet glass" data-p="p4">4</span>
+    <div class="part-head">
+      <div class="kicker">Part 4 of 5</div>
+      <h2>Steer the AI</h2>
+      <p>AI tools love adding parts and patching symptoms. Here are four things one might say about Rosie's app. Pick the reply you'd send.</p>
+    </div>
+    <p class="counter" id="steerCount"></p>
+    <div id="steer"></div>
+  </section>
+
+  <!-- PART 5 -->
+  <section class="part" id="p5">
+    <span class="bullet glass" data-p="p5">5</span>
+    <div class="part-head">
+      <div class="kicker">Part 5 of 5</div>
+      <h2>Check your understanding</h2>
+      <p>Five quick questions. Each answer explains itself.</p>
+    </div>
+    <div id="quiz"></div>
+    <div id="doneCard" aria-live="polite"></div>
+  </section>
+  </div>
+
+  <section class="after" id="cheat">
+    <div class="wrap stack">
+      <h2>Cheat sheet</h2>
+      <p class="muted">The ideas from this lesson, and the question to ask the AI for each.</p>
+      <div class="table-wrap glass">
+        <table>
+          <thead><tr><th>Idea</th><th>In plain words</th><th>Ask the AI</th></tr></thead>
+          <tbody>
+            <tr><td><b>Part</b></td><td>A piece with one job: web app, API server, database, payments…</td><td>"Which parts does this change touch?"</td></tr>
+            <tr><td><b>Wire (dependency)</b></td><td>One part needs a message from another to do its job.</td><td>"What does this depend on, and what happens if that's down?"</td></tr>
+            <tr><td><b>Blast radius</b></td><td>How much stops working when one part fails.</td><td>"If this fails, what else fails with it?"</td></tr>
+            <tr><td><b>Single point of failure</b></td><td>One part whose failure stops everything.</td><td>"Is there a backup copy, or a way to keep going without it?"</td></tr>
+            <tr><td><b>Queue</b></td><td>A waiting line, so a slow part can't hold up the rest.</td><td>"Can this happen in the background instead of making the customer wait?"</td></tr>
+            <tr><td><b>Bottleneck</b></td><td>The slowest part on the path sets the speed for everything.</td><td>"Which part runs out of room first when traffic grows?"</td></tr>
+            <tr><td><b>Retry with backoff</b></td><td>Try again after growing waits, then give up.</td><td>"How many retries, how far apart, and can a retry do the thing twice?"</td></tr>
+            <tr><td><b>Feedback loop</b></td><td>A reaction that makes its own cause worse.</td><td>"Could this retry or auto-fix make an overload worse?"</td></tr>
+            <tr><td><b>Symptom vs cause</b></td><td>Where it hurts is often not where it's broken.</td><td>"What is the slow part waiting on? Show me its logs."</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+</main>
+<script src="../assets/cs-school.js"></script>
+<script>
+(() => {
+const { $, $$, esc, reduce } = CS;
+const NS = 'http://www.w3.org/2000/svg';
+const wait = ms => new Promise(r => setTimeout(r, reduce ? Math.min(ms, 30) : ms));
+
+CS.lesson({
+  id: '201',
+  parts: [
+    { id: 'p1', title: 'Parts and wires' },
+    { id: 'p2', title: 'Where it breaks' },
+    { id: 'p3', title: 'Try it' },
+    { id: 'p4', title: 'Steer the AI' },
+    { id: 'p5', title: 'Check' }
+  ]
+});
+
+/* ---------------- the system board: HTML parts over an SVG wire layer ---------------- */
+const GLYPH = {
+  phone: '<rect x="7" y="2.5" width="10" height="19" rx="2.5"/><path d="M11 18.3h2"/>',
+  web: '<rect x="3" y="4" width="18" height="16" rx="2.5"/><path d="M3 9h18M6.5 6.5h.01M9 6.5h.01"/>',
+  api: '<rect x="4" y="3.5" width="16" height="7" rx="2"/><rect x="4" y="13.5" width="16" height="7" rx="2"/><path d="M8 7h.01M8 17h.01M12 7h4M12 17h4"/>',
+  db: '<ellipse cx="12" cy="5.5" rx="7.5" ry="2.8"/><path d="M4.5 5.5v13c0 1.5 3.4 2.8 7.5 2.8s7.5-1.3 7.5-2.8v-13M4.5 12c0 1.5 3.4 2.8 7.5 2.8s7.5-1.3 7.5-2.8"/>',
+  pay: '<rect x="2.5" y="5" width="19" height="14" rx="2.5"/><path d="M2.5 10h19M6 15h4"/>',
+  email: '<rect x="3" y="5" width="18" height="14" rx="2.5"/><path d="M3.5 6.5l8.5 6.5 8.5-6.5"/>',
+  images: '<rect x="3" y="4" width="18" height="16" rx="2.5"/><circle cx="9" cy="9.5" r="1.8"/><path d="M4 18l5.5-5.5 4 4 2.5-2.5 4.5 4.5"/>',
+  queue: '<rect x="2.5" y="8" width="5" height="8" rx="1.5"/><rect x="9.5" y="8" width="5" height="8" rx="1.5"/><rect x="16.5" y="8" width="5" height="8" rx="1.5"/>'
+};
+const PARTS = {
+  phone: { label: 'Phone', full: "Customer's phone", c: 'var(--l2)' },
+  web: { label: 'Web app', full: 'Web app', c: 'var(--l5)' },
+  api: { label: 'API server', full: 'API server', c: 'var(--l5)' },
+  db: { label: 'Database', full: 'Database', c: 'var(--l3)' },
+  images: { label: 'Image storage', full: 'Image storage', c: 'var(--l3)' },
+  pay: { label: 'Payments', full: 'Payment provider', c: 'var(--l4)' },
+  email: { label: 'Email', full: 'Email service', c: 'var(--l4)' },
+  queue: { label: 'Queue', full: 'Email queue', c: 'var(--ink-2)' }
+};
+const POS = {
+  wide: { ar: '16 / 9', pos: { phone: [11, 26], images: [16, 78], web: [36, 52], api: [58, 28], pay: [86, 12], db: [85, 52], email: [84, 88], queue: [60, 80] } },
+  narrow: { ar: '10 / 13', pos: { phone: [26, 8], images: [72, 8], web: [26, 31], pay: [76, 31], api: [50, 55], db: [24, 86], email: [76, 87], queue: [66, 71] } }
+};
+const key = (a, b) => [a, b].sort().join('|');
+const ALL_WIRES = [['phone', 'web'], ['phone', 'images'], ['web', 'api'], ['api', 'pay'], ['api', 'db'], ['api', 'email']];
+
+class Board {
+  constructor(el, o = {}) {
+    this.el = el; this.o = o;
+    this.ids = o.parts || ['phone', 'images', 'web', 'api', 'pay', 'db', 'email'];
+    this.wires = (o.wires || []).map(([a, b]) => ({ a, b, off: false }));
+    this.state = {}; this.hidden = new Set(o.hidden || []); this.fresh = new Set(); this.packets = new Set();
+    this.paths = new Map(); this.mode = null;
+    el.classList.add('board');
+    const tag = o.interactive ? 'button' : 'div';
+    el.innerHTML = '<svg class="wires" aria-hidden="true"></svg>' + this.ids.map(id => {
+      const p = PARTS[id];
+      const attrs = o.interactive ? `type="button" aria-label="${esc(p.full)}"` : 'aria-hidden="true"';
+      return `<${tag} class="node${this.hidden.has(id) ? ' ghost' : ''}" data-id="${id}" data-st="${o.dots === false ? 'none' : 'ok'}" style="--c:${p.c}" ${attrs}><span class="gl"><svg viewBox="0 0 24 24" aria-hidden="true">${GLYPH[id]}</svg></span><span class="nl">${p.label}</span><i class="dot"></i></${tag}>`;
+    }).join('');
+    this.svg = el.querySelector('svg');
+    this.nodes = {};
+    el.querySelectorAll('.node').forEach(n => { this.nodes[n.dataset.id] = n; });
+    if (o.interactive) {
+      if (o.onPick) el.addEventListener('click', e => { const n = e.target.closest('.node'); if (n) o.onPick(n.dataset.id, n); });
+      if (o.tabindex === -1) this.ids.forEach(id => this.nodes[id].tabIndex = -1);
+    }
+    if (o.dots === false) this.ids.forEach(id => { this.state[id] = 'none'; });
+    new ResizeObserver(() => requestAnimationFrame(() => this.layout())).observe(el);
+    this.layout();
+  }
+  layout() {
+    const w = this.el.clientWidth; if (!w) return;
+    const mode = w < (this.o.narrowAt || 520) ? 'narrow' : 'wide';
+    if (mode !== this.mode) {
+      this.mode = mode; this.el.dataset.mode = mode; this.el.style.aspectRatio = (this.o.ar && this.o.ar[mode]) || POS[mode].ar;
+      this.ids.forEach(id => { const [x, y] = POS[mode].pos[id]; this.nodes[id].style.left = x + '%'; this.nodes[id].style.top = y + '%'; });
+    }
+    this.draw();
+  }
+  pt(id) { const [x, y] = POS[this.mode].pos[id]; return [x / 100 * this.el.clientWidth, y / 100 * this.el.clientHeight]; }
+  d(a, b) {
+    const [x1, y1] = this.pt(a), [x2, y2] = this.pt(b); const dx = x2 - x1, dy = y2 - y1;
+    if (Math.abs(dx) >= Math.abs(dy)) return `M${x1} ${y1}C${x1 + dx * .55} ${y1} ${x2 - dx * .55} ${y2} ${x2} ${y2}`;
+    return `M${x1} ${y1}C${x1} ${y1 + dy * .55} ${x2} ${y2 - dy * .55} ${x2} ${y2}`;
+  }
+  wire(a, b) { const k = key(a, b); return this.wires.find(w => key(w.a, w.b) === k); }
+  has(a, b) { const w = this.wire(a, b); return !!(w && !w.off); }
+  add(a, b) { if (this.wire(a, b)) return false; this.wires.push({ a, b, off: false }); this.fresh.add(key(a, b)); this.draw(); return true; }
+  remove(a, b) { const k = key(a, b); this.wires = this.wires.filter(w => key(w.a, w.b) !== k); this.draw(); }
+  clear() { this.wires = []; this.draw(); }
+  setOff(a, b, off) { const w = this.wire(a, b); if (w) w.off = off; }
+  draw() {
+    if (!this.mode) return;
+    const W = this.el.clientWidth, H = this.el.clientHeight;
+    this.svg.setAttribute('viewBox', `0 0 ${W} ${H}`);
+    let s = '';
+    for (const w of this.wires) {
+      if (w.off || this.hidden.has(w.a) || this.hidden.has(w.b)) continue;
+      const k = key(w.a, w.b), isNew = this.fresh.has(k);
+      const dead = this.state[w.a] === 'down' || this.state[w.b] === 'down';
+      s += `<path data-k="${k}" class="wire${dead ? ' dead' : ''}${isNew ? ' new' : ''}"${isNew ? ' pathLength="1"' : ''} d="${this.d(w.a, w.b)}"/>`;
+    }
+    this.fresh.clear();
+    this.svg.innerHTML = s + '<g class="pk"></g>';
+    this.paths = new Map();
+    this.svg.querySelectorAll('path').forEach(p => this.paths.set(p.dataset.k, p));
+    this.pk = this.svg.querySelector('.pk');
+    this.packets.forEach(p => this.pk.appendChild(p.g));
+  }
+  setState(id, st) {
+    this.state[id] = st; const n = this.nodes[id]; n.dataset.st = st;
+    if (this.o.interactive) n.setAttribute('aria-label', `${PARTS[id].full}${st === 'down' ? ', down' : st === 'slow' ? ', slow' : ''}`);
+    this.draw();
+  }
+  show(id, on) { if (on) this.hidden.delete(id); else this.hidden.add(id); this.nodes[id].classList.toggle('ghost', !on); this.draw(); }
+  label(id, text) { this.nodes[id].querySelector('.nl').textContent = text; }
+  fx(id, cls) { const n = this.nodes[id]; if (!n || reduce) return; n.classList.remove(cls); void n.offsetWidth; n.classList.add(cls); setTimeout(() => n.classList.remove(cls), 500); }
+  send(a, b, color = 'var(--l2)', o = {}) {
+    return new Promise(res => {
+      const k = key(a, b), w = this.wire(a, b);
+      if (!w || reduce) { if (!o.bounce) this.fx(b, 'ping'); res(); return; }
+      const fwd = w.a === a;
+      const g = document.createElementNS(NS, 'g');
+      g.innerHTML = `<circle r="12" style="fill:${color}" opacity=".2"/><circle r="6" style="fill:${color}"/>`;
+      const pkt = { g }; this.packets.add(pkt); if (this.pk) this.pk.appendChild(g);
+      const dur = o.dur || 620, t0 = performance.now();
+      const step = now => {
+        const t = Math.min(1, (now - t0) / dur);
+        let e = t < .5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2;
+        if (o.bounce) e = e < .5 ? e * 1.3 : (1 - e) * 1.3;
+        const p = this.paths.get(k);
+        if (p) { const L = p.getTotalLength(); const q = p.getPointAtLength((fwd ? e : 1 - e) * L); g.setAttribute('transform', `translate(${q.x} ${q.y})`); }
+        if (t < 1) requestAnimationFrame(step);
+        else { g.remove(); this.packets.delete(pkt); if (!o.bounce) this.fx(b, 'ping'); res(); }
+      };
+      requestAnimationFrame(step);
+    });
+  }
+}
+
+/* a small log with a simulated clock */
+let clockS = 12 * 3600 + 4 * 60;
+const clock = (adv = 1) => { clockS += adv; const h = Math.floor(clockS / 3600), m = Math.floor(clockS / 60) % 60, s = clockS % 60; return [h, m, s].map(n => String(n).padStart(2, '0')).join(':'); };
+function makeLog(el) {
+  return {
+    clear() { el.innerHTML = ''; },
+    add(html, cls = '') {
+      const e = el.querySelector('.empty'); if (e) e.remove();
+      const d = document.createElement('div'); d.className = 'ln ' + cls;
+      d.innerHTML = `<span class="ts">${clock(1 + (Math.random() * 2 | 0))}</span><span>${html}</span>`;
+      el.appendChild(d); while (el.children.length > 40) el.firstChild.remove(); el.scrollTop = el.scrollHeight;
+    }
+  };
+}
+
+/* ---------------- hero ---------------- */
+(function hero() {
+  const B = new Board($('#heroBoard'), { wires: ALL_WIRES, narrowAt: 440 });
+  const cap = $('#heroCap'), clk = $('#heroClock');
+  const say = t => { cap.textContent = t; clk.textContent = clock(1); };
+  if (reduce) { say('order #1042 saved'); return; }
+  let n = 0;
+  (async function loop() {
+    for (;;) {
+      n++;
+      say('loading cake photos'); await B.send('images', 'phone', 'var(--l3)');
+      say('customer taps Order'); await B.send('phone', 'web');
+      say('web app → API: new order'); await B.send('web', 'api');
+      say('charging card: $18.50'); await B.send('api', 'pay', 'var(--l4)'); await B.send('pay', 'api', 'var(--l4)');
+      say('order #' + (1040 + n) + ' saved'); await B.send('api', 'db', 'var(--l3)'); await B.send('db', 'api', 'var(--l3)');
+      if (n % 2 === 0) {
+        B.setState('email', 'down');
+        say('email: no answer'); await B.send('api', 'email', 'var(--l4)', { bounce: true, dur: 900 });
+        say('retrying in 4s…'); await wait(1400);
+        B.setState('email', 'ok');
+        say('retry worked: email sent'); await B.send('api', 'email', 'var(--l4)');
+      } else { say('confirmation email sent'); await B.send('api', 'email', 'var(--l4)'); }
+      say('customer sees: Thanks!'); await B.send('api', 'web'); await B.send('web', 'phone');
+      await wait(2200);
+    }
+  })();
+})();
+
+/* ---------------- Part 1: wire it up ---------------- */
+const GOOD = {
+  'phone|web': 'The customer uses the web app: its pages, buttons and order form.',
+  'api|web': 'The web app sends each order to the API server, where your rules live.',
+  'api|db': 'The API server saves orders in the database and reads them back.',
+  'api|pay': 'The API server asks the payment provider to charge the card.',
+  'api|email': 'The API server asks the email service to send a confirmation.',
+  'images|phone': "The phone downloads cake photos straight from image storage.",
+  'images|web': 'The web app shows cake photos kept in image storage.'
+};
+function whyNot(a, b) {
+  const s = new Set([a, b]);
+  if (s.has('db') && (s.has('phone') || s.has('web'))) return "Risky. If the customer's side could reach the database directly, anyone could read or change every order. Orders go through the API server, which checks them first.";
+  if (s.has('db')) return 'Only the API server should talk to the database. One door in means one place that checks every request.';
+  if (s.has('phone') && s.has('api')) return "The customer never talks to the API server by hand. The web app does that for them. Connect the web app to the API server.";
+  if (s.has('pay') && (s.has('phone') || s.has('web'))) return 'The card form can come from the payment provider, but only your API server should confirm the money arrived before the kitchen starts baking. Connect Payments to the API server.';
+  if (s.has('email') && (s.has('phone') || s.has('web'))) return 'Emails should come from the API server after the order is saved, so every email matches a real order.';
+  if (s.has('images') && s.has('api')) return 'Useful when Rosie uploads new photos. But right now customers need to see the photos: connect image storage to the phone or the web app.';
+  return "These two don't need to talk. Every extra wire is one more thing that can break. Ask: which part needs a message from which?";
+}
+const note1 = $('#note1');
+const log1 = makeLog($('#log1'));
+let sel1 = null, running1 = false;
+const b1 = new Board($('#board1'), { interactive: true, dots: false, onPick: pick1, ar: { wide: '4 / 3' } });
+function checkWires() {
+  if (b1.has('phone', 'web') && b1.has('web', 'api') && b1.has('api', 'db')) CS.tick('p1', 'path');
+  if (b1.has('api', 'pay') && b1.has('api', 'email') && (b1.has('phone', 'images') || b1.has('web', 'images'))) CS.tick('p1', 'extras');
+}
+function pick1(id) {
+  if (running1) return;
+  if (!sel1) { sel1 = id; b1.nodes[id].classList.add('sel'); b1.nodes[id].setAttribute('aria-pressed', 'true'); CS.say(note1, `<strong>${esc(PARTS[id].full)} picked.</strong> Now click the part it should send messages to.`); return; }
+  const a = sel1; sel1 = null;
+  b1.nodes[a].classList.remove('sel'); b1.nodes[a].removeAttribute('aria-pressed');
+  if (a === id) { CS.say(note1, 'Unpicked. Click any part to start a wire.'); return; }
+  const k = key(a, id);
+  if (b1.wire(a, id)) { b1.remove(a, id); CS.say(note1, `<strong>Wire removed</strong> between ${esc(PARTS[a].full)} and ${esc(PARTS[id].full)}.`, 'info'); return; }
+  if (GOOD[k]) {
+    b1.add(a, id);
+    CS.say(note1, `<strong>Connected.</strong> ${GOOD[k]}`, 'good');
+    checkWires();
+  } else {
+    b1.fx(a, 'shake'); b1.fx(id, 'shake');
+    CS.say(note1, `<strong>Not that wire.</strong> ${whyNot(a, id)}`, 'bad');
+  }
+}
+$('#clear1').addEventListener('click', () => { if (running1) return; b1.clear(); if (sel1) { b1.nodes[sel1].classList.remove('sel'); sel1 = null; } CS.say(note1, 'All wires removed. Click two parts to connect them.'); });
+async function order1() {
+  if (running1) return;
+  running1 = true; $('#order1').disabled = true; $('#clear1').disabled = true;
+  if (sel1) { b1.nodes[sel1].classList.remove('sel'); sel1 = null; }
+  log1.clear();
+  const B = b1, has = (a, b) => B.has(a, b);
+  const stop = (id, msg) => { B.fx(id, 'shake'); log1.add(msg, 'r'); CS.say(note1, `<strong>The order got stuck.</strong> ${msg}`, 'bad'); };
+  try {
+    log1.add("A customer opens Rosie's Bakery on their phone.");
+    let photos = false;
+    if (has('phone', 'images')) { await B.send('images', 'phone', 'var(--l3)'); photos = true; }
+    else if (has('web', 'images') && has('phone', 'web')) { await B.send('images', 'web', 'var(--l3)'); await B.send('web', 'phone', 'var(--l3)'); photos = true; }
+    log1.add(photos ? 'Cake photos loaded from image storage.' : 'No photos. The menu shows empty grey boxes.', photos ? '' : 'y');
+    if (!has('phone', 'web')) return stop('phone', 'The phone has nothing to open. Connect it to the web app.');
+    await B.send('phone', 'web'); log1.add('Customer taps <b>Order: lemon drizzle cake</b>.');
+    if (!has('web', 'api')) return stop('web', 'The web app has nowhere to send the order, so the customer stares at a spinner. Connect the web app to the API server.');
+    await B.send('web', 'api'); log1.add('Web app → API server: new order.');
+    if (!has('api', 'pay')) return stop('api', "The API server can't charge the card: no payment provider is connected, so the order is turned away.");
+    await B.send('api', 'pay', 'var(--l4)'); log1.add('API server → Payments: charge $18.50.');
+    await B.send('pay', 'api', 'var(--l4)'); log1.add('Payments: approved.', 'g');
+    if (!has('api', 'db')) return stop('api', "The card was charged, but there's no database to save the order in. Rosie never hears about it, and the customer paid for nothing.");
+    await B.send('api', 'db', 'var(--l3)'); log1.add('API server → Database: save order #1042.');
+    await B.send('db', 'api', 'var(--l3)'); log1.add('Database: order #1042 saved.', 'g');
+    let mailed = false;
+    if (has('api', 'email')) { await B.send('api', 'email', 'var(--l4)'); log1.add('Email service: confirmation sent.', 'g'); mailed = true; }
+    else log1.add("No email service. The customer gets no confirmation and isn't sure it worked.", 'y');
+    await B.send('api', 'web'); await B.send('web', 'phone'); log1.add('Customer sees <b>Thanks! Order #1042</b>.', 'g');
+    if (photos && mailed) {
+      CS.tick('p1', 'run');
+      CS.say(note1, '<strong>The order made it.</strong> Seven parts, six wires, eleven messages, all in about a second. Read the log: every line is one part asking another for something.', 'good');
+    } else {
+      CS.say(note1, `<strong>The order went through, but something's missing:</strong> ${[!photos && 'no cake photos', !mailed && 'no confirmation email'].filter(Boolean).join(' and ')}. Add the missing wire${!photos && !mailed ? 's' : ''} and try again.`);
+    }
+  } finally { running1 = false; $('#order1').disabled = false; $('#clear1').disabled = false; }
+}
+$('#order1').addEventListener('click', order1);
+
+/* ---------------- Part 2: break things ---------------- */
+const FEATS = [
+  { id: 'open', t: 'Open the bakery website', need: ['web'] },
+  { id: 'photos', t: 'See the cake photos', need: ['web', 'images'] },
+  { id: 'menu', t: 'Browse the menu and prices', need: ['web', 'api', 'db'] },
+  { id: 'order', t: 'Place and pay for an order', need: ['web', 'api', 'pay', 'db'] },
+  { id: 'confirm', t: 'Get a confirmation email', need: ['web', 'api', 'pay', 'db', 'email'] },
+  { id: 'kitchen', t: 'Rosie sees new orders in the kitchen', need: ['api', 'db'] }
+];
+const note2 = $('#note2'), log2 = makeLog($('#log2'));
+let queueOn = false, qCount = 0, running2 = false, retryT = null, retryDelay = 2;
+const b2 = new Board($('#board2'), {
+  interactive: true, onPick: pick2, ar: { wide: '4 / 3' },
+  parts: ['phone', 'images', 'web', 'api', 'pay', 'db', 'email', 'queue'], hidden: ['queue'],
+  wires: [...ALL_WIRES, ['api', 'queue'], ['queue', 'email']]
+});
+b2.setOff('api', 'queue', true); b2.setOff('queue', 'email', true); b2.draw();
+const down = id => b2.state[id] === 'down';
+function featState(f) {
+  const miss = f.need.filter(down);
+  const names = miss.map(m => PARTS[m].full.toLowerCase());
+  if (miss.length) return ['bad', `Broken: needs the ${names.join(' and the ')}`];
+  if (down('email') && f.id === 'order' && !queueOn) return ['bad', 'Broken: waits for email, then errors'];
+  if (f.id === 'confirm' && down('email') && !queueOn) return ['bad', 'Broken: needs the email service'];
+  if (f.id === 'confirm' && qCount > 0) return ['wait', `Delayed: ${qCount} waiting in the queue`];
+  if (f.id === 'confirm' && down('email')) return ['wait', 'Delayed: will wait in the queue'];
+  return ['', 'Works'];
+}
+function renderFeats() {
+  let broken = 0;
+  $('#feats').innerHTML = FEATS.map(f => { const [c, s] = featState(f); if (c === 'bad') broken++; return `<li class="${c}"><div><b>${f.t}</b><span>${s}</span></div></li>`; }).join('');
+  const r = $('#radius');
+  r.textContent = broken ? `Blast radius: ${broken} of ${FEATS.length} broken` : 'Blast radius: nothing broken';
+  r.classList.toggle('bad', broken > 0);
+}
+const DOWN_MSG = {
+  db: '<strong>The database is down.</strong> The menu, orders and Rosie\'s kitchen screen all stop, because they all need to look something up or remember it. The photos still load: they live somewhere else. A part that takes this much with it is a <b>single point of failure</b>.',
+  api: '<strong>The API server is down.</strong> Only the website shell and its photos survive. Every feature that needs a rule checked or data fetched goes through this one part.',
+  web: "<strong>The web app is down.</strong> Customers can't even open the site. Every other part is healthy, and none of it matters.",
+  pay: "<strong>Payments are down.</strong> People can browse, but nobody can order. That's another company's outage, and it's still your problem.",
+  email: '<strong>Email is down.</strong> On paper, only confirmation emails should suffer. Place an order and see what really happens.',
+  images: '<strong>Image storage is down.</strong> The menu shows empty boxes where the cakes should be. Everything else works: a small blast radius.'
+};
+function pick2(id) {
+  if (running2) { CS.say(note2, 'Wait for the order to finish first.', 'info'); return; }
+  if (id === 'phone') { CS.say(note2, "That's the customer's phone, not yours to break. Try one of the parts you run or rent.", 'info'); b2.fx(id, 'shake'); return; }
+  if (id === 'queue') { CS.say(note2, 'Queues can fail too, but they are simple and sturdy. Try taking the email service down instead.', 'info'); return; }
+  const wasDown = down(id);
+  b2.setState(id, wasDown ? 'ok' : 'down');
+  if (!wasDown) {
+    b2.fx(id, 'shake');
+    CS.say(note2, DOWN_MSG[id], id === 'images' ? 'info' : 'bad');
+    if (id === 'db') CS.tick('p2', 'db');
+  } else {
+    CS.say(note2, `<strong>${esc(PARTS[id].full)} is back up.</strong>${id === 'db' && !CS.ticked('p2', 'email') ? ' Now take the <b>Email</b> service down and place an order.' : ''}`, 'good');
+    if (id === 'email' && qCount) drain();
+  }
+  renderFeats();
+}
+function setQueueLabel() { b2.label('queue', qCount ? `Queue · ${qCount}` : 'Queue'); }
+async function drain() {
+  if (!qCount || down('email')) return;
+  clearTimeout(retryT); retryT = null;
+  log2.add(`Email is back. The queue sends ${qCount} waiting email${qCount > 1 ? 's' : ''}.`, 'g');
+  while (qCount && !down('email')) { await b2.send('queue', 'email', 'var(--l4)'); qCount--; setQueueLabel(); renderFeats(); }
+  if (!qCount) { retryDelay = 2; CS.say(note2, '<strong>Caught up.</strong> Every confirmation email arrived, just late. No order was lost and no customer saw an error.', 'good'); }
+}
+function scheduleRetry() {
+  clearTimeout(retryT);
+  if (!queueOn || !qCount || !down('email')) return;
+  retryT = setTimeout(async () => {
+    retryT = null;
+    if (!queueOn || !qCount) return;
+    if (!down('email')) { drain(); return; }
+    if (!running2) await b2.send('queue', 'email', 'var(--l4)', { bounce: true });
+    retryDelay = Math.min(retryDelay * 2, 16);
+    log2.add(`Queue: email still down. Next try in ${retryDelay}s.`, 'y');
+    scheduleRetry();
+  }, reduce ? 3000 : 2600);
+}
+$('#queueBtn').addEventListener('click', () => {
+  if (running2) return;
+  queueOn = !queueOn;
+  const q = $('#queueBtn'); q.setAttribute('aria-pressed', String(queueOn)); q.classList.toggle('on', queueOn);
+  q.textContent = queueOn ? 'Remove the queue' : 'Add a queue for emails';
+  b2.setOff('api', 'email', queueOn); b2.setOff('api', 'queue', !queueOn); b2.setOff('queue', 'email', !queueOn);
+  b2.show('queue', queueOn);
+  if (!queueOn) { qCount = 0; setQueueLabel(); clearTimeout(retryT); }
+  CS.say(note2, queueOn
+    ? '<strong>Queue added.</strong> Now the API server drops each email in the queue and answers the customer straight away. The queue delivers emails when it can.' + (down('email') ? ' Place an order while email is still down.' : ' Take email down and place an order.')
+    : 'Queue removed. The API server talks to the email service directly again, and waits for it.', 'info');
+  renderFeats();
+});
+async function order2() {
+  if (running2) return;
+  running2 = true; $('#order2').disabled = true; $('#queueBtn').disabled = true;
+  const B = b2;
+  const fail = async (from, msg) => { B.fx(from, 'shake'); log2.add(msg, 'r'); };
+  try {
+    log2.add('New order: 1 lemon drizzle cake.');
+    if (down('web')) { await fail('phone', "The site won't load. The customer sees a browser error page and goes elsewhere."); CS.say(note2, "<strong>No website, no order.</strong> The customer couldn't even start.", 'bad'); return; }
+    if (!down('images')) await B.send('images', 'phone', 'var(--l3)'); else log2.add('Photos missing: empty boxes on the menu.', 'y');
+    await B.send('phone', 'web');
+    if (down('api')) { await fail('web', 'The web app can\'t reach the API server. The customer sees "Something went wrong".'); CS.say(note2, '<strong>Order failed at the API server.</strong> Nothing past it was even asked.', 'bad'); return; }
+    await B.send('web', 'api');
+    if (down('pay')) { await B.send('api', 'pay', 'var(--l4)', { bounce: true }); await fail('api', 'The payment provider isn\'t answering, so the order is turned away.'); await B.send('api', 'web', 'var(--bad)'); await B.send('web', 'phone', 'var(--bad)'); CS.say(note2, '<strong>No payments, no orders.</strong> Your code was fine. A company you rent from had an outage.', 'bad'); return; }
+    await B.send('api', 'pay', 'var(--l4)'); await B.send('pay', 'api', 'var(--l4)'); log2.add('Payments: approved.', 'g');
+    if (down('db')) { await B.send('api', 'db', 'var(--l3)', { bounce: true }); await fail('api', 'The card was charged, but the database is down, so the order was never saved.'); await B.send('api', 'web', 'var(--bad)'); await B.send('web', 'phone', 'var(--bad)'); CS.say(note2, '<strong>The customer paid for nothing.</strong> The order vanished between two parts. This is why the order of steps, and a database you can rely on, matter so much.', 'bad'); return; }
+    await B.send('api', 'db', 'var(--l3)'); await B.send('db', 'api', 'var(--l3)'); log2.add('Database: order saved.', 'g');
+    if (queueOn) {
+      await B.send('api', 'queue', 'var(--ink-2)'); qCount++; setQueueLabel(); log2.add('Confirmation email dropped in the queue.');
+      await B.send('api', 'web'); await B.send('web', 'phone'); log2.add('Customer sees <b>Thanks!</b> in under a second.', 'g');
+      if (down('email')) {
+        await B.send('queue', 'email', 'var(--l4)', { bounce: true }); log2.add('Queue: email is down. Will retry with backoff.', 'y');
+        retryDelay = 2; scheduleRetry();
+        CS.tick('p2', 'queue');
+        CS.say(note2, '<strong>The order went through, even with email down.</strong> The API server didn\'t wait: it left the email in the queue and answered right away. The queue keeps retrying, waiting longer each time. Bring <b>Email</b> back and watch it catch up.', 'good');
+      } else { await B.send('queue', 'email', 'var(--l4)'); qCount--; setQueueLabel(); log2.add('Email: confirmation sent.', 'g'); CS.say(note2, '<strong>Order complete.</strong> The email took a short detour through the queue. Now take <b>Email</b> down and try again.', 'good'); }
+    } else if (down('email')) {
+      log2.add('Waiting for the email service…', 'y');
+      await B.send('api', 'email', 'var(--l4)', { bounce: true, dur: 900 }); log2.add('…10 seconds…', 'y');
+      await B.send('api', 'email', 'var(--l4)', { bounce: true, dur: 900 }); log2.add('…20 seconds…', 'y');
+      await B.send('api', 'email', 'var(--l4)', { bounce: true, dur: 900 }); log2.add('Gave up after 30 seconds.', 'r');
+      await B.send('api', 'web', 'var(--bad)'); await B.send('web', 'phone', 'var(--bad)');
+      await fail('phone', 'Customer sees "Something went wrong", but their card was charged and the order was saved.');
+      CS.tick('p2', 'email');
+      CS.say(note2, '<strong>Email broke checkout.</strong> The API server waited 30 seconds for the email service before answering, so the customer saw an error even though they paid. Many will tap Order again and pay twice. Add a queue for emails and try again.', 'bad');
+    } else {
+      await B.send('api', 'email', 'var(--l4)'); log2.add('Email: confirmation sent.', 'g');
+      await B.send('api', 'web'); await B.send('web', 'phone'); log2.add('Customer sees <b>Thanks!</b>', 'g');
+      CS.say(note2, '<strong>Order complete.</strong> Everything that was needed was up.', 'good');
+    }
+  } finally { running2 = false; $('#order2').disabled = false; $('#queueBtn').disabled = false; renderFeats(); }
+}
+$('#order2').addEventListener('click', order2);
+renderFeats();
+
+/* ---------------- Part 2b: lunch rush ---------------- */
+const CAP = { web: 400, api: 200, db: 60, pay: 150, email: 120 };
+const LOADS = [['web', 'Web app'], ['api', 'API server'], ['db', 'Database'], ['pay', 'Payments'], ['email', 'Email']];
+$('#loads').innerHTML = LOADS.map(([k, n]) => `<div class="load"><b>${n}</b><div class="bar"><i id="bar-${k}"></i></div><span class="pct" id="pct-${k}">0%</span></div>`).join('');
+const sim = { rate: 20, policy: 'none', retry: 0, hist: [], over: 0, calm: 0, prev: 0 };
+const note3 = $('#note3');
+function drawSpark() {
+  const h = sim.hist, W = 300, H = 110;
+  const ymax = Math.min(8, Math.max(2, ...h, 0));
+  const y = v => H - 6 - Math.min(v, ymax) / ymax * (H - 12);
+  const pts = h.map((v, i) => `${(i / 39) * W},${y(v)}`).join(' ');
+  const capY = y(1);
+  $('#spark').innerHTML = `<rect x="0" y="0" width="${W}" height="${capY}" style="fill:var(--bad)" opacity=".07"/>
+    <line x1="0" x2="${W}" y1="${capY}" y2="${capY}" style="stroke:var(--bad)" stroke-width="1.5" stroke-dasharray="5 5" vector-effect="non-scaling-stroke"/>
+    ${h.length > 1 ? `<polyline points="${pts}" fill="none" style="stroke:var(--l2)" stroke-width="2.5" stroke-linejoin="round" vector-effect="non-scaling-stroke"/>` : ''}`;
+}
+function simTick() {
+  const arr = sim.rate, demand = arr + sim.retry;
+  const eff = demand > CAP.db * 2 ? .7 : 1;
+  const served = Math.min(demand, CAP.db * eff);
+  const failed = Math.max(0, demand - served);
+  sim.retry = sim.policy === 'instant' ? Math.min(failed * 2, 3000) : sim.policy === 'backoff' ? Math.min(failed, CAP.db) * .35 : 0;
+  const load = { web: demand / CAP.web, api: demand / CAP.api, db: demand / CAP.db, pay: served / CAP.pay, email: served / CAP.email };
+  LOADS.forEach(([k]) => {
+    const v = load[k], bar = $('#bar-' + k), pct = $('#pct-' + k);
+    bar.style.width = Math.min(100, v * 100) + '%';
+    bar.className = v > 1 ? 'hot' : v > .75 ? 'warm' : '';
+    pct.textContent = v > 9.99 ? '999%+' : Math.round(v * 100) + '%';
+    pct.classList.toggle('hot', v > 1);
+  });
+  const rho = demand / CAP.db;
+  $('#stDone').textContent = Math.round(served);
+  $('#stFail').textContent = failed > 999 ? '999+' : Math.round(failed);
+  $('#stWait').textContent = rho <= 1 ? (0.3 / (1 - .9 * rho)).toFixed(1) + ' s' : sim.policy === 'none' ? 'errors' : sim.policy === 'instant' ? 'timeout' : '6–10 s';
+  sim.hist.push(rho); if (sim.hist.length > 40) sim.hist.shift();
+  drawSpark();
+  // tasks
+  sim.over = demand > CAP.db ? sim.over + 1 : 0;
+  if (sim.over >= 2 && !CS.ticked('p2', 'rush')) {
+    CS.tick('p2', 'rush');
+    CS.say(note3, '<strong>The database is the bottleneck.</strong> It handles about 60 orders a minute, so that\'s the limit for the whole app. The web app could take 400, but it doesn\'t matter: every order has to squeeze through the slowest part. Now switch to <b>Retry instantly</b>.', 'bad');
+  }
+  if (sim.policy === 'instant' && demand > CAP.db * 3 && !CS.ticked('p2', 'storm')) {
+    CS.tick('p2', 'storm');
+    CS.say(note3, '<strong>That\'s a retry storm.</strong> Every failed request came straight back, twice. The database got even more work, failed even more, and now fewer orders get through than before. The retries feed the problem: a <b>feedback loop</b>. Try <b>Retry with backoff</b>.', 'bad');
+  }
+  if (sim.policy === 'backoff' && CS.ticked('p2', 'storm') && arr > CAP.db && Math.abs(demand - sim.prev) < 6) sim.calm++; else sim.calm = 0;
+  if (sim.calm >= 2 && !CS.ticked('p2', 'backoff')) {
+    CS.tick('p2', 'backoff');
+    CS.say(note3, '<strong>Calmer.</strong> With backoff, failed requests wait before trying again and give up after a few tries, so the load stops climbing. The database stays busy but steady. To serve more than 60 a minute, fix the bottleneck itself: a bigger database, fewer database calls per order, or keeping the menu in a fast cache.', 'good');
+  }
+  sim.prev = demand;
+}
+$('#rate').addEventListener('input', e => { sim.rate = +e.target.value; $('#rateVal').textContent = sim.rate; });
+$$('[data-pol]').forEach(b => b.addEventListener('click', () => {
+  sim.policy = b.dataset.pol;
+  $$('[data-pol]').forEach(x => x.setAttribute('aria-pressed', String(x === b)));
+  if (sim.policy === 'instant' && sim.rate <= CAP.db) CS.say(note3, 'Retries are on. Turn the rush up past 60 orders a minute to see what they do under pressure.', 'info');
+  if (sim.policy === 'backoff' && !CS.ticked('p2', 'storm')) CS.say(note3, 'Backoff is on. Try <b>Retry instantly</b> first during a big rush, so you can compare.', 'info');
+}));
+$('#simReset').addEventListener('click', () => {
+  sim.rate = 20; sim.retry = 0; sim.hist = []; $('#rate').value = 20; $('#rateVal').textContent = 20;
+  simTick(); CS.say(note3, 'Back to a quiet morning: 20 orders a minute.', 'info');
+});
+simTick();
+let simTimer = null;
+new IntersectionObserver(es => es.forEach(e => {
+  if (e.isIntersecting && !simTimer) simTimer = setInterval(simTick, 700);
+  if (!e.isIntersecting && simTimer) { clearInterval(simTimer); simTimer = null; }
+})).observe($('#loads'));
+
+/* ---------------- Part 3: incident console ---------------- */
+const b3 = new Board($('#board3'), { parts: ['phone', 'images', 'web', 'api', 'pay', 'db', 'email', 'queue'], hidden: ['queue'], wires: [...ALL_WIRES, ['api', 'queue'], ['queue', 'email']], narrowAt: 9999, ar: { narrow: '10 / 11' } });
+b3.setOff('api', 'queue', true); b3.setOff('queue', 'email', true);
+['images', 'web', 'api', 'pay', 'db', 'email'].forEach(id => b3.setState(id, 'unknown'));
+b3.setState('phone', 'none');
+const inc = { fixed: false, queue: false, scaled: 0, checked: false, emailSeen: false, orderId: 1060 };
+const REPORTS = [
+  ['stuck', 'Checkout hangs on "Processing…" for ages'],
+  ['error', 'Customers see "Something went wrong" after paying'],
+  ['mail', 'Nobody has had a confirmation email since yesterday'],
+  ['twice', 'Some customers paid twice']
+];
+function renderReports() {
+  $('#reports').innerHTML = REPORTS.map(([k, t]) => {
+    let cls = '', s = 'Still happening';
+    if (inc.fixed && k !== 'twice') { cls = 'fixed'; s = 'Fixed'; }
+    if (!inc.fixed && inc.queue && k !== 'mail' && k !== 'twice') { cls = 'fixed'; s = 'Better: orders no longer wait for email'; }
+    if (k === 'twice' && inc.fixed) { cls = 'human'; s = 'Needs a person: Rosie should refund them'; }
+    return `<li class="${cls}"><div><b>${t}</b><span>${s}</span></div></li>`;
+  }).join('');
+}
+renderReports();
+const ALIAS = { web: 'web', webapp: 'web', 'web-app': 'web', frontend: 'web', site: 'web', api: 'api', 'api-server': 'api', apiserver: 'api', server: 'api', backend: 'api', db: 'db', database: 'db', postgres: 'db', pay: 'pay', payment: 'pay', payments: 'pay', stripe: 'pay', email: 'email', mail: 'email', emails: 'email', 'email-service': 'email', images: 'images', image: 'images', 'image-storage': 'images', storage: 'images', photos: 'images', queue: 'queue' };
+const NICE = { web: 'web app', api: 'api server', db: 'database', pay: 'payments', email: 'email', images: 'image storage', queue: 'queue' };
+const HOSTS = { web: 'rosiesbakery.com', api: 'api.rosiesbakery.com', db: 'db.internal', pay: 'api.payments.example', email: 'api.mailer.example', images: 'images.rosiesbakery.com', queue: 'queue.internal' };
+const pad = (s, n) => s + ' '.repeat(Math.max(1, n - s.length));
+const ts = (m, s) => `<span class="dim">12:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}</span>`;
+function statusText() {
+  const rows = [
+    ['web', 'up', '110 ms'],
+    ['api', inc.fixed || inc.queue ? 'up' : 'slow', inc.fixed || inc.queue ? '140 ms' : '30.2 s'],
+    ['db', 'up', '9 ms'],
+    ['pay', 'up', '310 ms'],
+    ['email', 'up', '42 ms'],
+    ['images', 'up', '64 ms']
+  ];
+  if (inc.queue) rows.push(['queue', inc.fixed ? 'up' : 'busy', inc.fixed ? '0 waiting' : '14 waiting']);
+  return `<span class="dim">${pad('PART', 16)}${pad('STATE', 8)}RESPONSE</span>\n` + rows.map(([id, st, rt]) => `${pad(NICE[id], 16)}<span class="${st === 'up' ? 'g' : 'y'}">${pad(st, 8)}</span>${rt}`).join('\n');
+}
+function paintHealth() {
+  if (!inc.checked) return;
+  ['images', 'web', 'db', 'pay'].forEach(id => b3.setState(id, 'ok'));
+  b3.setState('api', inc.fixed || inc.queue ? 'ok' : 'slow');
+  b3.setState('email', inc.fixed ? 'ok' : inc.emailSeen ? 'down' : 'ok');
+  if (inc.queue) b3.setState('queue', inc.fixed ? 'ok' : 'slow');
+}
+function logsFor(id) {
+  if (id === 'api') return inc.fixed
+    ? `${ts(31, 2)} INFO  new order #${inc.orderId} saved\n${ts(31, 2)} INFO  confirmation ${inc.queue ? 'queued' : 'sent'}\n${ts(31, 2)} INFO  answered in 0.3s`
+    : `${ts(4, 1)} INFO  new order #1051: card charged $18.50\n${ts(4, 1)} INFO  order #1051 saved\n${ts(4, 1)} INFO  asking email service to send confirmation…\n${ts(4, 2)} <span class="y">WARN  email service said no. retrying (1/10)</span>\n${ts(4, 5)} <span class="y">WARN  email service said no. retrying (2/10)</span>\n${ts(4, 9)} <span class="y">WARN  email service said no. retrying (3/10)</span>\n<span class="dim">   …</span>\n${ts(4, 31)} <span class="r">ERROR gave up on email after 30s</span>\n${ts(4, 31)} <span class="r">ERROR order #1051: answered "500 Something went wrong" after 30.2s</span>`;
+  if (id === 'email') return inc.fixed
+    ? `${ts(31, 2)} <span class="g">ACCEPTED</span>  confirmation for order #${inc.orderId}\n${ts(31, 3)} <span class="g">DELIVERED</span> confirmation for order #${inc.orderId}`
+    : `${ts(4, 1)} <span class="r">REJECTED</span>  401 Unauthorized: API key expired on 26 Sep\n${ts(4, 2)} <span class="r">REJECTED</span>  401 Unauthorized: API key expired on 26 Sep\n${ts(4, 5)} <span class="r">REJECTED</span>  401 Unauthorized: API key expired on 26 Sep\n<span class="dim">   …</span>\n<span class="y">0 emails delivered since 26 Sep, 00:00</span>`;
+  if (id === 'db') return `${ts(4, 1)} INFO  INSERT order #1051 (4 ms)\n${ts(4, 40)} INFO  INSERT order #1052 (3 ms)\n${ts(5, 12)} INFO  SELECT menu (2 ms)`;
+  if (id === 'pay') return `${ts(4, 1)} <span class="g">APPROVED</span> $18.50 (order #1051)\n${ts(4, 40)} <span class="g">APPROVED</span> $6.00 (order #1052)\n${ts(4, 58)} <span class="g">APPROVED</span> $18.50 (order #1051, again)`;
+  if (id === 'web') return `${ts(4, 1)} GET /checkout 200 (80 ms)\n${ts(4, 1)} POST /orders → api server …waiting\n${ts(4, 31)} <span class="r">showed error page: "Something went wrong"</span>`;
+  if (id === 'images') return `${ts(4, 0)} GET /cakes/lemon-drizzle.jpg 200\n${ts(4, 0)} GET /cakes/carrot.jpg 200`;
+  if (id === 'queue') return inc.fixed ? `${ts(31, 2)} delivered 1 email\n0 waiting` : `${ts(30, 1)} email rejected (401). retry in 2s\n${ts(30, 3)} email rejected (401). retry in 4s\n14 waiting`;
+  return '';
+}
+let aiNudged = false;
+function run(a, line, io, api) {
+  const { print, tutor } = io;
+  const cmd = a[0].toLowerCase();
+  const target = a[1] ? ALIAS[a[1].toLowerCase()] : null;
+  if (cmd === 'help') { print(`Commands you can use here:\n  <span class="y">status</span>                  health of every part\n  <span class="y">logs &lt;part&gt;</span>             recent log lines, e.g. <span class="y">logs api</span>\n  <span class="y">ping &lt;part&gt;</span>             is it reachable, and how fast?\n  <span class="y">restart &lt;part&gt;</span>          turn it off and on again\n  <span class="y">scale api &lt;n&gt;</span>           run more copies of the API server\n  <span class="y">renew-key &lt;part&gt;</span>        make a new login key for a rented service\n  <span class="y">queue email on</span>          send emails through a queue\n  <span class="y">order</span>                   place a test order\n  <span class="y">clear</span>  <span class="y">hint</span>\nParts: web, api, db, payments, email, images`); return null; }
+  if (['ls', 'cd', 'cat', 'pwd', 'git', 'npm'].includes(cmd)) { print(`${esc(cmd)}: this console checks the running system, not files.`, 'dim'); tutor('Try <b>status</b> to see the health of every part.'); return null; }
+  if (cmd === 'status') {
+    print(statusText()); inc.checked = true; paintHealth();
+    if (!inc.fixed && !inc.queue) tutor('One part looks unwell: the API server takes 30 seconds to answer. Everything else says <b>up</b>. But "up" only means a part answered a quick "are you there?". Look inside the slow part with <b>logs api</b>.');
+    else if (inc.fixed) tutor('Everything is up and quick again.');
+    return { k: 'status' };
+  }
+  if (cmd === 'logs' || cmd === 'log') {
+    if (!a[1]) { print('usage: logs &lt;part&gt;', 'r'); tutor('Say which part, like <b>logs api</b>.'); return null; }
+    if (!target) { print(`logs: no part called '${esc(a[1])}'`, 'r'); tutor('Parts are: web, api, db, payments, email, images.'); return null; }
+    if (target === 'queue' && !inc.queue) { print('logs: there is no queue yet', 'r'); return null; }
+    print(logsFor(target));
+    if (target === 'api' && !inc.fixed) {
+      tutor("The API server itself is fine. It charges the card, saves the order, then asks the email service to send a confirmation, and keeps retrying for 30 seconds while email says no. Only then does it answer the customer, with an error. The slowness is a <b>symptom</b>. Follow the trail: <b>logs email</b>.");
+      if (!aiNudged) { aiNudged = true; setTimeout(() => io.ai('The API server is the slow one. Want me to add 3 more API servers? (<span class="y">scale api 3</span>)'), 700); }
+    }
+    if (target === 'email' && !inc.fixed) { inc.emailSeen = true; paintHealth(); tutor('Found it. The email service is up, but it refuses every request: the key Rosie\'s app uses to log in to it <b>expired</b> on 26 September. One expired key made checkout fail. Fix the cause: <b>renew-key email</b>.'); }
+    if (target === 'pay' && !inc.fixed) tutor('Payments are fine. Notice order #1051 was charged twice: the customer saw an error and tried again. Someone will need to refund that.');
+    if (target === 'db') tutor('The database is healthy: orders are saved in a few milliseconds.');
+    if (target === 'web' && !inc.fixed) tutor('The web app is waiting on the API server. Another symptom. Keep following the trail.');
+    return { k: 'logs', part: target };
+  }
+  if (cmd === 'ping') {
+    if (!target) { print('usage: ping &lt;part&gt;', 'r'); return null; }
+    const ms = { web: 21, api: 18, db: 2, pay: 38, email: 42, images: 15, queue: 1 }[target];
+    print(`PING ${HOSTS[target]}\nreply from ${HOSTS[target]}: time=${ms} ms\n<span class="g">reachable</span>`);
+    if (target === 'email' && !inc.fixed) tutor("Reachable, but that doesn't mean it's doing its job. A locked door still answers the doorbell. Read its logs.");
+    return { k: 'ping', part: target };
+  }
+  if (cmd === 'restart') {
+    if (!target) { print('usage: restart &lt;part&gt;', 'r'); return null; }
+    if (['email', 'pay'].includes(target)) { print(`restart: you don't run ${NICE[target]}. It belongs to another company.`, 'r'); tutor('You can\'t restart a rented service. What you control is your side of the connection, like the key your app uses to log in.'); return null; }
+    print(`Restarting ${NICE[target]}… done.\n${pad(NICE[target], 16)}${target === 'api' && !inc.fixed && !inc.queue ? '<span class="y">slow</span>    30.1 s' : '<span class="g">up</span>'}`);
+    if (target === 'api' && !inc.fixed) tutor("The restart didn't help, because the API server isn't broken. It's waiting on something else. Turning a part off and on only fixes problems that live inside that part.");
+    else tutor('Restarted, and nothing changed. That part was healthy.');
+    return { k: 'restart', part: target };
+  }
+  if (cmd === 'scale') {
+    const n = Math.max(1, Math.min(20, parseInt(a[2], 10) || 3));
+    if (target !== 'api') { print('scale: only the API server can be scaled here', 'r'); return null; }
+    inc.scaled += n;
+    print(`Started ${n} more API server${n > 1 ? 's' : ''}. Now running ${inc.scaled + 1} copies.\nExtra cost: about $${inc.scaled * 25} a month.\n${pad('api server', 16)}${inc.fixed || inc.queue ? '<span class="g">up</span>' : '<span class="y">slow</span>    30.2 s'}`);
+    if (!inc.fixed && !inc.queue) tutor('Still 30 seconds. Every copy waits on the same failing email service, so now more servers are waiting, at a higher bill. Adding more of the part with the symptom rarely fixes the cause. Follow the trail: <b>logs email</b>.');
+    return { k: 'scale' };
+  }
+  if (cmd === 'renew-key' || cmd === 'rotate-key' || cmd === 'new-key' || ((cmd === 'renew' || cmd === 'rotate') && a[1] === 'key')) {
+    const t = cmd.includes('-') ? target : (a[2] ? ALIAS[a[2].toLowerCase()] : null);
+    if (!t) { print('usage: renew-key &lt;part&gt;', 'r'); tutor('Say which service, like <b>renew-key email</b>.'); return null; }
+    if (t !== 'email') { print(`${NICE[t]}: the current key is valid until next year. Nothing to renew.`); tutor('Only the email key has expired. The email logs said so.'); return null; }
+    if (inc.fixed) { print('email: key already renewed today.'); return null; }
+    inc.fixed = true; inc.emailSeen = true; inc.checked = true;
+    print(`Created a new key with the email service.\nSaved it in the API server's secret settings as EMAIL_API_KEY.\n<span class="g">email: test message accepted</span>\n<span class="g">api server: answering in 140 ms</span>`);
+    paintHealth(); renderReports();
+    tutor(`Fixed the cause. Checkout is fast again, because the API server isn't stuck waiting any more.${inc.emailSeen ? '' : ''} Next, make sure a hiccup in email can never block checkout again.`);
+    return { k: 'renew' };
+  }
+  if (cmd === 'queue') {
+    const on = !a.includes('off');
+    if (!on) { print('queue: leaving the queue on is the sturdier choice here.'); return null; }
+    if (a[1] && ALIAS[a[1].toLowerCase()] && ALIAS[a[1].toLowerCase()] !== 'email') { print('queue: only emails can be queued here.', 'r'); return null; }
+    if (inc.queue) { print('queue: emails already go through the queue.'); return { k: 'queue' }; }
+    inc.queue = true;
+    b3.setOff('api', 'email', true); b3.setOff('api', 'queue', false); b3.setOff('queue', 'email', false); b3.show('queue', true);
+    paintHealth(); renderReports();
+    print(`Confirmation emails now go through a queue.\nThe API server drops each email in the queue and answers the customer right away.\nIf the email service fails, the queue retries with backoff: 2s, 4s, 8s…`);
+    if (!inc.fixed) tutor('Sturdier. Checkout no longer waits on email. But the emails will pile up in the queue until the cause is fixed: the expired key.');
+    return { k: 'queue' };
+  }
+  if (cmd === 'order') {
+    const id = ++inc.orderId;
+    let out = `Placing test order #${id}…\n  web app → api server        new order\n  api server → payments       <span class="g">approved</span>\n  api server → database       <span class="g">saved</span>\n`;
+    let ok = true;
+    if (inc.queue) out += `  api server → queue          <span class="g">confirmation queued</span>\n`;
+    if (!inc.queue && !inc.fixed) { out += `  api server → email          <span class="y">no… retrying… (30 s)</span>\n<span class="r">✗ Customer saw "Something went wrong" after 30.2 s</span>`; ok = false; }
+    else {
+      out += `<span class="g">✓ Customer saw "Thanks! Order #${id}" in 0.4 s</span>`;
+      out += inc.fixed ? `\n  ${pad((inc.queue ? 'queue' : 'api server') + ' → email', 28)}<span class="g">confirmation delivered</span>` : `\n  ${pad('queue → email', 28)}<span class="y">rejected (401). retry in 2 s</span>`;
+    }
+    print(out);
+    if (!ok) tutor('Still broken: the order was saved and paid, but the customer saw an error.');
+    else if (!inc.fixed) tutor('Checkout works now, but emails are piling up in the queue. The cause is still there: the expired key.');
+    return { k: 'order', ok };
+  }
+  return undefined;
+}
+CS.terminal($('#term'), {
+  part: 'p3',
+  mission: $('#mission'),
+  prompt: () => 'rosie-ops $',
+  intro: 'This console talks to every part of Rosie\'s app.\nType a command and press Enter. Stuck? Press "Show a hint", or type <span class="y">help</span>.',
+  steps: [
+    { t: 'Get the big picture', how: 'Check the health of every part.', cmd: 'status', done: a => a.k === 'status' },
+    { t: 'Look inside the slow part', how: "Read the API server's recent logs.", cmd: 'logs api', done: a => a.k === 'logs' && a.part === 'api' },
+    { t: 'Follow the trail', how: 'The API server keeps asking email. Read the email logs.', cmd: 'logs email', done: a => a.k === 'logs' && a.part === 'email' },
+    { t: 'Fix the cause', how: 'The email key expired. Make a new one.', cmd: 'renew-key email', done: a => a.k === 'renew' },
+    { t: 'Make it sturdier', how: 'Send emails through a queue, so email can never block checkout.', cmd: 'queue email on', done: a => a.k === 'queue' },
+    { t: 'Check your fix', how: 'Place a test order.', cmd: 'order', done: a => a.k === 'order' && a.ok && inc.fixed }
+  ],
+  run,
+  doneHTML: '<b>Incident solved.</b> Try <code>status</code> or <code>logs email</code> again to see the healthy system.',
+  doneTutor: '<b>Incident solved!</b> You followed the trail from the symptom (slow checkout) to the cause (an expired email key), fixed the cause, and made the system sturdier. One thing no tool can decide for you: Rosie should refund the customers who paid twice.'
+});
+
+/* ---------------- Part 4: steer the AI ---------------- */
+CS.steer($('#steer'), [
+  { ai: "To add a newsletter signup, I'll create a new Newsletter service with its own server and its own database, plus a message system to connect it to everything else.",
+    opts: [["Great, more services means it can grow.", 0, "Each new part is something more to deploy, pay for, watch and fix, with more wires that can break. A signup form doesn't need its own system."],
+           ["Keep it simple: add a signup route to the API server we have and a table to our database. We can split it out later if we hit a real limit.", 1, "Right. Start with the fewest parts that do the job. Split things out when you can name the reason."],
+           ["Put the signup list inside the web app so we don't need a server at all.", 0, "The web app runs on each customer's device. It can't keep one shared list, and anyone could read what's in it."]] },
+  { ai: "Checkout kept timing out, so I raised the timeout from 10 seconds to 60. No more timeout errors!",
+    opts: [["Before touching timeouts, find out what checkout is waiting on. Check the logs for the slow call and fix that part.", 1, "Yes. A timeout is a symptom. The logs show which part is slow, and that's where the fix belongs."],
+           ["Nice, problem solved.", 0, "The errors are hidden, not fixed. Customers now wait up to a minute, and whatever is slow is still slow."],
+           ["Remove the timeout completely so it never fails.", 0, "Then a stuck request waits forever and ties up the server. Timeouts protect the system. They aren't the problem."]] },
+  { ai: "Payments sometimes fail at lunchtime, so I made the API server retry the charge instantly, as many times as it takes.",
+    opts: [["Good, keep retrying until it works.", 0, "At a busy moment, instant endless retries pile more work on the part that's already struggling. That's a feedback loop, and it can charge people twice."],
+           ["Never retry. Just show an error.", 0, "Safer than a retry storm, but you lose sales to brief hiccups, and customers may pay twice by tapping again. Careful retries are better."],
+           ["Retry a few times with growing waits, then give up, and make sure a retried charge can never bill the customer twice.", 1, "Exactly. Backoff gives the struggling part room, a limit stops the loop, and an idempotency key stops double charges."]] },
+  { ai: "To make checkout feel faster, I'll send the confirmation email first, and save the order to the database after.",
+    opts: [["Sure, speed matters most.", 0, "If saving fails after the email went out, the customer holds a confirmation for an order that doesn't exist."],
+           ["Save the order first. Then put the email in a queue so it can't slow down or break checkout.", 1, "Right. The saved order is the truth, and the email is only a notice about it. A queue keeps checkout fast even when email is slow."],
+           ["Skip the database. The email is a good enough record.", 0, "An inbox isn't a database. Rosie couldn't search, count or change orders, and one lost email would be one lost order."]] }
+], { part: 'p4', counter: $('#steerCount') });
+
+/* ---------------- Part 5: quiz ---------------- */
+CS.quiz($('#quiz'), [
+  { q: 'In a system diagram, what does a line between two parts show?', a: [['One part sends messages to the other and depends on its answers', 1], ['The two parts run on the same computer', 0], ['The parts were written by the same person', 0]], why: 'A wire means one part asks the other for something. That makes it a dependency: if the other part is down, the asker is stuck.' },
+  { q: 'Email goes down for an hour, yet orders still complete and the emails arrive late. What made that possible?', a: [['A faster database', 0], ['A queue between the API server and the email service', 1], ['More copies of the web app', 0]], why: 'The queue holds the emails and retries them later, so the API server can answer the customer without waiting for email.' },
+  { q: "Which part of Rosie's app is a single point of failure?", a: [['Image storage', 0], ['The email service, once it has a queue', 0], ['The database', 1]], why: 'Almost every feature needs to look something up or save something. Photos and queued emails can fail without stopping orders.' },
+  { q: "Checkout is slow. The API server's logs show each order waiting 30 seconds on the payment provider. What should you ask the AI?", a: [['Add more API servers', 0], ['Find out why the payment call is slow, and give it a sensible timeout and retry', 1], ['Rewrite the checkout page', 0]], why: 'The API server is where the symptom shows. The cause is the part it waits on, so that is where to look.' },
+  { q: 'Why can retrying instantly make an overload worse?', a: [['Every failed request comes straight back, adding work to the part that is already overloaded', 1], ['Retries delete data', 0], ['Retries only work at night', 0]], why: "That's a feedback loop: failures cause retries, and retries cause more failures. Backoff and a retry limit break the loop." }
+], { part: 'p5', doneCard: $('#doneCard'), doneTitle: 'You can think in systems now.', doneText: 'You can sketch an app as parts and wires, predict what breaks when a part fails, and trace a symptom back to its cause.' });
+})();
+</script>
+</body>
+</html>

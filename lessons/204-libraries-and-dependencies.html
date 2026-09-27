@@ -1,0 +1,1205 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Libraries &amp; dependencies · CS School</title>
+<meta name="description" content="Course 204: when adding a package is wise, and why version numbers matter.">
+<link rel="icon" href="../assets/favicon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="../assets/cs-school.css">
+<style>
+/* lesson-specific styles: dependency tower, package cards, version chips, range toy, upgrade demo */
+:root{--row:color-mix(in srgb, var(--ink) 5%, transparent)}
+.hero-visual svg{display:block; width:100%; height:auto}
+.pg-col > *{align-self:stretch; min-width:0; max-width:100%}
+.hb-label{font-family:var(--f-display); font-weight:800; font-size:22px}
+.hb-ver{font-family:var(--f-mono); font-size:17px}
+/* tower */
+.pg.tower-pg{grid-template-columns:minmax(0,1.75fr) minmax(0,1fr); gap:24px}
+.tower-card{border-radius:22px; padding:18px 14px 16px; display:flex; flex-direction:column; align-items:stretch; min-height:400px; justify-content:flex-end}
+.tower{position:relative; display:flex; flex-direction:column; align-items:center; gap:26px; padding-top:12px; transform-origin:50% 100%}
+.tower.wobble{animation:wobble 1.4s ease-in-out}
+@keyframes wobble{0%{transform:rotate(0)}14%{transform:rotate(-2.2deg)}32%{transform:rotate(1.8deg)}52%{transform:rotate(-1.1deg)}72%{transform:rotate(.6deg)}100%{transform:rotate(0)}}
+.trow{position:relative; z-index:1; display:flex; flex-wrap:wrap; justify-content:center; gap:10px 10px; max-width:100%}
+.trow:empty{display:none}
+.tlinks{position:absolute; left:0; top:0; width:100%; height:100%; pointer-events:none; overflow:visible; z-index:0}
+.tlinks path{fill:none; stroke:var(--ink-2); stroke-opacity:.38; stroke-width:2; transition:stroke .3s}
+.tlinks path.bad{stroke:var(--bad); stroke-opacity:.85; stroke-dasharray:5 5}
+.blk{--c:var(--l3); font-family:var(--f-display); font-weight:800; font-size:.95rem; line-height:1.15; color:var(--ink); border:0; border-radius:12px; padding:8px 12px; min-height:48px; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:2px; cursor:pointer;
+  background:linear-gradient(180deg, color-mix(in srgb, var(--c) 20%, var(--paper)), color-mix(in srgb, var(--c) 38%, var(--paper)));
+  box-shadow:0 10px 18px -12px color-mix(in srgb, var(--c) 90%, transparent); transition:background .35s, color .35s, box-shadow .2s, transform .15s}
+.blk small{font-family:var(--f-mono); font-weight:500; font-size:.9rem; color:var(--ink-2)}
+.blk:hover{transform:translateY(-2px)}
+.blk.app{font-size:1.1rem; padding:10px 30px; min-height:56px}
+.blk.sel{box-shadow:0 0 0 7px color-mix(in srgb, var(--c) 22%, transparent), 0 10px 18px -12px color-mix(in srgb, var(--c) 90%, transparent)}
+.blk.drop{animation:drop .55s cubic-bezier(.3,1.35,.5,1) both}
+@keyframes drop{from{transform:translateY(-46px); opacity:0} to{transform:none; opacity:1}}
+.blk.broken{background:var(--bad-bg); color:var(--bad)}
+.blk.broken small{color:var(--bad)}
+.blk.broken.shake{animation:shake .4s}
+.blk.healed small::after{content:" ✓"; color:var(--good); font-weight:700}
+.ground{align-self:center; width:86%; height:18px; margin-top:6px; border-radius:50%; background:radial-gradient(ellipse at center, color-mix(in srgb, var(--ink) 18%, transparent), transparent 70%)}
+.crash{margin-top:14px; font-size:.9rem; white-space:pre-wrap; word-break:break-word}
+.tbtns{display:flex; flex-direction:column; gap:8px; margin-top:4px}
+.tbtns .btn{justify-content:flex-start; text-align:left}
+.tbtns .btn code{background:none; padding:0; font-size:.95rem}
+.tstats{display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:8px; margin-top:14px}
+.tstat{border-radius:14px; padding:10px 12px; background:var(--row)}
+.tstat b{display:block; font-family:var(--f-display); font-weight:800; font-size:1.5rem; line-height:1.1; white-space:nowrap}
+.tstat span{font-size:.9rem; color:var(--ink-2)}
+.pinfo{display:flex; flex-direction:column; gap:10px}
+.pinfo h3{font-family:var(--f-mono); font-size:1.1rem; margin:0; word-break:break-all}
+.pinfo p{font-size:1rem; margin:0}
+.facts2{display:grid; grid-template-columns:minmax(0,1fr) minmax(0,1fr); gap:8px; margin:0}
+.facts2 div{border-radius:12px; padding:8px 10px; background:var(--row)}
+.facts2 dt{font-size:.9rem; color:var(--ink-2)}
+.facts2 dd{margin:0; font-family:var(--f-display); font-weight:800; font-size:1rem}
+/* judge cards */
+.judge{display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:20px}
+.pkg{border-radius:20px; padding:18px 18px 16px; display:flex; flex-direction:column; gap:12px}
+.pkg-head{display:flex; flex-wrap:wrap; align-items:baseline; gap:6px 10px}
+.pkg-head h4{font-family:var(--f-mono); font-size:1.15rem; font-weight:700; margin:0}
+.pkg-head span{font-family:var(--f-mono); font-size:.95rem; color:var(--ink-2)}
+.pkg > p{margin:0; font-size:1rem}
+.pkg .code{font-size:.9rem; padding:12px 14px}
+.pkg .fb{font-size:.98rem; border-radius:12px; padding:10px 12px}
+.pkg .fb:empty{display:none}
+.pkg .fb.good{background:var(--good-bg); color:var(--ink)}
+.pkg .fb.bad{background:var(--bad-bg); color:var(--ink)}
+.pkg .fb.info{background:var(--tip-bg); color:var(--ink)}
+.pkg .btn{align-self:flex-start}
+.risk h4{font-family:var(--f-display); font-weight:800; font-size:1.15rem; margin:0 0 6px}
+.risk .ic{width:44px; height:44px; border-radius:14px; display:grid; place-items:center; background:color-mix(in srgb, var(--c) 22%, transparent); margin-bottom:10px}
+.risk .ic svg{width:24px; height:24px; stroke:var(--c); fill:none; stroke-width:2; stroke-linecap:round; stroke-linejoin:round}
+.risk p{font-size:1rem}
+.checklist{list-style:none; margin:0; padding:0; display:flex; flex-direction:column; gap:10px; counter-reset:q}
+.checklist li{counter-increment:q; display:grid; grid-template-columns:36px minmax(0,1fr); gap:12px; align-items:start; border-radius:14px; padding:12px 14px; background:var(--row)}
+.checklist li::before{content:counter(q); width:32px; height:32px; border-radius:10px; display:grid; place-items:center; font-family:var(--f-display); font-weight:800; background:color-mix(in srgb, var(--l2) 18%, transparent); color:var(--ink)}
+.checklist b{font-family:var(--f-display)}
+/* semver */
+.anatomy{display:flex; justify-content:center; align-items:flex-start; gap:6px; padding:6px 0 4px}
+.anatomy .seg{display:flex; flex-direction:column; align-items:center; gap:6px; min-width:0}
+.anatomy .num{font-family:var(--f-mono); font-weight:700; font-size:clamp(2.6rem, 9vw, 4.4rem); line-height:1; padding:8px 18px; border-radius:18px; background:color-mix(in srgb, var(--c) 20%, transparent)}
+.anatomy .dot{font-family:var(--f-mono); font-weight:700; font-size:clamp(2.6rem, 9vw, 4.4rem); line-height:1; padding-top:8px}
+.anatomy .seg b{font-family:var(--f-display); font-weight:800; font-size:1rem; letter-spacing:.04em}
+.anatomy .seg span{font-size:.92rem; color:var(--ink-2); text-align:center; max-width:150px}
+.bumps{display:flex; flex-direction:column; gap:10px}
+.bump{display:grid; grid-template-columns:minmax(0,1fr) auto; gap:8px 16px; align-items:center; border-radius:14px; padding:12px 14px; background:var(--row)}
+.bump > div:first-child b{font-family:var(--f-display); font-weight:800; display:block}
+.bump > div:first-child span{font-size:.98rem; color:var(--ink-2)}
+.bump .pick{display:flex; gap:6px; flex-wrap:wrap}
+.bump .pick .btn{font-family:var(--f-mono); font-weight:600; min-width:74px; justify-content:center}
+.bump .fb{grid-column:1/-1; font-size:.95rem}
+.bump .fb:empty{display:none}
+.bump.ok{background:var(--good-bg)}
+.bump.no .fb{color:var(--bad)}
+.bump.shake{animation:shake .4s}
+.pj-line{font-size:1rem; margin:0 0 14px; white-space:pre-wrap; word-break:break-word}
+.range-seg{display:flex; flex-wrap:wrap}
+.range-seg button{font-family:var(--f-mono)}
+.custom-range{display:flex; flex-direction:column; gap:6px; margin-top:14px}
+.custom-range label{font-family:var(--f-display); font-weight:700; font-size:.95rem}
+.custom-range .input{font-family:var(--f-mono)}
+.vlist{display:grid; grid-template-columns:repeat(auto-fill, minmax(96px, 1fr)); gap:10px}
+.vchip{border-radius:14px; padding:10px 8px 8px; text-align:center; background:var(--row); color:var(--ink-2); transition:background .3s, color .3s, transform .3s; position:relative}
+.vchip b{display:block; font-family:var(--f-mono); font-size:1.02rem}
+.vchip small{display:block; font-size:.9rem}
+.vchip.in{background:var(--good-bg); color:var(--ink)}
+.vchip.pick{transform:translateY(-3px); box-shadow:0 12px 22px -12px color-mix(in srgb, var(--good) 80%, transparent)}
+.vchip .star{display:none; font-family:var(--f-display); font-weight:800; font-size:.9rem; color:var(--good)}
+.vchip.pick .star{display:block}
+.vcard{border-radius:20px; padding:18px}
+.vcard .ctl-sub{margin-top:0}
+#rangeExplain{margin:14px 0 0; font-size:1rem}
+/* upgrade demo */
+.widget{border-radius:20px; padding:18px; display:flex; flex-direction:column; gap:12px}
+.w-head{display:flex; justify-content:space-between; align-items:center; gap:10px; flex-wrap:wrap}
+.w-head b{font-family:var(--f-display); font-weight:800; font-size:1.1rem}
+.days{display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:8px}
+.day{font-family:var(--f-display); font-weight:800; font-size:1rem; border:0; border-radius:14px; min-height:64px; cursor:pointer; color:var(--ink); background:color-mix(in srgb, var(--l2) 14%, var(--glass-strong)); display:flex; flex-direction:column; align-items:center; justify-content:center; gap:2px}
+.day small{font-family:var(--f-body); font-weight:500; font-size:.9rem; color:var(--ink-2)}
+.day[aria-pressed="true"]{background:var(--l2); color:#fff}
+.day[aria-pressed="true"] small{color:#fff}
+.w-label{font-family:var(--f-mono); font-weight:700; font-size:1.05rem; padding:10px 14px; border-radius:12px; background:var(--row); text-align:center}
+.w-crash{border-radius:14px; padding:14px; background:var(--bad-bg)}
+.w-crash b{font-family:var(--f-display); font-weight:800; color:var(--bad); display:block; margin-bottom:4px}
+.w-crash code{background:none; padding:0; font-size:.92rem; word-break:break-word; color:var(--ink)}
+.fname{font-family:var(--f-mono); font-size:.9rem; color:var(--ink-2); margin:4px 0 6px}
+.changelog{white-space:pre-wrap; word-break:break-word}
+.up-btns{display:flex; flex-wrap:wrap; gap:8px}
+.ver-now{display:flex; align-items:center; gap:10px; flex-wrap:wrap; margin-bottom:14px; font-size:1rem}
+.ver-now b{font-family:var(--f-mono); font-size:1.05rem}
+/* lockfile */
+.lockcards .glass{border-radius:20px; padding:18px}
+.lockcards h4{font-family:var(--f-display); font-weight:800; font-size:1.15rem; margin:0}
+.lockcards .kind{font-size:.95rem; color:var(--ink-2); margin:2px 0 12px}
+.lockcards .code{font-size:.9rem}
+.lockcards p{font-size:1rem; margin:12px 0 0}
+/* part 3 side panels */
+.pj-view{font-size:.9rem; padding:14px}
+.pj-view .flash{animation:flash 1.6s; border-radius:4px}
+.health{display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:8px}
+.health div{border-radius:14px; padding:10px 12px; background:var(--row)}
+.health b{display:block; font-family:var(--f-display); font-weight:800; font-size:1.5rem; line-height:1.1}
+.health b.bad{color:var(--bad)} .health b.good{color:var(--good)}
+.health span{font-size:.9rem; color:var(--ink-2)}
+@media (max-width:700px){
+  .judge{grid-template-columns:minmax(0,1fr)}
+  .bump{grid-template-columns:minmax(0,1fr)}
+}
+@media (max-width:520px){
+  .tower-card{padding:14px 8px 12px; min-height:0}
+  .tower{gap:20px}
+  .trow{gap:8px 6px}
+  .blk{padding:7px 9px; font-size:.92rem}
+  .blk.app{padding:9px 22px}
+  .tstats,.health{grid-template-columns:minmax(0,1fr) minmax(0,1fr)}
+  .tstats .tstat:last-child,.health div:last-child{grid-column:1/-1}
+  .anatomy .seg span{max-width:88px}
+  .anatomy .num{padding:8px 12px}
+  .vlist{grid-template-columns:repeat(3,minmax(0,1fr))}
+  #upCode, .lockcards .code, .pkg .code{white-space:pre-wrap; word-break:break-word}
+}
+</style>
+</head>
+<body>
+<main id="top">
+  <section class="wrap hero">
+    <div>
+      <div class="kicker">Core curriculum · Course 204 · Libraries &amp; dependencies</div>
+      <h1>Your app is mostly other people's code.</h1>
+      <p class="lede">A <b>library</b> (or <b>package</b>) is code someone else wrote and shared, so you don't have to. Your AI adds them all the time. Learn what you're really adding, what the version numbers promise, and how to spot a package that could hurt you.</p>
+      <ul class="facts">
+        <li>About 15 minutes</li>
+        <li>5 parts</li>
+        <li>Practice terminal</li>
+        <li>No coding experience needed</li>
+      </ul>
+      <div class="row hero-cta"><a class="btn primary" href="#p1">Start the lesson</a></div>
+    </div>
+    <figure style="margin:0">
+      <div class="hero-visual glass">
+        <svg id="heroTower" viewBox="0 0 540 400" role="img" aria-label="A tower of blocks: Rosie's app sits on top of the packages it uses, which sit on the packages they use. A small block at the bottom breaks, the tower wobbles, and it is fixed by going back to the old version."></svg>
+        <div class="legend"><span><i style="background:var(--l5)"></i>Your app</span><span><i style="background:var(--l2)"></i>Packages you added</span><span><i style="background:var(--l3)"></i>Their packages</span><span><i style="background:var(--l4)"></i>And theirs</span></div>
+      </div>
+      <div class="hero-caption glass" aria-hidden="true"><span>$</span><span id="heroCap">npm install</span></div>
+    </figure>
+  </section>
+
+  <div class="wrap">
+  <!-- PART 1 -->
+  <section class="part" id="p1">
+    <span class="bullet glass" data-p="p1">1</span>
+    <div class="part-head">
+      <div class="kicker">Part 1 of 5</div>
+      <h2>Build a dependency tower</h2>
+      <p>Rosie wants a nicer date picker on her checkout page. Her AI assistant has an idea.</p>
+    </div>
+
+    <div class="chat" aria-label="Example conversation">
+      <div class="msg me"><span class="who">You</span>Can customers pick their pickup time from a calendar?</div>
+      <div class="msg ai"><span class="who">AI assistant</span>Sure. I'll run <code>npm install super-date-picker</code>. It's one package.</div>
+      <div class="msg me"><span class="who">You</span>One package. Easy.</div>
+    </div>
+
+    <p style="margin-bottom:28px"><b>npm</b> is the tool that downloads packages for JavaScript apps, from a huge public library called the <b>npm registry</b>. Python has pip, Ruby has gems: the ideas below work the same way everywhere. The package names in this lesson are made up.</p>
+
+    <div class="task glass" data-part="p1">
+      <h3>Your task</h3>
+      <ol>
+        <li data-t="add"><span>Install super-date-picker and count what arrives.</span></li>
+        <li data-t="confetti"><span>Install confetti-burst too, then tap a few blocks.</span></li>
+        <li data-t="break"><span>Let a stranger publish a broken update to a tiny block at the bottom.</span></li>
+        <li data-t="fix"><span>Fix Rosie's app.</span></li>
+      </ol>
+    </div>
+
+    <div class="pg tower-pg">
+      <div class="pg-col">
+        <div class="o2 tower-card glass">
+          <div class="tower" id="tower" role="group" aria-label="Rosie's dependency tower. Each block is a package. Tap one to learn about it.">
+            <svg class="tlinks" id="tlinks" aria-hidden="true"></svg>
+            <div class="trow" data-row="0"></div>
+            <div class="trow" data-row="1"></div>
+            <div class="trow" data-row="2"></div>
+            <div class="trow" data-row="3"></div>
+          </div>
+          <div class="ground" aria-hidden="true"></div>
+          <div class="code crash" id="crash" hidden></div>
+        </div>
+      </div>
+      <div class="pg-col">
+        <div class="o1 ctl glass">
+          <h3 class="ctl-title">Rosie's terminal</h3>
+          <div class="tbtns">
+            <button class="btn primary" id="tInstall1"><code>npm install super-date-picker</code></button>
+            <button class="btn" id="tInstall2" disabled><code>npm install confetti-burst</code></button>
+            <button class="btn" id="tBreak" disabled>A stranger publishes pad-start-lite 1.0.4</button>
+            <button class="btn" id="tFix" disabled>Go back to pad-start-lite 1.0.3</button>
+          </div>
+          <div class="tstats" aria-live="polite">
+            <div class="tstat"><b id="stAsked">0</b><span>asked for</span></div>
+            <div class="tstat"><b id="stGot">0</b><span>installed</span></div>
+            <div class="tstat"><b id="stSize">0 kB</b><span>of code</span></div>
+          </div>
+        </div>
+        <div class="o3 note" id="tNote" aria-live="polite" hidden></div>
+        <div class="o4 ctl glass pinfo" id="pinfo" aria-live="polite"></div>
+      </div>
+    </div>
+
+    <div class="sub stack">
+      <h3>Why a tiny block matters</h3>
+      <p>Packages you add yourself are <b>direct dependencies</b>. The packages <i>they</i> need, and the ones those need, are <b>transitive dependencies</b>. You never chose them, but your app runs their code, and trusts every one of their authors.</p>
+      <p>A real app often has hundreds of these blocks. Most are great: well tested, free and maintained by kind strangers. That's why packages are worth using. But it means every package you add brings its whole tower with it.</p>
+      <details class="deeper glass">
+        <summary>Under the hood: famous collapses <small>optional</small></summary>
+        <div>
+          <p><b>left-pad, 2016.</b> An 11-line package that added spaces to the start of text. Its author removed it from npm after a dispute, and thousands of projects that depended on it, often without knowing, stopped building. npm then changed its rules so popular packages can't simply be removed.</p>
+          <p><b>event-stream, 2018.</b> A tired maintainer handed a popular package to a helpful stranger. The stranger added a hidden dependency designed to steal from one bitcoin wallet app.</p>
+          <p><b>colors.js, 2022.</b> The author of a popular package deliberately published a version that printed gibberish forever, breaking the apps that used it.</p>
+        </div>
+      </details>
+    </div>
+
+    <div class="sub stack">
+      <h3>Should you add it at all?</h3>
+      <p>Rosie wants pickup times to read like "Saturday 10:00 AM". Her AI suggests four ways. Check the facts on each card, then pick one.</p>
+      <div class="task glass" data-part="p1" style="margin-bottom:0">
+        <h3>Your task</h3>
+        <ol><li data-t="judge"><span>Pick the best way to format the date, and read why.</span></li></ol>
+      </div>
+      <div class="judge" id="judge"></div>
+    </div>
+
+    <div class="sub stack">
+      <h3>Three ways a package can hurt you</h3>
+      <div class="cards-3">
+        <div class="glass ctl risk" style="--c:var(--l1)">
+          <div class="ic" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M4 7h10M4 12h7M4 17h12"/><path d="M17 5l3 3-3 3"/></svg></div>
+          <h4>Look-alike names</h4>
+          <p><b>Typosquatting</b>: attackers publish packages one letter away from popular ones, like <code>reactt</code> or <code>expres</code>, and wait for a typo. AI tools can invent package names too, and attackers sometimes register those names.</p>
+        </div>
+        <div class="glass ctl risk" style="--c:var(--l4)">
+          <div class="ic" aria-hidden="true"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8"/><path d="M12 8v4l3 2"/></svg></div>
+          <h4>Abandoned packages</h4>
+          <p>Nobody has updated it in years. Bugs and security holes stay unfixed, and it may stop working with newer tools. Worse, someone new can take it over.</p>
+        </div>
+        <div class="glass ctl risk" style="--c:var(--l5)">
+          <div class="ic" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M12 3l8 3v6c0 5-3.5 8-8 9-4.5-1-8-4-8-9V6z"/><path d="M12 9v4M12 16v.5"/></svg></div>
+          <h4>Known holes</h4>
+          <p>A <b>vulnerability</b> is a security bug that attackers can use. They're found in good packages too, and fixed in new versions. Tools like <code>npm audit</code> check yours against a public list. You'll run it in part 3.</p>
+        </div>
+      </div>
+      <div class="ctl glass">
+        <h3 class="ctl-title">Before you add a package, ask</h3>
+        <ol class="checklist">
+          <li><span><b>Do I need it?</b> Could a built-in feature or ten lines of code do the job?</span></li>
+          <li><span><b>Is it the right name?</b> Check the spelling, and that it's the package everyone means.</span></li>
+          <li><span><b>Is it alive?</b> Lots of weekly downloads, a recent update, more than one maintainer, a real source code link.</span></li>
+          <li><span><b>How big is it?</b> Check its size and how many packages it brings along. Every one is more to download and more to trust.</span></li>
+          <li><span><b>Can I use it?</b> The <b>license</b> says what you're allowed to do. MIT, Apache and BSD are easy to use in almost anything. GPL and AGPL come with conditions about sharing your own code, so check first.</span></li>
+        </ol>
+      </div>
+      <p class="muted">More on keeping an app safe in <a href="207-security-essentials.html">course 207, Security essentials</a>.</p>
+    </div>
+  </section>
+
+  <!-- PART 2 -->
+  <section class="part" id="p2">
+    <span class="bullet glass" data-p="p2">2</span>
+    <div class="part-head">
+      <div class="kicker">Part 2 of 5</div>
+      <h2>Version numbers are promises</h2>
+      <p>Packages change all the time. A version number tells you what kind of change you're getting, if its author follows the rules. The rules are called <b>semantic versioning</b>, or <b>semver</b>.</p>
+    </div>
+
+    <div class="task glass" data-part="p2">
+      <h3>Your task</h3>
+      <ol>
+        <li data-t="bump"><span>Be the maintainer: give each release the right version number.</span></li>
+        <li data-t="range"><span>Try the ~ and ^ ranges and see which versions each one lets in.</span></li>
+      </ol>
+    </div>
+
+    <div class="vcard glass">
+      <div class="anatomy" aria-label="A version number has three parts: MAJOR, MINOR and PATCH.">
+        <div class="seg" style="--c:var(--l1)"><div class="num">4</div><b>MAJOR</b><span>Breaking changes. Your code may need updating.</span></div>
+        <div class="dot" aria-hidden="true">.</div>
+        <div class="seg" style="--c:var(--l4)"><div class="num">2</div><b>MINOR</b><span>New features. Nothing breaks.</span></div>
+        <div class="dot" aria-hidden="true">.</div>
+        <div class="seg" style="--c:var(--l3)"><div class="num">1</div><b>PATCH</b><span>Bug fixes only.</span></div>
+      </div>
+    </div>
+
+    <div class="sub stack">
+      <h3>You're the maintainer</h3>
+      <p class="muted">You look after super-date-picker, now at version 4.2.1. Three releases are ready. Pick the version number for each one.</p>
+      <div class="bumps glass ctl" id="bumps"></div>
+    </div>
+
+    <div class="sub stack">
+      <h3>Ranges: which versions will you accept?</h3>
+      <p>In package.json you don't have to name one exact version. You can write a <b>range</b>, and npm installs the newest version that fits it.</p>
+      <div class="pg">
+        <div class="pg-col">
+          <div class="o1 ctl glass">
+            <h4 class="ctl-title" id="rangeLabel">Rosie's package.json says</h4>
+            <div class="code pj-line">"super-date-picker": "<span class="n" id="rangeShow">4.2.1</span>"</div>
+            <div class="seg-control range-seg" role="group" aria-labelledby="rangeLabel" id="rangeSeg">
+              <button type="button" data-r="4.2.1" aria-pressed="true">4.2.1</button>
+              <button type="button" data-r="~4.2.1" aria-pressed="false">~4.2.1</button>
+              <button type="button" data-r="^4.2.1" aria-pressed="false">^4.2.1</button>
+              <button type="button" data-r="*" aria-pressed="false">*</button>
+            </div>
+            <div class="custom-range">
+              <label for="rangeIn">Or type your own range</label>
+              <input class="input" id="rangeIn" type="text" autocomplete="off" spellcheck="false" placeholder="like >=4.3.0 <5">
+            </div>
+            <p id="rangeExplain" aria-live="polite"></p>
+          </div>
+        </div>
+        <div class="pg-col">
+          <div class="o2 vcard glass">
+            <h4 class="ctl-title">Versions on the registry</h4>
+            <p class="ctl-sub">Green versions fit the range. npm installs the starred one.</p>
+            <div class="vlist" id="vlist"></div>
+          </div>
+        </div>
+      </div>
+      <details class="deeper glass">
+        <summary>Under the hood: versions that start with 0 <small>optional</small></summary>
+        <div>
+          <p>A package on <b>0.x</b>, like color-mix-lite 0.9.1, hasn't promised a stable design yet. Anything may change. So npm is stricter: <code>^0.9.1</code> only accepts 0.9.x, never 0.10.0.</p>
+          <p>Versions like <code>5.0.0-beta.2</code> are <b>pre-releases</b>: test versions that ranges skip unless you ask for them by name.</p>
+        </div>
+      </details>
+    </div>
+
+    <div class="sub stack">
+      <h3>A major upgrade, the risky way and the safe way</h3>
+      <p>Rosie is on super-date-picker 4.4.1, and 5.0.0 is out. The first number changed, so something may break.</p>
+      <div class="task glass" data-part="p2" style="margin-bottom:0">
+        <h3>Your task</h3>
+        <ol>
+          <li data-t="major"><span>Upgrade to 5.0.0, then use the picker like a customer would.</span></li>
+          <li data-t="changelog"><span>Find out what changed, and fix Rosie's code.</span></li>
+        </ol>
+      </div>
+      <div class="pg">
+        <div class="pg-col">
+          <div class="o1 ctl glass">
+            <h4 class="ctl-title">Upgrade super-date-picker</h4>
+            <div class="ver-now">Installed: <b id="upVer">4.4.1</b></div>
+            <div class="up-btns" id="upBtns"></div>
+          </div>
+          <div class="o3 note" id="upNote" aria-live="polite" hidden></div>
+        </div>
+        <div class="pg-col">
+          <div class="o2 stack" style="gap:14px">
+            <div class="widget glass" id="widget"></div>
+            <div><div class="fname">src/components/PickupPicker.tsx</div><div class="code" id="upCode"></div></div>
+            <div id="clogWrap" hidden><div class="fname">node_modules/super-date-picker/CHANGELOG.md</div><div class="code changelog" id="clog"></div></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="sub stack">
+      <h3>The shopping list and the receipt</h3>
+      <p>If package.json only lists ranges, how does everyone end up with the same versions? With a second file.</p>
+      <div class="split lockcards">
+        <div class="glass">
+          <h4>package.json</h4>
+          <p class="kind">The shopping list. You and your AI edit it.</p>
+          <div class="code"><span class="c">// what Rosie is happy to accept</span>
+"dependencies": {
+  "super-date-picker": <span class="s">"^4.2.1"</span>,
+  "confetti-burst": <span class="s">"^2.0.0"</span>
+}</div>
+          <p>Only your direct dependencies, with ranges.</p>
+        </div>
+        <div class="glass">
+          <h4>package-lock.json</h4>
+          <p class="kind">The receipt. npm writes it for you.</p>
+          <div class="code"><span class="c">// exactly what was installed</span>
+<span class="s">"node_modules/super-date-picker"</span>: {
+  "version": <span class="s">"4.4.1"</span>, …
+},
+<span class="s">"node_modules/pad-start-lite"</span>: {
+  "version": <span class="s">"1.0.3"</span>, …
+}</div>
+          <p>Every package in the tower, even the deep ones, with its exact version.</p>
+        </div>
+      </div>
+      <p>This <b>lockfile</b> is why going back to pad-start-lite 1.0.3 fixed Rosie's app in part 1: it pins the whole tower, so every computer installs the same blocks.</p>
+      <ul>
+        <li><b>Commit both files</b> to git (<a href="203-git.html">course 203</a>). Never delete the lockfile to "fix" something.</li>
+        <li><code>npm install</code> installs what the lockfile says, and updates it when you add or change a package.</li>
+        <li><code>npm ci</code> installs exactly what the lockfile says, or stops with an error. Servers use it when they build your app (<a href="209-shipping-and-running-software.html">course 209</a>).</li>
+      </ul>
+    </div>
+  </section>
+
+  <!-- PART 3 -->
+  <section class="part" id="p3">
+    <span class="bullet glass" data-p="p3">3</span>
+    <div class="part-head">
+      <div class="kicker">Part 3 of 5</div>
+      <h2>Try it: a checkup for Rosie's packages</h2>
+      <p>Time to use npm for real. You'll inspect Rosie's tower, fix a security hole, take safe updates and check an AI suggestion before trusting it. This practice terminal is safe. Nothing here can break.</p>
+    </div>
+
+    <div class="lab">
+      <div class="a-mission ctl glass">
+        <h3 class="ctl-title">Your mission</h3>
+        <p class="ctl-sub" style="margin-top:0">Give Rosie's dependencies a checkup, then add a pop-up that says "Order placed!", with a package you've checked.</p>
+        <ol class="mission" id="mission"></ol>
+      </div>
+      <div class="a-work" id="term"></div>
+      <div class="a-side">
+        <div class="ctl glass">
+          <h3 class="ctl-title">package.json</h3>
+          <p class="ctl-sub">Changes as you run commands.</p>
+          <div class="code pj-view" id="pjView"></div>
+        </div>
+      </div>
+      <div class="a-extra stack" style="gap:18px">
+        <div class="ctl glass">
+          <h3 class="ctl-title">Tower health</h3>
+          <div class="health" id="health" aria-live="polite"></div>
+        </div>
+        <details class="deeper glass">
+          <summary>Under the hood: install scripts <small>optional</small></summary>
+          <div>
+            <p>A package can include a <b>postinstall</b> script: a command npm runs on your computer the moment you install it. Good packages use this to set themselves up. A malicious one can read your files, including secrets like API keys, and send them away.</p>
+            <p>That's why you check a package <i>before</i> installing it, not after. If you ever install a bad one, remove it and change any secrets that were on that computer.</p>
+          </div>
+        </details>
+      </div>
+    </div>
+  </section>
+
+  <!-- PART 4 -->
+  <section class="part" id="p4">
+    <span class="bullet glass" data-p="p4">4</span>
+    <div class="part-head">
+      <div class="kicker">Part 4 of 5</div>
+      <h2>Steer the AI</h2>
+      <p>AI tools love adding packages. Here are four things one might say while building Rosie's app. Pick the reply you'd send.</p>
+    </div>
+    <p class="counter" id="steerCount"></p>
+    <div id="steer"></div>
+  </section>
+
+  <!-- PART 5 -->
+  <section class="part" id="p5">
+    <span class="bullet glass" data-p="p5">5</span>
+    <div class="part-head">
+      <div class="kicker">Part 5 of 5</div>
+      <h2>Check your understanding</h2>
+      <p>Five quick questions. Each answer explains itself.</p>
+    </div>
+    <div id="quiz"></div>
+    <div id="doneCard" aria-live="polite"></div>
+  </section>
+  </div>
+
+  <section class="after" id="cheat">
+    <div class="wrap stack">
+      <h2>Cheat sheet</h2>
+      <p class="muted">The npm commands and version ranges from this lesson.</p>
+      <div class="table-wrap glass">
+        <table>
+          <thead><tr><th>Command</th><th>What it does</th><th>Ask the AI</th></tr></thead>
+          <tbody>
+            <tr><td><code>npm view name</code></td><td>Shows a package's details before you install it</td><td>"Is this the right package? Who maintains it?"</td></tr>
+            <tr><td><code>npm install name</code></td><td>Adds a package, and everything it needs</td><td>"Could we do this without a new package?"</td></tr>
+            <tr><td><code>npm uninstall name</code></td><td>Removes a package</td><td>"Is anything still using this?"</td></tr>
+            <tr><td><code>npm ls --all</code></td><td>Shows the whole dependency tower</td><td>"Why is this package in our app?"</td></tr>
+            <tr><td><code>npm outdated</code></td><td>Lists packages with newer versions</td><td>"Which of these are major upgrades?"</td></tr>
+            <tr><td><code>npm update</code></td><td>Takes the updates your ranges allow</td><td>"Run the tests after updating."</td></tr>
+            <tr><td><code>npm audit</code></td><td>Checks for known security holes</td><td>"Which fixes are safe, and which are major?"</td></tr>
+            <tr><td><code>npm ci</code></td><td>Installs exactly what the lockfile says</td><td>"Does our deploy use npm ci?"</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="table-wrap glass">
+        <table>
+          <thead><tr><th>In package.json</th><th>Accepts</th><th>In plain words</th></tr></thead>
+          <tbody>
+            <tr><td><code>"4.2.1"</code></td><td>4.2.1 only</td><td>Exactly this one</td></tr>
+            <tr><td><code>"~4.2.1"</code></td><td>4.2.1 up to, not including, 4.3.0</td><td>Bug fixes only</td></tr>
+            <tr><td><code>"^4.2.1"</code></td><td>4.2.1 up to, not including, 5.0.0</td><td>Fixes and features, no breaking changes. npm's default</td></tr>
+            <tr><td><code>"*"</code></td><td>Anything</td><td>Every future breaking change too. Avoid</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+</main>
+<script src="../assets/cs-school.js"></script>
+<script>
+(() => {
+const { $, $$, esc, reduce } = CS;
+
+CS.lesson({
+  id: '204',
+  parts: [
+    { id: 'p1', title: 'Build a tower' },
+    { id: 'p2', title: 'Version numbers' },
+    { id: 'p3', title: 'Try it' },
+    { id: 'p4', title: 'Steer the AI' },
+    { id: 'p5', title: 'Check' }
+  ]
+});
+
+const COL = ['var(--l5)', 'var(--l2)', 'var(--l3)', 'var(--l4)'];
+const tintC = (c, p) => `color-mix(in srgb, ${c} ${p}%, var(--paper))`;
+
+/* ---------------- hero: tower that wobbles ---------------- */
+(function hero() {
+  const svg = $('#heroTower'), cap = $('#heroCap');
+  const H = 58;
+  const B = [
+    // [label, version, row(0 top), x, w]
+    ["Rosie's app", '', 0, 140, 260],
+    ['date-picker', '4.2.1', 1, 92, 176], ['confetti', '2.0.0', 1, 276, 172],
+    ['date-magic', '3.1.0', 2, 56, 150], ['popper', '1.8.2', 2, 214, 118], ['color-mix', '0.9.1', 2, 340, 150],
+    ['locale-pack', '1.4.0', 3, 40, 160], ['pad-start', '1.0.3', 3, 208, 132], ['canvas', '1.1.2', 3, 348, 150]
+  ];
+  const Y = r => 56 + r * (H + 14);
+  const BREAK = { 7: 0, 3: 1, 5: 1, 1: 2, 2: 2, 0: 3 };
+  const setCap = t => { if (cap.textContent !== t) cap.textContent = t; };
+  const draw = ({ drop = () => 1, red = () => 0, rot = 0, fade = 1, bad = false, healed = false }) => {
+    let s = `<defs><filter id="hbBlur" x="-20%" y="-40%" width="140%" height="180%"><feGaussianBlur stdDeviation="6"/></filter></defs><ellipse cx="270" cy="${Y(3) + H + 22}" rx="230" ry="12" style="fill:var(--ink)" opacity=".1"/><g transform="rotate(${rot.toFixed(2)} 270 ${Y(3) + H})" opacity="${fade}">`;
+    B.forEach(([name, ver, r, x, w], i) => {
+      const d = drop(i); if (d <= 0) return;
+      const y = Y(r) - (1 - d) * 150;
+      const rr = red(i), c = COL[r];
+      const fill = rr > 0 ? `color-mix(in srgb, var(--bad-bg) ${Math.round(rr * 100)}%, ${tintC(c, 26)})` : tintC(c, 26);
+      const base = rr > 0 ? `color-mix(in srgb, var(--bad) ${Math.round(rr * 100)}%, ${tintC(c, 55)})` : tintC(c, 55);
+      const v = i === 7 && bad ? '1.0.4' : ver;
+      s += `<g opacity="${Math.min(1, d * 1.4).toFixed(2)}"><rect x="${x + 6}" y="${y + 10}" width="${w - 12}" height="${H}" rx="14" style="fill:${base}" opacity=".45" filter="url(#hbBlur)"/><rect x="${x}" y="${y}" width="${w}" height="${H}" rx="14" style="fill:${fill}"/>
+        <text class="hb-label" x="${x + w / 2}" y="${y + (ver ? 27 : 36)}" text-anchor="middle" style="fill:${rr > .5 ? 'var(--bad)' : 'var(--ink)'}">${name}</text>`;
+      if (ver) s += `<text class="hb-ver" x="${x + w / 2}" y="${y + 47}" text-anchor="middle" style="fill:${rr > .5 ? 'var(--bad)' : 'var(--ink-2)'}">${v}${i === 7 && healed ? ' ✓' : ''}</text>`;
+      s += '</g>';
+    });
+    svg.innerHTML = s + '</g>';
+  };
+  if (reduce) { draw({}); setCap('added 9 packages'); return; }
+  const ORDER = [6, 7, 8, 3, 4, 5, 1, 2, 0];
+  const P = 11000; let t0 = null;
+  const ease = x => 1 - Math.pow(1 - x, 3);
+  const frame = now => {
+    if (t0 === null) t0 = now;
+    const k = ((now - t0) % P) / 1000;
+    const drop = i => { const s = .3 + ORDER.indexOf(i) * .22; return Math.max(0, Math.min(1, ease((k - s) / .5))); };
+    let red = () => 0, rot = 0, fade = 1, bad = false, healed = false;
+    if (k < 2.6) setCap(k < 1.4 ? 'npm install' : 'added 9 packages');
+    else if (k < 3.6) setCap('added 9 packages');
+    else if (k < 7.6) {
+      bad = true;
+      red = i => i in BREAK ? Math.max(0, Math.min(1, (k - 3.8 - BREAK[i] * .45) / .3)) : 0;
+      setCap(k < 5.2 ? 'pad-start 1.0.4 is out' : "Rosie's app broke");
+      if (k > 5.2) { const w = (k - 5.2) / 1.8; rot = w < 1 ? Math.sin(w * Math.PI * 4) * 2.6 * (1 - w) : 0; }
+    } else {
+      const f = Math.max(0, 1 - (k - 7.6) / .5);
+      red = i => i in BREAK ? f : 0; bad = f > .5; healed = f <= .5;
+      setCap('back to 1.0.3: fixed');
+      if (k > 10.2) fade = Math.max(0, 1 - (k - 10.2) / .6);
+    }
+    draw({ drop, red, rot, fade, bad, healed });
+    requestAnimationFrame(frame);
+  };
+  requestAnimationFrame(frame);
+})();
+
+/* ---------------- Part 1: the tower ---------------- */
+const PK = {
+  app: { name: "Rosie's app", ver: '', row: 0, kb: 0, what: "Rosie's own code: the pages, the checkout, the order form. Everything under it is someone else's code.", dl: '', maint: 'Rosie (and her AI)', lic: '' },
+  'super-date-picker': { ver: '4.2.1', row: 1, kb: 96, what: 'A calendar for picking dates and times. The one package you asked for.', dl: '820,000', maint: '3', lic: 'MIT', deps: ['date-magic', 'popper-lite', 'tiny-classnames'] },
+  'confetti-burst': { ver: '2.0.0', row: 1, kb: 38, what: 'Throws confetti across the screen when an order is placed.', dl: '150,000', maint: '1', lic: 'MIT', deps: ['canvas-shim', 'color-mix-lite'] },
+  'date-magic': { ver: '3.1.0', row: 2, kb: 64, what: 'Date math: adding days, comparing times, formatting. super-date-picker asked for it, not you.', dl: '2.1 million', maint: '4', lic: 'MIT', deps: ['locale-pack', 'pad-start-lite'] },
+  'popper-lite': { ver: '1.8.2', row: 2, kb: 28, what: 'Works out where to place the pop-up calendar so it fits on screen.', dl: '5.4 million', maint: '2', lic: 'MIT' },
+  'tiny-classnames': { ver: '2.3.2', row: 2, kb: 1, what: 'Joins style names together. About 30 lines of code.', dl: '9 million', maint: '1', lic: 'MIT' },
+  'canvas-shim': { ver: '1.1.2', row: 2, kb: 22, what: 'Helps draw on the screen in older browsers. It has a known security hole: you’ll meet it again in part 3.', dl: '300,000', maint: '2', lic: 'BSD' },
+  'color-mix-lite': { ver: '0.9.1', row: 2, kb: 4, what: 'Blends colors for the confetti. Its version starts with 0: not officially stable yet.', dl: '90,000', maint: '1', lic: 'MIT', deps: ['pad-start-lite'] },
+  'locale-pack': { ver: '1.4.0', row: 3, kb: 180, what: 'Month and day names in 40 languages. The biggest block in the tower, for a bakery that only uses English.', dl: '1.9 million', maint: '2', lic: 'MIT' },
+  'pad-start-lite': { ver: '1.0.3', row: 3, kb: 1, what: 'Adds zeros to the front of numbers, so 7 becomes 07. Just 11 lines of code, looked after by one volunteer, downloaded 4 million times a week.', dl: '4.2 million', maint: '1', lic: 'MIT' }
+};
+const INSTALL = {
+  'super-date-picker': ['super-date-picker', 'date-magic', 'popper-lite', 'tiny-classnames', 'locale-pack', 'pad-start-lite'],
+  'confetti-burst': ['confetti-burst', 'canvas-shim', 'color-mix-lite', 'pad-start-lite']
+};
+const T = { have: new Set(['app']), direct: new Set(), broken: new Set(), bad: false, healed: false, sel: null };
+const depsOf = n => n === 'app' ? [...T.direct] : (PK[n].deps || []).filter(d => T.have.has(d));
+const usersOf = n => [...T.have].filter(u => depsOf(u).includes(n));
+function renderTower(dropped = []) {
+  $$('#tower .trow').forEach(r => { r.innerHTML = ''; });
+  const order = ['app', 'super-date-picker', 'confetti-burst', 'date-magic', 'popper-lite', 'tiny-classnames', 'canvas-shim', 'color-mix-lite', 'locale-pack', 'pad-start-lite'];
+  order.filter(n => T.have.has(n)).forEach(n => {
+    const p = PK[n], b = document.createElement('button');
+    b.className = 'blk' + (n === 'app' ? ' app' : '') + (T.broken.has(n) ? ' broken' : '') + (T.sel === n ? ' sel' : '') + (n === 'pad-start-lite' && T.healed ? ' healed' : '');
+    b.dataset.p = n; b.style.setProperty('--c', COL[p.row]);
+    const ver = n === 'pad-start-lite' && T.bad ? '1.0.4' : p.ver;
+    b.innerHTML = `${esc(n === 'app' ? p.name : n)}${ver ? `<small>${ver}</small>` : '<small>your code</small>'}`;
+    b.setAttribute('aria-label', `${n === 'app' ? p.name : n} ${ver}${T.broken.has(n) ? ', broken' : ''}`);
+    if (!reduce && dropped.includes(n)) { b.classList.add('drop'); b.style.animationDelay = `${(3 - p.row) * 160 + dropped.indexOf(n) * 40}ms`; }
+    $(`#tower .trow[data-row="${p.row}"]`).appendChild(b);
+  });
+  requestAnimationFrame(drawLinks);
+}
+function drawLinks() {
+  const tw = $('#tower'), svg = $('#tlinks');
+  const pos = n => { const b = $(`.blk[data-p="${n}"]`, tw); if (!b) return null; const r = b.parentElement; return { x: r.offsetLeft + b.offsetLeft + b.offsetWidth / 2, top: r.offsetTop + b.offsetTop, bot: r.offsetTop + b.offsetTop + b.offsetHeight }; };
+  let s = '';
+  T.have.forEach(n => depsOf(n).forEach(d => {
+    const a = pos(n), b = pos(d); if (!a || !b) return;
+    const my = (a.bot + b.top) / 2;
+    s += `<path class="${T.broken.has(n) && T.broken.has(d) ? 'bad' : ''}" d="M${a.x},${a.bot} C${a.x},${my} ${b.x},${my} ${b.x},${b.top}"/>`;
+  }));
+  svg.setAttribute('viewBox', `0 0 ${tw.offsetWidth} ${tw.offsetHeight}`);
+  svg.innerHTML = s;
+}
+new ResizeObserver(() => requestAnimationFrame(drawLinks)).observe($('#tower'));
+function renderStats() {
+  $('#stAsked').textContent = T.direct.size;
+  $('#stGot').textContent = T.have.size - 1;
+  $('#stSize').textContent = [...T.have].reduce((a, n) => a + PK[n].kb, 0) + ' kB';
+}
+function renderInfo() {
+  const el = $('#pinfo'), n = T.sel;
+  if (!n) { el.innerHTML = `<h3 class="ctl-title" style="font-family:var(--f-display)">Tap a block</h3><p class="muted">Every block is a package. Tap one to see what it does, who looks after it and how big it is.</p>`; return; }
+  const p = PK[n], users = usersOf(n).map(u => u === 'app' ? "Rosie's app" : u);
+  const ver = n === 'pad-start-lite' && T.bad ? '1.0.4' : p.ver;
+  el.innerHTML = `<h3>${esc(n === 'app' ? p.name : n)}${ver ? ` <span class="muted" style="font-weight:500">${ver}</span>` : ''}</h3>
+    <p>${esc(p.what)}</p>
+    ${n === 'app' ? '' : `<dl class="facts2"><div><dt>Downloads</dt><dd>${p.dl} a week</dd></div><div><dt>Maintainers</dt><dd>${p.maint}</dd></div><div><dt>Size</dt><dd>${p.kb} kB</dd></div><div><dt>License</dt><dd>${p.lic}</dd></div></dl>
+    <p class="muted">Used by: ${users.length ? esc(users.join(', ')) : 'nothing'}${users.length > 1 ? '. npm installs one copy and shares it.' : ''}</p>`}`;
+}
+const tNote = $('#tNote');
+function install(pkg) {
+  const added = INSTALL[pkg].filter(n => !T.have.has(n));
+  const shared = INSTALL[pkg].filter(n => T.have.has(n));
+  INSTALL[pkg].forEach(n => T.have.add(n)); T.direct.add(pkg);
+  renderTower(added); renderStats();
+  return { added, shared };
+}
+$('#tInstall1').addEventListener('click', e => {
+  const { added } = install('super-date-picker');
+  e.currentTarget.disabled = true; e.currentTarget.classList.remove('primary');
+  $('#tInstall2').disabled = false; $('#tInstall2').classList.add('primary'); $('#tBreak').disabled = false;
+  CS.say(tNote, `<strong>You asked for 1 package. npm installed ${added.length}.</strong> super-date-picker needs three packages to work, and one of those needs two more. The blocks you didn't ask for are its <b>dependencies</b>. Now install confetti-burst too.`, 'info');
+  CS.tick('p1', 'add');
+});
+$('#tInstall2').addEventListener('click', e => {
+  const { added, shared } = install('confetti-burst');
+  e.currentTarget.disabled = true; e.currentTarget.classList.remove('primary'); $('#tBreak').classList.add('primary');
+  CS.say(tNote, `<strong>${added.length} more blocks.</strong> ${shared.length ? `confetti-burst needs pad-start-lite too, but it was already there, so both share one copy. ` : ''}Tap a few blocks to see who made them. Then look at the tiny block at the bottom.`, 'info');
+  T.sel = 'pad-start-lite'; renderTower(); renderInfo();
+  CS.tick('p1', 'confetti');
+});
+$('#tBreak').addEventListener('click', e => {
+  T.bad = true; T.healed = false;
+  e.currentTarget.disabled = true; e.currentTarget.classList.remove('primary'); $('#tFix').disabled = false; $('#tFix').classList.add('primary');
+  const levels = []; let cur = ['pad-start-lite']; const seen = new Set(cur);
+  while (cur.length) { levels.push(cur); const next = []; cur.forEach(n => usersOf(n).forEach(u => { if (!seen.has(u)) { seen.add(u); next.push(u); } })); cur = next; }
+  const brokenPkgs = [...seen].filter(n => n !== 'app' && n !== 'pad-start-lite');
+  const tw = $('#tower');
+  const finish = () => {
+    if (!reduce) { tw.classList.remove('wobble'); void tw.offsetWidth; tw.classList.add('wobble'); }
+    const crash = $('#crash'); crash.hidden = false;
+    crash.innerHTML = `<span class="r">Rosie's app crashed</span>\nTypeError: padStart is not a function\n  <span class="c">at date-magic/format.js:14</span>\n  <span class="c">at super-date-picker/index.js:88</span>\n  <span class="c">at CheckoutPage (checkout/page.tsx:21)</span>`;
+    CS.say(tNote, `<strong>11 lines of code just broke ${brokenPkgs.length} packages and Rosie's app.</strong> A stranger published pad-start-lite 1.0.4 with a bug. Rosie reinstalled her packages, and because date-magic accepts any 1.x version of pad-start-lite, she got the broken one automatically. She never chose it.`, 'bad');
+    CS.tick('p1', 'break');
+  };
+  levels.forEach((lv, i) => setTimeout(() => {
+    lv.forEach(n => T.broken.add(n));
+    T.sel = 'pad-start-lite'; renderTower(); renderInfo();
+    if (!reduce) lv.forEach(n => { const b = $(`.blk[data-p="${CSS.escape(n)}"]`); if (b) b.classList.add('shake'); });
+    if (i === levels.length - 1) finish();
+  }, reduce ? 0 : i * 380));
+});
+$('#tFix').addEventListener('click', e => {
+  T.bad = false; T.healed = true; T.broken.clear();
+  e.currentTarget.disabled = true; e.currentTarget.classList.remove('primary');
+  $('#crash').hidden = true; renderTower(); renderInfo();
+  CS.say(tNote, `<strong>Fixed.</strong> Rosie went back to 1.0.3, the last version that worked, and a file called the <b>lockfile</b> now records it. Everyone who installs Rosie's app gets exactly 1.0.3 until she chooses to update. You'll meet the lockfile in part 2.`, 'good');
+  CS.tick('p1', 'fix');
+});
+$('#tower').addEventListener('click', e => { const b = e.target.closest('.blk'); if (!b) return; T.sel = b.dataset.p; $$('#tower .blk').forEach(x => x.classList.toggle('sel', x === b)); renderInfo(); });
+renderTower(); renderStats(); renderInfo();
+
+/* judge cards */
+const PICKUP = new Date(2026, 9, 3, 10, 0);
+let intlOut = 'Saturday 10:00 AM';
+try { intlOut = new Intl.DateTimeFormat('en-US', { weekday: 'long', hour: 'numeric', minute: '2-digit' }).format(PICKUP); } catch (e) { /* keep default */ }
+const JUDGE = [
+  { name: 'moment-ous', ver: '2.30.1', desc: 'The classic date library. Everyone used it for years.',
+    facts: [['Downloads', '12 million a week'], ['Last update', '2 years ago'], ['Maintainers', '4'], ['Size', '290 kB'], ['License', 'MIT'], ['Its website says', '"In maintenance mode"']],
+    kind: 'bad', verdict: 'It works, but it’s huge for one date, and its makers have stopped adding features. Their own website suggests using something else.' },
+  { name: 'tidy-dates', ver: '3.4.0', desc: 'A modern date toolkit. You only load the parts you use.',
+    facts: [['Downloads', '9 million a week'], ['Last update', '3 weeks ago'], ['Maintainers', '12'], ['Size', '18 kB'], ['License', 'MIT'], ['Source code', 'Public, active']],
+    kind: 'info', verdict: 'A healthy package: popular, active, small, lots of maintainers. If Rosie needed lots of date math, this would be a great pick. For one date format, though, there’s an option with nothing to install.' },
+  { name: 'tidy-date', ver: '1.0.2', desc: 'Date formatting.',
+    facts: [['Downloads', '41 a week'], ['Last update', '4 days ago'], ['Maintainers', '1, joined last week'], ['Size', '2 kB'], ['License', 'None listed'], ['Runs a script on install', 'Yes']],
+    kind: 'bad', verdict: 'Look closely: tidy-date, not tidy-dates. A brand-new package from a brand-new account, with no license and a script that runs when you install it. That’s typosquatting: a look-alike name, waiting for a typo.' },
+  { name: 'Intl.DateTimeFormat', ver: 'built in', desc: 'Part of JavaScript itself, in every browser and in Node.js.',
+    code: `<span class="k">new</span> Intl.<span class="f">DateTimeFormat</span>(<span class="s">'en-US'</span>, {\n  weekday: <span class="s">'long'</span>, hour: <span class="s">'numeric'</span>, minute: <span class="s">'2-digit'</span>\n}).<span class="f">format</span>(pickup)\n<span class="c">// → ${esc(intlOut)}</span>`,
+    facts: [['Size', '0 kB'], ['Maintained by', 'Browser makers']],
+    kind: 'good', verdict: `The best choice. It’s built into JavaScript, so there’s nothing to install, update or trust. It printed "${esc(intlOut)}", which you can check yourself: that code really ran in your browser just now.` }
+];
+const judged = {};
+function renderJudge() {
+  $('#judge').innerHTML = JUDGE.map((j, i) => `<div class="pkg glass">
+    <div class="pkg-head"><h4>${esc(j.name)}</h4><span>${esc(j.ver)}</span></div>
+    <p>${esc(j.desc)}</p>
+    ${j.code ? `<div class="code">${j.code}</div>` : ''}
+    <dl class="facts2">${j.facts.map(([k, v]) => `<div><dt>${esc(k)}</dt><dd>${esc(v)}</dd></div>`).join('')}</dl>
+    <button class="btn" data-j="${i}">Use this</button>
+    <div class="fb ${judged[i] ? j.kind : ''}" aria-live="polite">${judged[i] ? (j.kind === 'good' ? '<strong>Yes.</strong> ' : j.kind === 'info' ? '<strong>Good, but…</strong> ' : '<strong>Not this one.</strong> ') + j.verdict : ''}</div>
+  </div>`).join('');
+}
+$('#judge').addEventListener('click', e => {
+  const b = e.target.closest('[data-j]'); if (!b) return;
+  const i = +b.dataset.j; judged[i] = true; renderJudge();
+  if (JUDGE[i].kind === 'good') CS.tick('p1', 'judge');
+});
+renderJudge();
+
+/* ---------------- Part 2: semver ---------------- */
+const BUMPS = [
+  ['Fixed', 'The 29th of February showed as the 1st of March.', '4.2.2', 'A bug fix that changes nothing else is a PATCH: the last number goes up.'],
+  ['New', 'An option to highlight today’s date.', '4.3.0', 'A new feature that doesn’t break anyone is a MINOR: the middle number goes up, and the last resets to 0.'],
+  ['Changed', 'onChange now gives you a Date object, not text. Code that expects text will break.', '5.0.0', 'Anything that can break existing code is a MAJOR: the first number goes up, the others reset to 0.']
+];
+const OPTS = ['4.2.2', '4.3.0', '5.0.0'];
+const bumpState = {};
+function renderBumps() {
+  $('#bumps').innerHTML = BUMPS.map(([k, t, ans, why], i) => {
+    const st = bumpState[i];
+    return `<div class="bump${st === true ? ' ok' : st ? ' no' : ''}" data-i="${i}"><div><b>${k}</b><span>${esc(t)}</span></div>
+      <div class="pick">${st === true ? `<span class="chip" style="--c:var(--good)"><i></i>${ans}</span>` : OPTS.map(o => `<button class="btn" data-v="${o}">${o}</button>`).join('')}</div>
+      <div class="fb" aria-live="polite">${st === true ? esc(why) : st ? esc(st) : ''}</div></div>`;
+  }).join('');
+}
+$('#bumps').addEventListener('click', e => {
+  const b = e.target.closest('[data-v]'); if (!b) return;
+  const i = +b.closest('.bump').dataset.i, [, , ans, why] = BUMPS[i], v = b.dataset.v;
+  if (v === ans) bumpState[i] = true;
+  else bumpState[i] = v === '5.0.0' ? 'Too big. A MAJOR tells everyone "this may break your code", so they’d be scared to take a harmless change.' : ans === '5.0.0' ? 'Careful: this change breaks code that expects text. People who accept ' + (v === '4.2.2' ? 'fixes' : 'new features') + ' automatically would get a broken app.' : v === '4.2.2' ? 'A new feature is more than a fix. People who only accept fixes (~) shouldn’t get it.' : 'That number is for new features. A plain bug fix only moves the last number.';
+  renderBumps();
+  if (bumpState[i] !== true && !reduce) $(`.bump[data-i="${i}"]`).classList.add('shake');
+  if (BUMPS.every((_, k) => bumpState[k] === true)) CS.tick('p2', 'bump');
+});
+renderBumps();
+
+/* semver range matcher (a small, honest subset of npm's rules) */
+const V = s => s.split('.').map(Number);
+const cmpV = (a, b) => { for (let i = 0; i < 3; i++) if (a[i] !== b[i]) return a[i] - b[i]; return 0; };
+function comparator(c) {
+  const m = c.match(/^(\^|~|>=|<=|>|<|=)?v?(\d+|[xX*])(?:\.(\d+|[xX*]))?(?:\.(\d+|[xX*]))?$/);
+  if (!m) return null;
+  const op = m[1] || '', wild = x => x === undefined || /[xX*]/.test(x);
+  const M = wild(m[2]) ? null : +m[2], mi = wild(m[3]) ? null : +m[3], p = wild(m[4]) ? null : +m[4];
+  if (M === null) return () => true;
+  const lo = [M, mi ?? 0, p ?? 0];
+  const between = (a, b) => v => cmpV(v, a) >= 0 && cmpV(v, b) < 0;
+  if (op === '^') return between(lo, M > 0 ? [M + 1, 0, 0] : mi === null ? [1, 0, 0] : mi > 0 ? [0, mi + 1, 0] : p === null ? [0, 1, 0] : [0, 0, p + 1]);
+  if (op === '~') return between(lo, mi === null ? [M + 1, 0, 0] : [M, mi + 1, 0]);
+  const partial = mi === null || p === null;
+  const next = mi === null ? [M + 1, 0, 0] : [M, mi + 1, 0];
+  if (op === '' || op === '=') return partial ? between(lo, next) : v => cmpV(v, lo) === 0;
+  if (op === '>=') return v => cmpV(v, lo) >= 0;
+  if (op === '<') return v => cmpV(v, lo) < 0;
+  if (op === '>') return partial ? v => cmpV(v, next) >= 0 : v => cmpV(v, lo) > 0;
+  if (op === '<=') return partial ? v => cmpV(v, next) < 0 : v => cmpV(v, lo) <= 0;
+  return null;
+}
+function parseRange(r) {
+  r = r.trim();
+  if (!r || r === '*' || r === 'x' || r === 'latest') return () => true;
+  const alts = r.split('||').map(part => {
+    part = part.trim();
+    const hy = part.match(/^(\S+)\s+-\s+(\S+)$/);
+    if (hy) { const a = comparator('>=' + hy[1]), b = comparator('<=' + hy[2]); return a && b ? v => a(v) && b(v) : null; }
+    const toks = part.replace(/(>=|<=|>|<|=|\^|~)\s+/g, '$1').split(/\s+/).filter(Boolean);
+    if (!toks.length) return () => true;
+    const fs = toks.map(comparator);
+    return fs.some(f => !f) ? null : v => fs.every(f => f(v));
+  });
+  return alts.some(a => !a) ? null : v => alts.some(a => a(V(v)));
+}
+const VERSIONS = [['4.1.0', ''], ['4.2.0', 'feature'], ['4.2.1', 'fix'], ['4.2.2', 'fix'], ['4.3.0', 'feature'], ['4.4.0', 'feature'], ['4.4.1', 'fix'], ['5.0.0', 'breaking'], ['5.1.0', 'feature']];
+const RANGE_TXT = {
+  '4.2.1': 'Exactly 4.2.1, and nothing else. You’d never get fixes unless someone edits this line.',
+  '~4.2.1': 'The tilde (~) accepts <b>patches only</b>: 4.2.1 and later 4.2.x versions. Bug fixes, nothing more.',
+  '^4.2.1': 'The caret (^) accepts <b>anything in 4.x</b> from 4.2.1 up: fixes and new features, but never a new MAJOR. It’s what npm writes by default.',
+  '*': 'The star accepts <b>any version at all</b>, including 5.0.0 and every breaking change still to come. Avoid it.'
+};
+const triedRanges = new Set();
+function showRange(r, fromInput) {
+  const f = parseRange(r);
+  $('#rangeShow').textContent = r || '*';
+  if (!f) { $('#rangeExplain').innerHTML = 'npm wouldn’t understand that range. Try something like <code>^4.3.0</code>, <code>4.x</code> or <code>&gt;=4.2.0 &lt;4.4.0</code>.'; $$('#vlist .vchip').forEach(c => c.classList.remove('in', 'pick')); return; }
+  const ok = VERSIONS.map(([v]) => f(v));
+  const best = ok.lastIndexOf(true);
+  $('#vlist').innerHTML = VERSIONS.map(([v, k], i) => `<div class="vchip${ok[i] ? ' in' : ''}${i === best ? ' pick' : ''}"><b>${v}</b><small>${k || 'older'}</small><span class="star">★ installed</span></div>`).join('');
+  const norm = r.replace(/\s+/g, '');
+  if (!fromInput && RANGE_TXT[r]) $('#rangeExplain').innerHTML = RANGE_TXT[r];
+  else $('#rangeExplain').innerHTML = best < 0 ? 'No published version fits that range, so npm would stop with an error.' : `That range accepts ${ok.filter(Boolean).length} of these ${VERSIONS.length} versions. npm would install <b>${VERSIONS[best][0]}</b>.`;
+  if (/^~4\.2\.\d+$/.test(norm)) triedRanges.add('~');
+  if (/^\^4\.2\.\d+$/.test(norm)) triedRanges.add('^');
+  if (triedRanges.size === 2) CS.tick('p2', 'range');
+}
+$('#rangeSeg').addEventListener('click', e => {
+  const b = e.target.closest('[data-r]'); if (!b) return;
+  $$('#rangeSeg [data-r]').forEach(x => x.setAttribute('aria-pressed', String(x === b)));
+  $('#rangeIn').value = '';
+  showRange(b.dataset.r);
+});
+$('#rangeIn').addEventListener('input', e => {
+  const v = e.target.value;
+  $$('#rangeSeg [data-r]').forEach(x => x.setAttribute('aria-pressed', String(x.dataset.r === v.trim())));
+  if (v.trim()) showRange(v.trim(), true); else showRange('4.2.1');
+});
+showRange('4.2.1');
+
+/* major upgrade demo */
+const UP = { ver: '4.4.1', fixed: false, crashed: false, clog: false, day: 1 };
+const DAYS = [['Fri', '4:00 PM'], ['Sat', '10:00 AM'], ['Sun', '11:30 AM']];
+const CODE_OLD = `&lt;<span class="f">DatePicker</span>\n  onChange={value =&gt; <span class="f">setLabel</span>(value.<span class="f">toUpperCase</span>())}\n/&gt;`;
+const CODE_NEW = `&lt;<span class="f">DatePicker</span>\n  onChange={value =&gt; <span class="f">setLabel</span>(<span class="hl"><span class="f">formatDate</span>(value)</span>.<span class="f">toUpperCase</span>())}\n/&gt;`;
+const CLOG = `<span class="n">## 5.0.0</span>\n<span class="r">BREAKING:</span> onChange now gives you a Date object, not text.\nTo show it as text, use formatDate(value).\n\n<span class="n">## 4.4.1</span>\nFixed: the calendar jumped when you scrolled.\n\n<span class="n">## 4.4.0</span>\nNew: pick a range of dates.`;
+const upNote = $('#upNote');
+function renderUp() {
+  $('#upVer').textContent = UP.ver;
+  const w = $('#widget');
+  const head = `<div class="w-head"><b>Pick up your cake</b><span class="chip" style="--c:${UP.ver.startsWith('5') ? 'var(--l1)' : 'var(--l2)'}"><i></i>super-date-picker ${UP.ver}</span></div>`;
+  if (UP.crashed) w.innerHTML = head + `<div class="w-crash" role="alert"><b>Something went wrong</b><code>TypeError: value.toUpperCase is not a function</code></div><p class="muted" style="margin:0">Customers can't choose a pickup time, so they can't order.</p>`;
+  else w.innerHTML = head + `<div class="days" role="group" aria-label="Pickup day">${DAYS.map(([d, t], i) => `<button class="day" data-d="${i}" aria-pressed="${UP.day === i}">${d}<small>${t}</small></button>`).join('')}</div><div class="w-label" aria-live="polite">PICKUP: ${DAYS[UP.day][0].toUpperCase()} ${DAYS[UP.day][1].toUpperCase()}</div>`;
+  $('#upCode').innerHTML = UP.fixed ? CODE_NEW : CODE_OLD;
+  $('#clogWrap').hidden = !UP.clog; $('#clog').innerHTML = CLOG;
+  const btns = [];
+  if (UP.ver === '4.4.1') btns.push('<button class="btn primary" data-u="up">Upgrade to 5.0.0</button>');
+  else {
+    if (!UP.clog && UP.crashed) btns.push('<button class="btn primary" data-u="clog">Read the changelog</button>');
+    if (UP.clog && !UP.fixed) btns.push('<button class="btn primary" data-u="fix">Apply the fix</button>');
+    if (!UP.fixed) btns.push('<button class="btn" data-u="back">Go back to 4.4.1</button>');
+  }
+  $('#upBtns').innerHTML = btns.join('') || '<span class="chip" style="--c:var(--good)"><i></i>Upgraded safely</span>';
+}
+$('#upBtns').addEventListener('click', e => {
+  const b = e.target.closest('[data-u]'); if (!b) return;
+  const a = b.dataset.u;
+  if (a === 'up') { UP.ver = '5.0.0'; CS.say(upNote, '<strong>Upgraded, and the page loads fine.</strong> Looks safe? Now pick a pickup day, like a customer would.', 'info'); }
+  if (a === 'clog') { UP.clog = true; CS.say(upNote, '<strong>There it is.</strong> Version 5 hands Rosie’s code a Date instead of text, and her code tries to uppercase it. The changelog even says how to fix it.', 'info'); }
+  if (a === 'fix') { UP.fixed = true; UP.crashed = false; CS.say(upNote, '<strong>Fixed, and upgraded safely.</strong> That’s the recipe for any major upgrade: read the changelog, change your code to match, and test the feature by using it. Ideally on a git branch first.', 'good'); CS.tick('p2', 'changelog'); }
+  if (a === 'back') { UP.ver = '4.4.1'; UP.crashed = false; UP.clog = false; CS.say(upNote, 'Back on 4.4.1, and everything works. Going back is always an option. When you’re ready, try the upgrade again, the careful way.', ''); }
+  renderUp();
+});
+$('#widget').addEventListener('click', e => {
+  const b = e.target.closest('[data-d]'); if (!b) return;
+  UP.day = +b.dataset.d;
+  if (UP.ver.startsWith('5') && !UP.fixed) {
+    UP.crashed = true;
+    CS.say(upNote, '<strong>It crashed the moment a customer used it.</strong> Breaking changes often hide until someone uses the feature. What changed in 5.0.0? The package’s <b>changelog</b>, a list of changes in each version, will say.', 'bad');
+    CS.tick('p2', 'major');
+  }
+  renderUp();
+});
+renderUp();
+
+/* ---------------- Part 3: npm terminal ---------------- */
+const REG = {
+  'super-date-picker': { latest: '5.1.0', versions: VERSIONS.map(v => v[0]), desc: 'A friendly date and time picker.', lic: 'MIT', deps: { 'date-magic': '^3.1.0', 'popper-lite': '^1.8.0', 'tiny-classnames': '^2.3.0' }, maint: ['mira-k', 'devon.p', 'sdp-bot'], home: 'https://github.com/super-date-picker/super-date-picker#readme', when: '3 weeks ago', size: '96 kB' },
+  'confetti-burst': { latest: '2.1.0', versions: ['1.0.0', '1.1.0', '2.0.0', '2.1.0'], desc: 'Throw confetti on any web page.', lic: 'MIT', deps: { 'canvas-shim': '^1.1.0', 'color-mix-lite': '^0.9.0' }, maint: ['poppy'], home: 'https://github.com/poppy/confetti-burst#readme', when: '1 month ago', size: '38 kB' },
+  'toast-pop': { latest: '3.2.0', nver: 58, desc: 'Small, friendly pop-up notifications for React.', lic: 'MIT', deps: { 'tiny-classnames': '^2.3.0' }, maint: ['ana-dev', 'lee.w', 'sam-ui', 'toastbot'], home: 'https://github.com/toast-pop/toast-pop#readme', when: '2 months ago', size: '34.2 kB' },
+  'taost-pop': { latest: '1.0.2', nver: 3, desc: 'Toast notifications for React', lic: 'ISC', deps: { 'node-fetch-lite': '^1.0.0' }, maint: ['quick-pkgs-2026'], home: '', when: '4 days ago', size: '4.1 kB', scripts: { postinstall: 'node setup.js' } },
+  'date-magic': { latest: '3.1.0', desc: 'Date math and formatting.', lic: 'MIT', deps: { 'locale-pack': '^1.4.0', 'pad-start-lite': '^1.0.0' }, maint: ['tomas', 'j-lee', 'ana-dev', 'kofi'], when: '5 months ago', size: '64 kB' },
+  'popper-lite': { latest: '1.8.2', desc: 'Position pop-ups so they fit on screen.', lic: 'MIT', deps: {}, maint: ['ruth', 'meg.o'], when: '2 months ago', size: '28 kB' },
+  'tiny-classnames': { latest: '2.3.2', desc: 'Join class names together.', lic: 'MIT', deps: {}, maint: ['jo'], when: '1 year ago', size: '1 kB' },
+  'locale-pack': { latest: '1.4.0', desc: 'Month and day names in 40 languages.', lic: 'MIT', deps: {}, maint: ['intl-folks', 'sven'], when: '8 months ago', size: '180 kB' },
+  'pad-start-lite': { latest: '1.0.3', desc: 'Pad the start of a string.', lic: 'MIT', deps: {}, maint: ['kim-h'], when: '1 year ago', size: '1 kB' },
+  'canvas-shim': { latest: '1.1.3', desc: 'Canvas drawing for older browsers.', lic: 'BSD-3-Clause', deps: {}, maint: ['pixelworks', 'amir'], when: '6 days ago', size: '22 kB' },
+  'color-mix-lite': { latest: '0.9.1', desc: 'Blend two colors.', lic: 'MIT', deps: { 'pad-start-lite': '^1.0.0' }, maint: ['poppy'], when: '3 years ago', size: '4 kB' },
+  'node-fetch-lite': { latest: '1.0.0', desc: '', lic: 'ISC', deps: {}, maint: ['quick-pkgs-2026'], when: '4 days ago', size: '2.2 kB' }
+};
+const DEPS = { 'super-date-picker': ['date-magic', 'popper-lite', 'tiny-classnames'], 'confetti-burst': ['canvas-shim', 'color-mix-lite'], 'date-magic': ['locale-pack', 'pad-start-lite'], 'color-mix-lite': ['pad-start-lite'], 'toast-pop': ['tiny-classnames'], 'taost-pop': ['node-fetch-lite'] };
+const S = {
+  direct: { 'confetti-burst': '^2.0.0', 'super-date-picker': '^4.2.1' },
+  ver: { 'super-date-picker': '4.2.1', 'confetti-burst': '2.0.0', 'date-magic': '3.1.0', 'popper-lite': '1.8.2', 'tiny-classnames': '2.3.2', 'locale-pack': '1.4.0', 'pad-start-lite': '1.0.3', 'canvas-shim': '1.1.2', 'color-mix-lite': '0.9.1' },
+  flash: null, viewed: new Set()
+};
+const WANTED = { 'super-date-picker': '4.4.1', 'confetti-burst': '2.1.0' };
+const installed = () => { const out = new Set(); const walk = n => { if (out.has(n)) return; out.add(n); (DEPS[n] || []).forEach(walk); }; Object.keys(S.direct).forEach(walk); return out; };
+const vulnerable = () => cmpV(V(S.ver['canvas-shim'] || '9.9.9'), [1, 1, 3]) < 0 && installed().has('canvas-shim');
+const outdatedList = () => Object.keys(S.direct).filter(n => REG[n] && cmpV(V(S.ver[n]), V(REG[n].latest)) < 0).sort();
+function renderPJ() {
+  const names = Object.keys(S.direct).sort();
+  $('#pjView').innerHTML = `{\n  <span class="f">"name"</span>: <span class="s">"rosies-bakery"</span>,\n  <span class="f">"version"</span>: <span class="s">"1.0.0"</span>,\n  <span class="f">"dependencies"</span>: {\n${names.map((n, i) => `    ${S.flash === n ? '<span class="flash">' : ''}<span class="f">"${n}"</span>: <span class="s">"${S.direct[n]}"</span>${S.flash === n ? '</span>' : ''}${i < names.length - 1 ? ',' : ''}`).join('\n')}\n  }\n}`;
+  S.flash = null;
+  const n = installed().size, v = vulnerable() ? 1 : 0, o = outdatedList().length;
+  $('#health').innerHTML = `<div><b>${n}</b><span>packages installed</span></div><div><b class="${v ? 'bad' : 'good'}">${v}</b><span>known security ${v === 1 ? 'hole' : 'holes'}</span></div><div><b>${o}</b><span>out of date</span></div>`;
+}
+function tree(filter) {
+  const seen = new Set(), lines = [`rosies-bakery@1.0.0 <span class="dim">/home/rosie/rosies-bakery</span>`];
+  const hasTarget = n => n === filter || (DEPS[n] || []).some(hasTarget);
+  const walk = (n, pre, last, depth) => {
+    const kids = (DEPS[n] || []).slice().sort().filter(k => !filter || hasTarget(k));
+    const dup = seen.has(n); seen.add(n);
+    const showKids = !dup && kids.length && (filter !== undefined || tree.all);
+    lines.push(`${pre}${last ? '└─' : '├─'}${showKids ? '┬' : '─'} ${n === filter ? '<span class="y">' : ''}${n}@${S.ver[n]}${n === filter ? '</span>' : ''}${dup ? ' <span class="dim">deduped</span>' : ''}`);
+    if (showKids) kids.forEach((k, i) => walk(k, pre + (last ? '  ' : '│ '), i === kids.length - 1, depth + 1));
+  };
+  const top = Object.keys(S.direct).sort().filter(n => !filter || hasTarget(n));
+  if (!top.length) lines.push('└── <span class="dim">(empty)</span>');
+  top.forEach((n, i) => walk(n, '', i === top.length - 1, 0));
+  return lines.join('\n');
+}
+const auditCount = () => installed().size + 1;
+function auditSummary() { return vulnerable() ? '<span class="r">1 high</span> severity vulnerability\n\nTo address all issues, run:\n  npm audit fix' : 'found <span class="g">0</span> vulnerabilities'; }
+const pad = (s, n) => String(s) + ' '.repeat(Math.max(1, n - String(s).length));
+const padL = (s, n) => ' '.repeat(Math.max(0, n - String(s).length)) + s;
+function viewPkg(name, field, io) {
+  const r = REG[name];
+  if (!r) { io.print(`npm error code E404\nnpm error 404 Not Found - GET https://registry.npmjs.org/${esc(name)} - Not found\nnpm error 404  '${esc(name)}@*' is not in this registry.`, 'r'); return false; }
+  if (field) {
+    if (field === 'versions') io.print(`[\n${(r.versions || [r.latest]).map(v => `  <span class="g">'${v}'</span>`).join(',\n')}\n]`);
+    else if (field === 'version') io.print(r.latest);
+    else if (field === 'scripts') io.print(r.scripts ? `{ ${Object.entries(r.scripts).map(([k, v]) => `${k}: <span class="g">'${esc(v)}'</span>`).join(', ')} }` : '');
+    else if (field === 'dependencies') io.print(Object.keys(r.deps).length ? `{ ${Object.entries(r.deps).map(([k, v]) => `<span class="g">'${k}'</span>: <span class="g">'${v}'</span>`).join(', ')} }` : '');
+    else if (field === 'maintainers') io.print(`[ ${r.maint.map(m => `<span class="g">'${m}'</span>`).join(', ')} ]`);
+    else if (field === 'license') io.print(r.lic);
+    else io.print('');
+    return true;
+  }
+  const nd = Object.keys(r.deps).length, nv = r.nver || (r.versions ? r.versions.length : 1);
+  io.print(`<span class="b">${name}</span>@<span class="g">${r.latest}</span> | <span class="g">${r.lic}</span> | deps: <span class="b">${nd || 'none'}</span> | versions: <span class="y">${nv}</span>
+${esc(r.desc)}${r.home ? `\n<span class="b">${r.home}</span>` : ''}
+
+dist
+.tarball: <span class="b">https://registry.npmjs.org/${name}/-/${name}-${r.latest}.tgz</span>
+.unpackedSize: <span class="y">${r.size}</span>
+${nd ? `\ndependencies:\n${Object.entries(r.deps).map(([k, v]) => `<span class="b">${k}</span>: ${v}`).join('\n')}\n` : ''}
+maintainers:
+${r.maint.map(m => `- <span class="b">${m}</span>`).join('\n')}
+
+dist-tags:
+<span class="b">latest</span>: ${r.latest}
+
+published <span class="b">${r.when}</span> by <span class="b">${r.maint[0]}</span>`);
+  return true;
+}
+function run(a, line, io, api) {
+  const { print, tutor } = io;
+  const cmd = a[0];
+  if (cmd === 'help') {
+    print(`Commands you can use here:\n  <span class="y">cat package.json</span>      the list of what Rosie asked for\n  <span class="y">npm ls</span>                what's installed (<span class="y">--all</span> for the whole tower)\n  <span class="y">npm audit</span>             check for known security holes\n  <span class="y">npm audit fix</span>         apply safe fixes\n  <span class="y">npm outdated</span>          packages with newer versions\n  <span class="y">npm update</span>            take updates your ranges allow\n  <span class="y">npm view &lt;name&gt;</span>       look a package up\n  <span class="y">npm install &lt;name&gt;</span>    add a package\n  <span class="y">npm uninstall &lt;name&gt;</span>  remove one\n  <span class="y">ls</span>  <span class="y">clear</span>  <span class="y">hint</span>`);
+    return null;
+  }
+  if (cmd === 'ls') { print('<span class="b">node_modules/</span>  package-lock.json  package.json  <span class="b">src/</span>'); tutor('<b>node_modules/</b> holds the downloaded packages: never edit or commit it. Try <b>cat package.json</b>.'); return { k: 'lsdir' }; }
+  if (cmd === 'cat') {
+    const f = (a[1] || '').replace(/^\.\//, '');
+    if (f === 'package.json') {
+      print($('#pjView').innerHTML);
+      tutor('Rosie asked for <b>2</b> packages. The <b>^</b> means "this version or any newer one, as long as the first number stays the same". But what actually got installed? Try <b>npm ls --all</b>.');
+      return { k: 'cat', f };
+    }
+    if (f === 'package-lock.json') {
+      const inst = [...installed()].sort();
+      print(`{\n  <span class="b">"name"</span>: <span class="g">"rosies-bakery"</span>,\n  <span class="b">"lockfileVersion"</span>: 3,\n  <span class="b">"packages"</span>: {\n${inst.slice(0, 4).map(n => `    <span class="b">"node_modules/${n}"</span>: { <span class="b">"version"</span>: <span class="g">"${S.ver[n]}"</span>, … },`).join('\n')}\n    <span class="dim">… ${inst.length - 4} more</span>\n  }\n}`);
+      tutor(`The receipt: every one of the <b>${inst.length}</b> packages, with its exact version. npm writes this file for you. Commit it, and don't edit it by hand.`);
+      return { k: 'cat', f };
+    }
+    if (!f) { print('usage: cat &lt;file&gt;', 'r'); return null; }
+    if (/^(node_modules|src)\/?$/.test(f)) { print(`cat: ${esc(f)}: Is a directory`, 'r'); return null; }
+    print(`cat: ${esc(f)}: No such file or directory`, 'r'); tutor('Try <b>cat package.json</b>.'); return null;
+  }
+  if (cmd === 'git') { print('git: not in this practice terminal. Course 203 covers git.', 'dim'); return null; }
+  if (cmd === 'node') { print('v22.11.0'); return null; }
+  if (cmd === 'npx') { print('npx: not needed for this mission.', 'dim'); return null; }
+  if (cmd !== 'npm') return undefined;
+
+  let sub = a[1];
+  const args = a.slice(2);
+  const ALIAS = { i: 'install', add: 'install', in: 'install', ins: 'install', un: 'uninstall', remove: 'uninstall', rm: 'uninstall', r: 'uninstall', info: 'view', show: 'view', v: 'view', list: 'ls', up: 'update', upgrade: 'update' };
+  sub = ALIAS[sub] || sub;
+  if (!sub || sub === 'help') { print('Usage: npm &lt;command&gt;\n\nTry: npm ls --all · npm audit · npm outdated · npm update · npm view &lt;name&gt; · npm install &lt;name&gt;'); return null; }
+
+  if (sub === 'ls') {
+    const all = args.includes('--all') || args.includes('-a');
+    const name = args.find(x => !x.startsWith('-'));
+    tree.all = all;
+    if (name && !installed().has(name)) { print(`rosies-bakery@1.0.0 <span class="dim">/home/rosie/rosies-bakery</span>\n└── <span class="dim">(empty)</span>`); tutor(`${esc(name)} isn't installed here.`); return { k: 'ls', all, name }; }
+    print(tree(name));
+    if (name) tutor(`This shows every path from Rosie's app down to <b>${esc(name)}</b>: handy for asking "why is this package here?"`);
+    else if (!all) tutor('That’s only the top floor: the packages Rosie asked for. Add <b>--all</b> to see the whole tower.');
+    else tutor(`There's the tower: <b>${installed().size}</b> packages, from 2 requests. <b>deduped</b> means npm shares one copy between two packages. Next, is any of it unsafe? Run <b>npm audit</b>.`);
+    return { k: 'ls', all, name };
+  }
+  if (sub === 'audit') {
+    if (args[0] === 'fix') {
+      const force = args.includes('--force');
+      if (force) print('npm <span class="y">warn</span> using --force Recommended protections disabled.');
+      if (vulnerable()) {
+        S.ver['canvas-shim'] = '1.1.3'; renderPJ();
+        print(`\nchanged 1 package, and audited ${auditCount()} packages in 1s\n\nfound <span class="g">0</span> vulnerabilities`);
+        tutor(`Fixed: canvas-shim is now 1.1.3. Look at package.json: <b>it didn't change</b>. canvas-shim is a deep dependency, so the fix was recorded in <b>package-lock.json</b>.${force ? ' And be careful with <b>--force</b>: it may install new MAJOR versions, which can break things. Plain <b>npm audit fix</b> is the safe one.' : ''}`);
+      } else { print(`\nup to date, audited ${auditCount()} packages in 1s\n\nfound <span class="g">0</span> vulnerabilities`); tutor('Nothing to fix.'); }
+      return { k: 'auditfix' };
+    }
+    print('# npm audit report\n');
+    if (vulnerable()) {
+      print(`<span class="b">canvas-shim</span>  &lt;1.1.3\nSeverity: <span class="r">high</span>\nCrafted image files can run code through canvas-shim <span class="dim">(advisory link)</span>\nfix available via \`npm audit fix\`\n<span class="dim">node_modules/canvas-shim</span>\n\n${auditSummary()}`);
+      tutor('A known security hole in <b>canvas-shim</b>, two floors down: Rosie never installed it herself, confetti-burst did. Its hole is still Rosie’s hole. Version 1.1.3 fixes it and fits confetti-burst’s range, so the fix is safe: run <b>npm audit fix</b>.');
+    } else { print(`found <span class="g">0</span> vulnerabilities`); tutor('No known holes. "Known" matters: audit only knows about problems that have been reported.'); }
+    return { k: 'audit' };
+  }
+  if (sub === 'outdated') {
+    const list = outdatedList();
+    if (!list.length) { tutor('Everything is on its latest version. npm outdated prints nothing when there’s nothing to update.'); return { k: 'outdated' }; }
+    print(`<span class="dim">${pad('Package', 19)}${padL('Current', 7)}  ${padL('Wanted', 6)}  ${padL('Latest', 6)}</span>\n` + list.map(n => {
+      const want = WANTED[n] && cmpV(V(WANTED[n]), V(S.ver[n])) > 0 ? WANTED[n] : S.ver[n];
+      const cls = cmpV(V(S.ver[n]), V(want)) < 0 ? 'r' : 'y';
+      return `<span class="${cls}">${pad(n, 19)}</span>${padL(S.ver[n], 7)}  <span class="g">${padL(want, 6)}</span>  <span class="b">${padL(REG[n].latest, 6)}</span>`;
+    }).join('\n'));
+    tutor('<b>Current</b> is what’s installed. <b>Wanted</b> is the newest version your range in package.json allows. <b>Latest</b> is the newest release. super-date-picker’s latest is 5.1.0, a new MAJOR, so ^4.2.1 won’t take it. Take the safe updates with <b>npm update</b>.');
+    return { k: 'outdated' };
+  }
+  if (sub === 'update') {
+    const name = args.find(x => !x.startsWith('-'));
+    const targets = Object.keys(WANTED).filter(n => S.direct[n] && (!name || n === name) && cmpV(V(WANTED[n]), V(S.ver[n])) > 0);
+    let changed = targets.length;
+    targets.forEach(n => { S.ver[n] = WANTED[n]; });
+    if (!name && vulnerable()) { S.ver['canvas-shim'] = '1.1.3'; changed++; }
+    renderPJ();
+    print(changed ? `\nchanged ${changed} package${changed > 1 ? 's' : ''}, and audited ${auditCount()} packages in 2s\n\n${auditSummary()}` : `\nup to date, audited ${auditCount()} packages in 1s\n\n${auditSummary()}`);
+    if (changed) tutor(`Updated to the <b>Wanted</b> versions. super-date-picker is on <b>${S.ver['super-date-picker']}</b>, still 4.x, because 5 might break things. package.json still says <b>^4.2.1</b>: that range already allows ${S.ver['super-date-picker']}, and the lockfile records exactly what you got.`);
+    else tutor('Already on the newest versions your ranges allow.');
+    return { k: 'update' };
+  }
+  if (sub === 'view') {
+    const name = args.find(x => !x.startsWith('-')), field = args.filter(x => !x.startsWith('-'))[1];
+    if (!name) { print('npm error Usage: npm view &lt;package&gt; [field]', 'r'); return null; }
+    const bare = name.replace(/@[^@]*$/, '') || name;
+    const ok = viewPkg(bare, field, io);
+    if (ok) S.viewed.add(bare);
+    if (!ok) tutor('No package by that name in this practice registry. On the real one, check the spelling carefully: a near miss might exist, and not be what you want.');
+    else if (bare === 'taost-pop' && !field) tutor('Red flags everywhere. The name is one letter off from <b>toast-pop</b>. It was published 4 days ago, by one brand-new account, with only 3 versions, no homepage and no source code link. Try <b>npm view taost-pop scripts</b> to see what it runs on install, then compare the real one: <b>npm view toast-pop</b>.');
+    else if (bare === 'taost-pop' && field === 'scripts') tutor('A <b>postinstall</b> script: it would run on Rosie’s computer the moment she installs it. Nope.');
+    else if (bare === 'toast-pop' && !field) tutor('That looks healthy: 58 versions, 4 maintainers, a real source code link, and its one dependency is already in Rosie’s tower. Install it with <b>npm install toast-pop</b>.');
+    else if (bare === 'super-date-picker' && !field) tutor('Try <b>npm view super-date-picker versions</b> to list every release.');
+    return { k: 'view', name: bare, field };
+  }
+  if (sub === 'install' || sub === 'ci') {
+    const names = sub === 'ci' ? [] : args.filter(x => !x.startsWith('-'));
+    if (!names.length) {
+      if (sub === 'ci') { print(`\nadded ${installed().size} packages, and audited ${auditCount()} packages in 3s\n\n${auditSummary()}`); tutor('<b>npm ci</b> deleted node_modules and installed exactly what the lockfile says. That’s what servers and deploys should use.'); }
+      else print(`\nup to date, audited ${auditCount()} packages in 1s\n\n${auditSummary()}`);
+      return { k: 'install', name: null };
+    }
+    let last = null;
+    for (const spec of names) {
+      const m = spec.match(/^(@?[^@]+)(?:@(.+))?$/); const name = m ? m[1] : spec, want = m && m[2];
+      if (!REG[name]) { viewPkg(name, null, io); tutor('No package by that name in this practice registry. Only this lesson’s made-up packages exist here.'); continue; }
+      const before = installed();
+      if (name === 'super-date-picker' && want) {
+        const f = parseRange(want === 'latest' ? '*' : want);
+        const pick = f ? [...REG[name].versions].reverse().find(v => f(v)) : null;
+        if (!pick) { print(`npm error code ETARGET\nnpm error notarget No matching version found for ${esc(spec)}.`, 'r'); continue; }
+        const major = pick.split('.')[0] !== S.ver[name].split('.')[0];
+        S.ver[name] = pick; S.direct[name] = '^' + pick; S.flash = name; renderPJ();
+        print(`\nchanged 1 package, and audited ${auditCount()} packages in 2s\n\n${auditSummary()}`);
+        tutor(major && pick.startsWith('5') ? 'That’s a MAJOR upgrade: package.json now says <b>^' + pick + '</b>. Remember part 2: version 5 changed onChange. Before shipping, read the changelog and test the picker. To go back: <b>npm install super-date-picker@4</b>.' : `Now on ${pick}.`);
+        last = { k: 'install', name };
+        continue;
+      }
+      if (S.direct[name]) { print(`\nup to date, audited ${auditCount()} packages in 1s\n\n${auditSummary()}`); tutor(`${esc(name)} is already installed.`); last = { k: 'install', name }; continue; }
+      S.direct[name] = '^' + REG[name].latest; S.ver[name] = REG[name].latest;
+      (DEPS[name] || []).forEach(d => { if (!S.ver[d]) S.ver[d] = REG[d].latest; });
+      S.flash = name;
+      const added = [...installed()].filter(n => !before.has(n)).length;
+      if (REG[name].scripts) print(`\n<span class="dim">&gt; ${name}@${REG[name].latest} postinstall</span>\n<span class="dim">&gt; node setup.js</span>`);
+      print(`\nadded ${added} package${added === 1 ? '' : 's'}, and audited ${auditCount()} packages in ${REG[name].scripts ? 3 : 1}s\n\n${auditSummary()}`);
+      renderPJ();
+      if (name === 'taost-pop') tutor('Uh oh. That package just <b>ran its own script</b> on Rosie’s computer, and npm audit found nothing, because nobody has reported it yet. A script like that can read files such as <b>.env</b> and send secrets away. Remove it: <b>npm uninstall taost-pop</b>. In real life you would also replace any secret keys on this computer.');
+      else if (name === 'toast-pop') tutor(`Added <b>toast-pop</b>, and only ${added} new package${added === 1 ? '' : 's'}: its one dependency, tiny-classnames, was already there.${S.direct['taost-pop'] ? ' Now remove the look-alike: <b>npm uninstall taost-pop</b>.' : ''}`);
+      else tutor(`Added ${esc(name)}. Check package.json on the right.`);
+      last = { k: 'install', name };
+    }
+    return last || null;
+  }
+  if (sub === 'uninstall') {
+    const name = args.find(x => !x.startsWith('-'));
+    if (!name || !S.direct[name]) { print(`\nup to date, audited ${auditCount()} packages in 1s\n\n${auditSummary()}`); if (name) tutor(`${esc(name)} isn't one of Rosie's direct dependencies.`); return null; }
+    const before = installed();
+    delete S.direct[name];
+    const removed = [...before].filter(n => !installed().has(n)).length;
+    renderPJ();
+    print(`\nremoved ${removed} package${removed === 1 ? '' : 's'}, and audited ${auditCount()} packages in 1s\n\n${auditSummary()}`);
+    if (name === 'taost-pop') tutor(`Gone. ${S.direct['toast-pop'] ? 'And the real toast-pop is installed.' : 'Now look up the real one, <b>npm view toast-pop</b>, and install it.'}`);
+    else tutor(`Removed ${esc(name)}${removed > 1 ? `, and the ${removed - 1} package${removed > 2 ? 's' : ''} only it needed` : ''}.`);
+    return { k: 'uninstall', name };
+  }
+  if (sub === 'run' || sub === 'start' || sub === 'test') { print('npm error Missing script: "' + esc(args[0] || sub) + '"\n', 'r'); tutor('This practice copy has no scripts. Stick to the mission commands.'); return null; }
+  print(`npm error Unknown command: "${esc(a[1])}"`, 'r'); tutor('Type <b>help</b> to see the npm commands you can use here.');
+  return null;
+}
+CS.terminal($('#term'), {
+  part: 'p3',
+  mission: $('#mission'),
+  prompt: () => '~/rosies-bakery $',
+  intro: 'Type a command below and press Enter.\nStuck? Press "Show a hint", or type <span class="y">help</span>.',
+  steps: [
+    { t: 'Read the shopping list', how: 'Print package.json.', cmd: 'cat package.json', done: a => a.k === 'cat' && a.f === 'package.json' },
+    { t: 'See the whole tower', how: 'List every installed package, deep ones too.', cmd: 'npm ls --all', done: a => a.k === 'ls' && a.all && !a.name },
+    { t: 'Look for security holes', how: 'Ask npm to audit Rosie’s packages.', cmd: 'npm audit', done: a => a.k === 'audit' },
+    { t: 'Fix the hole', how: 'Let npm apply the safe fix.', cmd: 'npm audit fix', done: a => (a.k === 'auditfix' || a.k === 'update') && !vulnerable() },
+    { t: 'Find old versions', how: 'Ask which packages have newer versions.', cmd: 'npm outdated', done: a => a.k === 'outdated' },
+    { t: 'Take the safe updates', how: 'Update within Rosie’s ranges.', cmd: 'npm update', done: a => a.k === 'update' || (a.k === 'install' && cmpV(V(S.ver['super-date-picker']), [4, 4, 1]) >= 0) },
+    { t: 'Check the AI’s suggestion', how: 'Look up taost-pop before installing anything.', cmd: 'npm view taost-pop', done: a => a.k === 'view' && a.name === 'taost-pop' },
+    { t: 'Install the real package', how: 'Install toast-pop, and make sure taost-pop is gone.', cmd: () => S.direct['taost-pop'] ? 'npm uninstall taost-pop' : 'npm install toast-pop', done: () => !!S.direct['toast-pop'] && !S.direct['taost-pop'] }
+  ],
+  run,
+  onStep: (i, a, api) => {
+    if (i === 5) setTimeout(() => api.io.ai('For the "Order placed!" pop-up, let’s add a toast library: <b>npm install taost-pop</b>'), 150);
+  },
+  doneHTML: '<b>Mission complete.</b> Keep exploring: try <code>npm ls tiny-classnames</code> or <code>npm view super-date-picker versions</code>.',
+  doneTutor: '<b>Mission complete!</b> You checked the whole tower, fixed a security hole, took only the safe updates, and caught a look-alike package before it got in. That’s a better checkup than most apps ever get.'
+});
+renderPJ();
+
+/* ---------------- Part 4: steer the AI ---------------- */
+CS.steer($('#steer'), [
+  { ai: "To show pickup times like \"Saturday 10:00 AM\", I'll install mega-date-kit. It adds 412 packages, but it can do everything with dates.",
+    opts: [["Sure, more features for later.", 0, "Rosie needs one format. 412 packages means 412 sets of authors to trust, and more to download and update."],
+           ["Install it, but only import the one function we need.", 0, "Importing less doesn't stop npm installing all 412 packages, or their install scripts running."],
+           ["Use the built-in Intl.DateTimeFormat instead. No package needed.", 1, "Right. JavaScript can already do this. The best dependency is often no dependency."]] },
+  { ai: "Run npm install expres to add the web server library.",
+    opts: [["Wait: the popular package is express, with two s's. Check the name with npm view before installing.", 1, "Yes. Look-alike names are a real attack, and AI tools make typos and invent names too."],
+           ["Run it. The AI knows the package names.", 0, "AI tools do misspell and invent package names, and attackers publish packages under those names."],
+           ["Install both expres and express, to be safe.", 0, "Installing the look-alike is exactly the danger: its install script runs straight away."]] },
+  { ai: "I upgraded super-date-picker from 4.4.1 to 5.1.0 so we're on the latest. It should all still work!",
+    opts: [["Great, newer is always better.", 0, "A new MAJOR version means breaking changes. That's exactly what crashed the picker in part 2."],
+           ["Read the changelog for breaking changes, test the pickup picker, and do it on a git branch first.", 1, "Exactly. Majors can be done safely: read what changed, adapt the code, test by using the feature."],
+           ["Change the range to * so we always get the newest version automatically.", 0, "Then every future breaking change would arrive on its own, without anyone reading the changelog."]] },
+  { ai: "I only needed one function from a big helper library, so I copied the whole library, 17,000 lines, into src/vendor/.",
+    opts: [["Nice, that's one less dependency.", 0, "It's still a dependency, just a hidden one. Nobody will update it, npm audit can't see it, and its license still applies."],
+           ["Delete the copy. Install the package properly, or write the few lines we actually need.", 1, "Right. A proper install gets security fixes and shows up in the lockfile. For one small function, writing it yourself is fine too."],
+           ["Keep it, but add a comment saying where it came from.", 0, "A comment doesn't bring security fixes. npm still can't see it, so npm audit can't warn you."]] }
+], { part: 'p4', counter: $('#steerCount') });
+
+/* ---------------- Part 5: quiz ---------------- */
+CS.quiz($('#quiz'), [
+  { q: 'You asked npm for 1 package, and it installed 40. Why?', a: [['Packages need other packages, and npm installs those too', 1], ['npm installs popular extras by default', 0], ['It made a mistake. Delete the extras', 0]], why: 'Those are transitive dependencies: the packages your package depends on. Your app runs their code too.' },
+  { q: 'A package goes from 4.2.1 to 5.0.0. What does that tell you?', a: [['Only bug fixes', 0], ['New features, nothing breaks', 0], ['Breaking changes: read the changelog before upgrading', 1]], why: 'The first number is MAJOR. It goes up when existing code might break.' },
+  { q: 'package.json says "^4.2.1". Which version could npm install?', a: [['5.0.0', 0], ['4.9.0', 1], ['4.1.0', 0]], why: 'The caret allows anything from 4.2.1 up, as long as the first number stays 4.' },
+  { q: 'What is package-lock.json for?', a: [['It records the exact version of every package, so every computer installs the same ones', 1], ['It stops anyone from installing new packages', 0], ['It stores your passwords for the npm registry', 0]], why: 'The lockfile is the receipt for the whole tower. Commit it, and use npm ci on servers.' },
+  { q: 'An AI suggests npm install reactt-router. What should you do first?', a: [['Install it quickly, before the AI forgets', 0], ['Run npm audit afterwards to check it', 0], ['Check the spelling, and look it up before installing', 1]], why: 'reactt has an extra t. A look-alike can run its install script the moment it lands, and audit only knows about reported problems.' }
+], { part: 'p5', doneCard: $('#doneCard'), doneTitle: 'You can manage dependencies now.', doneText: 'You know what a package really brings with it, what version numbers promise, how lockfiles keep things steady, and how to check a package before you trust it.' });
+})();
+</script>
+</body>
+</html>

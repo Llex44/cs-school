@@ -1,0 +1,999 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Communicating design intent to AI · CS School</title>
+<meta name="description" content="Course 213: briefs, references and precise feedback that get you the design you meant, not the AI's generic default.">
+<link rel="icon" href="../assets/favicon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="../assets/cs-school.css">
+<style>
+/* ---------- the "AI's mockup": one renderer used everywhere. It's a picture of a website, so fixed colors are allowed inside it. ---------- */
+.mkc{container-type:inline-size; width:100%}
+.mk{background:var(--pbg); color:var(--ink); font-family:-apple-system,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif; font-size:2.4cqw; line-height:1.42; min-height:56cqw; overflow:hidden; text-align:left}
+.mk.fresh{animation:mkin .45s ease-out}
+@keyframes mkin{from{opacity:.35; filter:blur(3px)}}
+.mk-top{background:var(--hbg); color:var(--hink)}
+.mk-nav{display:flex; justify-content:space-between; align-items:center; gap:3cqw; padding:2.8cqw 4.5cqw 0; font-size:2cqw}
+.mk-logo{display:flex; align-items:center; gap:1.2cqw; font-weight:800; font-size:2.5cqw; letter-spacing:-.01em; white-space:nowrap}
+.mk-logo i{width:2.4cqw; height:2.4cqw; border-radius:50%; background:var(--a)}
+.grad .mk-logo i{background:#fff}
+.mk-links{display:flex; gap:3cqw; opacity:.85; white-space:nowrap}
+.mk-hero{display:flex; gap:4cqw; padding:5cqw 4.5cqw 6cqw}
+.lay-center .mk-hero{flex-direction:column; align-items:center; text-align:center}
+.lay-split .mk-hero{align-items:center}
+.lay-split .mk-txt{flex:1.3; min-width:0}
+.mk-art{flex:1; min-width:0; color:var(--hink)}
+.mk-art svg{width:100%; height:auto; display:block}
+.mk-h{font-weight:800; font-size:5.4cqw; line-height:1.06; letter-spacing:-.02em; margin:1cqw 0 1.5cqw; text-wrap:balance}
+.h2 .mk-h{font-size:7.8cqw; letter-spacing:-.025em; line-height:1.02}
+.f-serif .mk-h{font-family:Georgia,"Times New Roman",serif; font-weight:700; letter-spacing:-.01em}
+.f-rounded .mk-h,.f-rounded .mk-btn,.f-rounded .mk-logo{font-family:ui-rounded,"Arial Rounded MT Bold","Nunito","Varela Round",system-ui,sans-serif}
+.f-hand .mk-h{font-family:"Comic Sans MS","Chalkboard SE","Marker Felt",cursive; font-weight:700; letter-spacing:0}
+.f-condensed .mk-h{font-family:"Arial Narrow","Roboto Condensed","Oswald",Impact,sans-serif; text-transform:uppercase; letter-spacing:.01em; font-weight:800}
+.mk-sub{font-size:2.5cqw; color:var(--hsub); max-width:46ch; margin:0}
+.lay-center .mk-sub{margin-inline:auto}
+.mk-badge{display:inline-block; font-size:1.8cqw; font-weight:700; padding:.6cqw 1.8cqw; border-radius:99px; background:color-mix(in srgb, var(--hink) 15%, transparent); margin-bottom:.8cqw}
+.mk-mast{font-family:Georgia,serif; font-size:5cqw; letter-spacing:.28em; line-height:1; margin-bottom:1.6cqw; opacity:.9}
+.mk-busy{display:flex; flex-wrap:wrap; gap:.8cqw; margin:1.2cqw 0}
+.lay-center .mk-busy{justify-content:center}
+.mk-busy span{font-size:1.7cqw; font-weight:700; padding:.4cqw 1.2cqw; border-radius:.6cqw; background:color-mix(in srgb, var(--a) 22%, transparent)}
+.mk-ctas{display:flex; gap:1.6cqw; margin-top:2.6cqw; flex-wrap:wrap}
+.lay-center .mk-ctas{justify-content:center}
+.mk-btn{font-weight:700; font-size:2.2cqw; padding:1.3cqw 2.8cqw; border-radius:99px; background:var(--a); color:var(--ai); white-space:nowrap}
+.grad .mk-btn{background:#fff; color:var(--a)}
+.mk-btn.ghost,.grad .mk-btn.ghost{background:transparent; color:inherit; box-shadow:inset 0 0 0 .22cqw currentColor}
+.mk-btn.glow,.grad .mk-btn.glow{background:linear-gradient(90deg,#F472B6,#A855F7,#6366F1); color:#fff; box-shadow:0 0 3.4cqw rgba(168,85,247,.85), 0 0 1cqw rgba(244,114,182,.9)}
+.mk-btn.one{border-radius:.9cqw; padding:1.8cqw 3.4cqw; font-size:2.3cqw}
+.mk-dates{margin-top:2.6cqw; width:100%}
+.lay-center .mk-dates{max-width:66cqw; margin-inline:auto; text-align:left}
+.mk-date{display:grid; grid-template-columns:1.3fr 1fr auto; gap:2cqw; padding:1.3cqw 0; box-shadow:inset 0 .16cqw 0 color-mix(in srgb, var(--hink) 18%, transparent); font-size:2.2cqw}
+.mk-date .seats{color:var(--a); font-weight:700}
+.grad .mk-date .seats{color:var(--hink)}
+.mk-price{font-size:2.05cqw; color:var(--hsub); margin:1.4cqw 0 0}
+.lay-center .mk-price{text-align:center}
+.mk-cards{display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:2.2cqw; padding:4cqw 4.5cqw 5cqw}
+.mk-card{background:var(--card); border-radius:1.8cqw; padding:2.6cqw 2cqw; text-align:center; box-shadow:inset 0 .7cqw 0 var(--a), 0 1.2cqw 3cqw -1.2cqw rgba(0,0,0,.25)}
+.mk-card .ic{display:grid; place-items:center; font-size:3.8cqw; line-height:1; height:5.4cqw; margin:.6cqw auto .8cqw}
+.mk-card .ic svg{width:5.4cqw; height:5.4cqw}
+.mk-card b{display:block; font-size:2.1cqw; line-height:1.2; margin-bottom:.5cqw}
+.mk-card small{display:block; font-size:1.75cqw; color:var(--sub)}
+.mk-photo{position:relative}
+.mk-photo span{position:absolute; left:1.4cqw; bottom:1.2cqw; font-size:1.6cqw; color:#fff; background:rgba(0,0,0,.45); padding:.2cqw 1cqw; border-radius:.5cqw}
+.sp-airy .mk-nav{padding:3.8cqw 7cqw 0}
+.sp-airy .mk-hero{padding:8.5cqw 7cqw 9.5cqw; gap:6cqw}
+.sp-airy .mk-h{margin:1.4cqw 0 2.4cqw}
+.sp-airy .mk-ctas{margin-top:3.8cqw}
+.sp-airy .mk-cards{padding:5cqw 7cqw 7cqw; gap:3cqw}
+.sp-tight .mk-hero{padding:3.6cqw 4.5cqw 4.2cqw}
+.sp-tight .mk-cards{padding:2.4cqw 4.5cqw 3.4cqw}
+
+/* frames */
+.browser{width:100%; border-radius:16px; overflow:hidden; box-shadow:var(--float); border:1px solid var(--hair); background:var(--paper)}
+.exchange,.composer{width:100%}
+.browser-bar{display:flex; align-items:center; gap:6px; padding:8px 12px; background:var(--panel); border-bottom:1px solid var(--hair)}
+.browser-bar i{width:11px; height:11px; border-radius:50%; background:var(--rule); display:block; flex:none}
+.url{margin-left:8px; flex:1; font-family:var(--f-mono); font-size:.85rem; color:var(--ink-2); overflow:hidden; white-space:nowrap; text-overflow:ellipsis}
+.ver{font-family:var(--f-display); font-weight:800; font-size:.85rem; color:var(--ink-2); white-space:nowrap}
+.hero-mock{display:grid}
+.hero-mock > div{grid-area:1/1; transition:opacity .6s}
+.hero-steps{display:flex; flex-wrap:wrap; gap:6px 14px; margin-top:12px; font-size:.95rem; color:var(--ink-2)}
+.hero-steps span{display:flex; align-items:center; gap:7px; transition:color .3s}
+.hero-steps i{width:10px; height:10px; border-radius:50%; background:color-mix(in srgb, var(--ink) 18%, transparent); transition:background .3s, transform .3s}
+.hero-steps span.on{color:var(--ink); font-weight:700}
+.hero-steps span.on i{background:var(--c); transform:scale(1.15)}
+
+/* ---------- part 1: feedback loop ---------- */
+.head-card .mkc{border-radius:12px; overflow:hidden; box-shadow:0 8px 24px -12px rgba(0,0,0,.35)}
+.swatches{display:flex; flex-wrap:wrap; gap:8px 16px; margin-top:12px; font-size:.95rem; color:var(--ink-2)}
+.swatches span{display:flex; align-items:center; gap:8px}
+.swatches i{width:18px; height:18px; border-radius:6px; box-shadow:inset 0 0 0 1px rgba(0,0,0,.12)}
+.composer textarea{width:100%; font:inherit; font-size:1.02rem; line-height:1.45; padding:12px 14px; border:1px solid var(--hair); border-radius:12px; background:var(--glass-strong); color:var(--ink); resize:vertical; min-height:96px; box-shadow:inset 0 1px 2px rgba(18,20,23,.06)}
+.composer textarea:focus{border-color:var(--l2); outline:none; box-shadow:0 0 0 3px color-mix(in srgb, var(--l2) 25%, transparent)}
+.chip-group{margin-top:14px}
+.chip-group .label{font-size:.95rem; color:var(--ink-2); margin-bottom:6px; display:block}
+.chips{display:flex; flex-wrap:wrap; gap:8px}
+.fb-chip{font:inherit; font-family:var(--f-display); font-weight:700; font-size:.95rem; color:var(--ink); background:var(--glass-strong); border:1px solid var(--hair); border-radius:99px; padding:8px 14px; min-height:44px; cursor:pointer; display:inline-flex; align-items:center; gap:8px}
+.fb-chip:hover{background:var(--paper)}
+.fb-chip i{width:8px; height:8px; border-radius:50%; background:var(--c)}
+.dims{display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:8px}
+.dimbtn{font:inherit; font-family:var(--f-display); font-weight:800; font-size:.98rem; text-align:left; display:flex; align-items:center; gap:10px; padding:10px 12px; min-height:48px; border-radius:12px; border:1px solid var(--hair); background:var(--glass-strong); color:var(--ink-2); cursor:pointer; transition:background .3s, color .3s}
+.dimbtn .ck{flex:none; width:22px; height:22px; border-radius:50%; display:grid; place-items:center; font-size:.8rem; background:color-mix(in srgb, var(--ink) 9%, transparent); color:transparent; transition:all .3s}
+.dimbtn.ok{background:var(--good-bg); color:var(--ink)}
+.dimbtn.ok .ck{background:var(--good); color:var(--paper); animation:pop .4s cubic-bezier(.3,1.7,.5,1)}
+.match-head{display:flex; justify-content:space-between; align-items:baseline; gap:10px; margin-bottom:10px}
+.match-head b{font-family:var(--f-display); font-weight:900; font-size:1.5rem; font-variant-numeric:tabular-nums}
+.exchange{display:flex; flex-direction:column; gap:8px}
+.exchange .msg{max-width:100%}
+.guesses{display:flex; flex-wrap:wrap; gap:6px; margin-top:10px}
+.guesses .gs{font-family:var(--f-display); font-weight:700; font-size:.9rem; padding:3px 10px; border-radius:99px; background:var(--bad-bg); color:var(--bad)}
+.guesses .none{font-size:.95rem; color:var(--good); font-family:var(--f-display); font-weight:700}
+
+/* ---------- part 2: brief anatomy ---------- */
+.brief{border-radius:20px; padding:10px 22px 16px}
+.bp{display:grid; grid-template-columns:auto minmax(0,1fr); gap:4px 14px; padding:14px 0; align-items:start}
+.bp + .bp{box-shadow:inset 0 1px 0 var(--hair)}
+.bp .toggle{grid-row:span 2}
+.bp h4{font-family:var(--f-display); font-weight:800; font-size:1.08rem; margin:0; display:flex; align-items:center; gap:8px; padding-top:9px}
+.bp h4 i{width:9px; height:9px; border-radius:50%; background:var(--c)}
+.bp p{font-size:1rem; transition:opacity .25s}
+.bp p.txt{white-space:pre-line}
+.bp.off p.txt{opacity:.45; text-decoration:line-through; text-decoration-thickness:1.5px}
+.bp .gap{display:none; font-size:.98rem; color:var(--bad); margin-top:4px}
+.bp.off .gap{display:block; animation:rise .3s}
+.bp .wf{margin-top:10px; width:100%; max-width:300px; height:auto; display:block}
+.toggle{flex:none; width:48px; height:44px; background:none; border:0; padding:0; cursor:pointer; display:grid; place-items:center}
+.toggle .sw{width:40px; height:24px; border-radius:99px; background:color-mix(in srgb, var(--ink) 18%, transparent); position:relative; transition:background .2s}
+.toggle .sw::after{content:""; position:absolute; top:3px; left:3px; width:18px; height:18px; border-radius:50%; background:var(--paper); box-shadow:0 1px 3px rgba(0,0,0,.25); transition:transform .2s}
+.toggle[aria-pressed="true"] .sw{background:var(--good)}
+.toggle[aria-pressed="true"] .sw::after{transform:translateX(16px)}
+.sticky{position:sticky; top:76px}
+.refs{display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:20px}
+.ref-card{border-radius:20px; padding:14px 14px 16px; display:flex; flex-direction:column; gap:10px}
+.ref-card h4{font-family:var(--f-display); font-weight:800; font-size:1.08rem; margin:0}
+.ref{border-radius:12px; overflow:hidden; aspect-ratio:4/3; position:relative; container-type:inline-size}
+.ref-mag{background:#F2EBDF; color:#241A12; padding:5% 6%; display:grid; grid-template-columns:1.15fr 1fr; grid-template-rows:auto minmax(0,1fr); gap:3cqw 5cqw}
+.ref-mag .m1{grid-column:1/-1; font-family:Georgia,serif; font-size:12cqw; letter-spacing:.22em; line-height:1}
+.ref-mag .m2{font-family:Georgia,serif; font-size:7.6cqw; line-height:1.06; align-self:end}
+.ref-mag svg{width:100%; height:100%; display:block; border-radius:1cqw}
+.ref-gig{background:#0B0B0B; color:#F2F2F2; padding:6% 7%; font-family:"Arial Narrow","Roboto Condensed",Impact,sans-serif; text-transform:uppercase}
+.ref-gig .g1{color:#E4FF3A; font-weight:800; font-size:11cqw; line-height:1; letter-spacing:.02em; margin-bottom:5cqw}
+.ref-gig .g2{display:grid; grid-template-columns:1.1fr 1.2fr auto; gap:3cqw; font-size:5.6cqw; padding:3cqw 0; box-shadow:inset 0 1px 0 #333}
+.ref-gig .g2 i{font-style:normal; color:#E4FF3A}
+.ref-mkt{background:#C65A3A; color:#FFF3E2; padding:5% 6%; font-family:"Comic Sans MS","Chalkboard SE","Marker Felt",cursive}
+.ref-mkt .k1{font-size:12cqw; line-height:1; font-weight:700}
+.ref-mkt .k2{font-size:5.4cqw; line-height:1.25; margin-top:3cqw; max-width:58%}
+.ref-mkt svg{position:absolute; right:3cqw; bottom:3cqw; width:44%; height:auto}
+.take{display:flex; flex-wrap:wrap; gap:6px}
+.ref-why{margin:2px 0 0; font-size:.95rem; padding:10px 12px}
+.ref-why:empty{display:none}
+.take button{font:inherit; font-size:.95rem; font-weight:700; font-family:var(--f-display); color:var(--ink); background:var(--glass-strong); border:1px solid var(--hair); border-radius:10px; padding:7px 12px; min-height:44px; cursor:pointer; text-align:left}
+.take button[aria-pressed="true"]{background:var(--ink); color:var(--paper); border-color:var(--ink)}
+.take button[aria-pressed="true"]::before{content:"✓  "}
+.refline{font-size:1.05rem; line-height:1.55; border-radius:16px; padding:16px 18px; background:var(--glass-strong)}
+.refline .bad{color:var(--bad); font-weight:700}
+.refline .empty{color:var(--ink-2)}
+
+/* ---------- part 3: lab ---------- */
+#lab textarea{white-space:pre-wrap; font-family:var(--f-body); font-size:17px; min-height:300px}
+#lab .cl-lines{display:none}
+#lab .cl-out{max-height:none}
+.lab.wide{grid-template-areas:"mission work" "extra extra"}
+.lab-out{display:grid; grid-template-columns:minmax(0,1.7fr) minmax(0,1fr); gap:28px; align-items:start}
+.lab-out .ctl-title{margin-bottom:10px}
+.und{display:flex; gap:10px; padding:3px 0; font-family:var(--f-body); font-size:1rem; white-space:normal}
+.und .m{flex:none; width:1.2em; font-weight:700}
+.und.ok .m{color:#8BF0A8} .und.no .m{color:#FF9A8A}
+.und b{color:#fff; font-family:var(--f-display); font-weight:800}
+.und.ok span:last-child{color:#C9D2DC} .und.no span:last-child{color:#ECEFF3}
+.tpl{font-family:var(--f-mono); font-size:.95rem; line-height:1.7; white-space:pre-wrap; background:var(--glass-strong); border-radius:12px; padding:12px 14px}
+
+/* ---------- cheat sheet ---------- */
+.slop-list{display:flex; flex-wrap:wrap; gap:8px}
+.slop-list span{font-family:var(--f-display); font-weight:700; font-size:.95rem; padding:5px 12px; border-radius:99px; background:var(--bad-bg); color:var(--bad)}
+
+@media (max-width:900px){
+  .refs{grid-template-columns:minmax(0,1fr)}
+  .lab.wide{grid-template-areas:"mission" "work" "extra"}
+  .lab-out{grid-template-columns:minmax(0,1fr)}
+  .sticky{position:static}
+  .pg-col > *{width:100%}
+  .ref{max-width:420px}
+}
+@media (max-width:640px){
+  .hero-caption{white-space:normal; align-items:flex-start; line-height:1.45}
+  .dims{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .brief{padding:6px 16px 12px}
+}
+</style>
+</head>
+<body>
+<main id="top">
+  <section class="wrap hero">
+    <div>
+      <div class="kicker">Core curriculum · Course 213 · Communicating design intent to AI</div>
+      <h1>The AI can't see the design in your head.</h1>
+      <p class="lede">Vague words get you the average of the internet: a purple gradient, three emoji cards, everything centered. Precise words get you your design. You'll learn to write a brief, use references and sketches, and give feedback that changes exactly what you meant.</p>
+      <ul class="facts">
+        <li>About 15 minutes</li>
+        <li>5 parts</li>
+        <li>Brief-writing lab</li>
+        <li>No design experience needed</li>
+      </ul>
+      <div class="row hero-cta"><a class="btn primary" href="#p1">Start the lesson</a></div>
+    </div>
+    <figure style="margin:0">
+      <div class="hero-visual glass">
+        <div class="browser" role="img" aria-label="A pottery studio's landing page being redesigned one precise instruction at a time: it starts as a generic purple gradient page with emoji cards and ends as a warm, left-aligned page with a serif headline, class dates and one Book a seat button.">
+          <div class="browser-bar" aria-hidden="true"><i></i><i></i><i></i><span class="url">slowclay.studio</span><span class="ver" id="heroVer">v1</span></div>
+          <div class="hero-mock mkc" id="heroMock" aria-hidden="true"><div></div><div></div></div>
+        </div>
+        <div class="hero-steps" id="heroSteps" aria-hidden="true"></div>
+      </div>
+      <div class="hero-caption glass" aria-hidden="true"><span>You:</span><span id="heroCap"></span></div>
+    </figure>
+  </section>
+
+  <div class="wrap">
+  <!-- PART 1 -->
+  <section class="part" id="p1">
+    <span class="bullet glass" data-p="p1">1</span>
+    <div class="part-head">
+      <div class="kicker">Part 1 of 5</div>
+      <h2>Vague feedback gets random results</h2>
+      <p>An AI designer does exactly what your words say. When your words don't say what to change, it guesses, and its guesses are the most common patterns on the web.</p>
+    </div>
+
+    <div class="chat" aria-label="Example conversation">
+      <div class="msg me"><span class="who">You</span>Make a landing page for my pottery class.</div>
+      <div class="msg ai"><span class="who">AI designer</span>Here you go! A modern gradient hero, three feature cards with icons, and a Get Started button.</div>
+      <div class="msg me"><span class="who">You</span>Hmm. It's not what I pictured. Can you make it pop?</div>
+      <div class="msg ai"><span class="who">AI designer</span>Done! I made the gradient bolder and added a glow to the button.</div>
+    </div>
+
+    <div class="task glass" data-part="p1">
+      <h3>Your task</h3>
+      <ol>
+        <li data-t="vague"><span>Send vague feedback, like "make it pop", and watch what the AI changes.</span></li>
+        <li data-t="precise"><span>Send precise feedback that fixes one thing.</span></li>
+        <li data-t="match"><span>Keep going until all six match the design in your head.</span></li>
+      </ol>
+    </div>
+
+    <div class="pg">
+      <div class="pg-col">
+        <div class="o1 ctl glass head-card">
+          <h3 class="ctl-title">The design in your head</h3>
+          <p class="ctl-sub">You know what you want. The AI can't see this.</p>
+          <div class="mkc" id="targetMock" aria-hidden="true"></div>
+          <div class="swatches" aria-label="Key details"><span><i style="background:#B84A33"></i>Terracotta #B84A33</span><span><i style="background:#FBF4EA"></i>Cream #FBF4EA</span><span>Serif headline</span></div>
+        </div>
+        <div class="o4 ctl glass composer">
+          <label class="ctl-title" for="fb">Your feedback to the AI</label>
+          <textarea id="fb" placeholder="Type feedback, or start from a suggestion below"></textarea>
+          <div class="row" style="margin-top:10px"><button class="btn primary" id="sendFb">Send</button><button class="btn" id="undoFb" disabled>Undo last change</button></div>
+          <div class="chip-group"><span class="label">Vague</span><div class="chips" id="vagueChips"></div></div>
+          <div class="chip-group"><span class="label">Precise, about one thing</span><div class="chips" id="preciseChips"></div></div>
+        </div>
+      </div>
+      <div class="pg-col">
+        <div class="o2 browser" id="mockFrame">
+          <div class="browser-bar" aria-hidden="true"><i></i><i></i><i></i><span class="url">slowclay.studio</span><span class="ver" id="ver">Version 1</span></div>
+          <div class="mkc" id="mock" role="img" aria-label="The AI's current mockup"></div>
+        </div>
+        <div class="o3 exchange" id="exchange" aria-live="polite"></div>
+        <div class="o5 ctl glass">
+          <div class="match-head"><h3 class="ctl-title" style="margin:0">Matches your design</h3><b id="matchN">0 of 6</b></div>
+          <div class="dims" id="dims"></div>
+          <p class="ctl-sub" style="margin:10px 0 0">Tap one to see what's different.</p>
+        </div>
+      </div>
+    </div>
+
+    <div class="stack" style="margin-top:48px">
+      <h3>Why "make it pop" can't work</h3>
+      <p>"Pop", "modern", "clean" and "premium" describe a feeling, not a change. To the AI, a hundred different edits would all count as "more modern". So it picks one, usually a popular one, and often breaks something you liked. Precise feedback names <b>the element</b>, <b>the change</b> and, when it matters, <b>the value</b>: "Make the <b>headline</b> <b>a serif, twice the body size</b>."</p>
+      <div class="table-wrap glass">
+        <table>
+          <thead><tr><th>Talk about</th><th>Vague</th><th>Precise</th></tr></thead>
+          <tbody>
+            <tr><td>Layout</td><td>"Make it flow better"</td><td>"Text on the left, mug illustration on the right"</td></tr>
+            <tr><td>Hierarchy</td><td>"Make it pop"</td><td>"Headline twice the body size; one button only"</td></tr>
+            <tr><td>Color</td><td>"Warmer"</td><td>"Terracotta #B84A33 on cream #FBF4EA, no gradient"</td></tr>
+            <tr><td>Spacing</td><td>"Cleaner"</td><td>"Double the space between sections"</td></tr>
+            <tr><td>Copy</td><td>"More engaging"</td><td>Headline: "Make your own mug in two Saturdays."</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p class="muted">Hierarchy, spacing, color and type are covered in depth in <a href="211-visual-design-basics.html">Course 211</a>. Here the point is how to <i>say</i> them.</p>
+    </div>
+  </section>
+
+  <!-- PART 2 -->
+  <section class="part" id="p2">
+    <span class="bullet glass" data-p="p2">2</span>
+    <div class="part-head">
+      <div class="kicker">Part 2 of 5</div>
+      <h2>Anatomy of a brief</h2>
+      <p>Feedback fixes a design after the fact. A <b>brief</b> gets it right the first time: the design in your head, written down before the AI starts. Every part you leave out is a gap, and the AI fills every gap with its default.</p>
+    </div>
+
+    <div class="task glass" data-part="p2">
+      <h3>Your task</h3>
+      <ol>
+        <li data-t="gaps"><span>Switch off three parts of the brief and see what the AI fills each gap with.</span></li>
+        <li data-t="refs"><span>Pick what to take from each reference, and nothing that isn't yours to take.</span></li>
+      </ol>
+    </div>
+
+    <div class="pg">
+      <div class="pg-col">
+        <div class="o1 brief glass" id="brief" role="group" aria-label="The brief for Slow Clay's landing page"></div>
+      </div>
+      <div class="pg-col sticky">
+        <div class="o2 browser">
+          <div class="browser-bar" aria-hidden="true"><i></i><i></i><i></i><span class="url">slowclay.studio</span><span class="ver">From this brief</span></div>
+          <div class="mkc" id="briefMock" role="img" aria-label="The mockup the AI makes from the brief"></div>
+        </div>
+        <div class="o3 ctl glass"><h3 class="ctl-title" style="margin-bottom:4px">What the AI guessed</h3><div class="guesses" id="briefGuess" aria-live="polite"></div></div>
+      </div>
+    </div>
+
+    <div class="stack" style="margin-top:48px">
+      <h3>A sketch beats a paragraph</h3>
+      <p>Layout is the hardest thing to describe in words. "Put the image next to the text" has a dozen readings. A 30-second box sketch has one. Draw it on paper and attach a photo, or type it:</p>
+      <pre class="code">[ Slow Clay                       Classes  Studio ]
+
+[ HEADLINE, big serif     ]   [                 ]
+[ Sat 10 &amp; 17 Oct   3 left ]   [  mug drawing    ]
+[ Sat 7 &amp; 14 Nov    6 left ]   [                 ]
+[ ( Book a seat · $95 )   ]
+
+On phones: headline, dates, button, then the drawing.</pre>
+      <p class="muted">Wireframes show layout and priority. They say nothing about color or fonts, and that's the point: you settle the structure first.</p>
+    </div>
+
+    <div class="stack" style="margin-top:56px">
+      <h3>References: say what to take</h3>
+      <p>"Make it like this site" tells the AI to copy something, but not what. It might copy the colors when you loved the spacing, or lift a logo that isn't yours. Name the part you want from each reference.</p>
+      <div class="refs" id="refs"></div>
+      <div class="split" style="margin-top:8px">
+        <div class="stack" style="gap:14px">
+          <h4 class="label" style="margin:0">Your reference line for the brief</h4>
+          <div class="refline" id="refLine" aria-live="polite"></div>
+          <div class="note info" id="refNote" aria-live="polite">Pick parts from the references above. Each choice changes the mockup.</div>
+        </div>
+        <div class="browser">
+          <div class="browser-bar" aria-hidden="true"><i></i><i></i><i></i><span class="url">slowclay.studio</span><span class="ver">Your mix</span></div>
+          <div class="mkc" id="mixMock" role="img" aria-label="The mockup made from the parts you picked"></div>
+        </div>
+      </div>
+      <details class="deeper glass">
+        <summary>Under the hood: why AI design drifts to the average <small>optional</small></summary>
+        <div>
+          <p>A language model writes the most likely continuation of what it has seen. For "a landing page", the most likely page is the one repeated across millions of templates and tutorials: a centered hero, a gradient, three feature cards, two buttons. That's not a lack of taste. It's what "likely" means.</p>
+          <p>Every specific instruction removes some of those likely options. A good brief doesn't make the AI smarter. It makes the average irrelevant, because you've already decided the things it would have averaged.</p>
+        </div>
+      </details>
+    </div>
+  </section>
+
+  <!-- PART 3 -->
+  <section class="part" id="p3">
+    <span class="bullet glass" data-p="p3">3</span>
+    <div class="part-head">
+      <div class="kicker">Part 3 of 5</div>
+      <h2>Try it: write the brief</h2>
+      <p>Now write one yourself. The AI below reads your brief every time you press Run and builds the page from it. Whatever you leave out, it guesses.</p>
+    </div>
+
+    <div class="lab wide">
+      <div class="a-mission ctl glass">
+        <h3 class="ctl-title">Your mission</h3>
+        <p class="ctl-sub" style="margin-top:0">Slow Clay runs a two-Saturday beginner class. Write a brief that gets their landing page right, with nothing left for the AI to guess.</p>
+        <ol class="mission" id="mission"></ol>
+        <h4 class="label" style="margin:14px 0 6px">A shape to follow</h4>
+        <div class="tpl">Audience: …
+Goal: …
+Content, most important first: …
+Layout: …
+Reference: … take …
+Constraints: …
+Don'ts: …</div>
+      </div>
+      <div class="a-work" id="lab"></div>
+      <div class="a-extra ctl glass lab-out">
+        <div>
+          <h3 class="ctl-title">The AI's mockup from your brief</h3>
+          <div class="browser">
+            <div class="browser-bar" aria-hidden="true"><i></i><i></i><i></i><span class="url">slowclay.studio</span><span class="ver">From your brief</span></div>
+            <div class="mkc" id="labMock" role="img" aria-label="The mockup built from your brief"></div>
+          </div>
+        </div>
+        <div>
+          <h3 class="ctl-title">What the AI guessed</h3>
+          <p class="ctl-sub">Every item here is a gap in your brief that the AI filled with its default. Get this list to empty.</p>
+          <div class="guesses" id="labGuess" aria-live="polite"></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- PART 4 -->
+  <section class="part" id="p4">
+    <span class="bullet glass" data-p="p4">4</span>
+    <div class="part-head">
+      <div class="kicker">Part 4 of 5</div>
+      <h2>Steer the AI</h2>
+      <p>The skill isn't only writing briefs. It's noticing when the AI has fallen back on its defaults, and getting it out of a loop. Pick the reply you'd send.</p>
+    </div>
+    <p class="counter" id="steerCount"></p>
+    <div id="steer"></div>
+  </section>
+
+  <!-- PART 5 -->
+  <section class="part" id="p5">
+    <span class="bullet glass" data-p="p5">5</span>
+    <div class="part-head">
+      <div class="kicker">Part 5 of 5</div>
+      <h2>Check your understanding</h2>
+      <p>Five quick questions. Each answer explains itself.</p>
+    </div>
+    <div id="quiz"></div>
+    <div id="doneCard" aria-live="polite"></div>
+  </section>
+  </div>
+
+  <section class="after" id="cheat">
+    <div class="wrap stack">
+      <h2>Cheat sheet</h2>
+      <p class="muted">Turn a feeling into an instruction. Keep this next to your AI chat.</p>
+      <div class="table-wrap glass">
+        <table>
+          <thead><tr><th>Instead of…</th><th>Say something like…</th><th>Why it works</th></tr></thead>
+          <tbody>
+            <tr><td>"Make it pop"</td><td>"Make Book a seat the only filled button, terracotta #B84A33, right under the dates."</td><td>Names the element, the change and the value.</td></tr>
+            <tr><td>"Cleaner"</td><td>"Remove the three cards and the badge. Double the space between sections."</td><td>Says what goes, and by how much.</td></tr>
+            <tr><td>"More modern"</td><td>"Serif headline, about twice the body size, left-aligned. No gradients."</td><td>"Modern" means something different to everyone.</td></tr>
+            <tr><td>"More premium"</td><td>"One accent color, lots of cream space, no shadows or glow."</td><td>Premium is made of specific choices.</td></tr>
+            <tr><td>"I don't like it"</td><td>"The headline and the button compete. Headline first, then dates, then the button."</td><td>Describes the problem, not a mood.</td></tr>
+            <tr><td>"Like this site"</td><td>"From this site, take the date list. Not its colors or logo."</td><td>A reference needs instructions.</td></tr>
+            <tr><td>"Try again"</td><td>"Go back to version 3. Change only the headline."</td><td>Anchors on what works; one change at a time.</td></tr>
+            <tr><td>"Why does it look like that?"</td><td>"List every choice you made that wasn't in my brief."</td><td>Turns hidden guesses into decisions.</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <h3 style="margin-top:18px">A brief you can copy</h3>
+      <p class="muted">Seven lines, each one a decision the AI no longer has to guess. Swap in your own project.</p>
+      <pre class="code">Audience: adults who have never touched clay, booking on their phones.
+Goal: book a seat in the next beginner class.
+Content, most important first:
+  1. Headline "Make your own mug in two Saturdays."
+  2. The next two class dates, with seats left.
+  3. $95, clay and firing included.
+  4. One button: "Book a seat".
+Layout: text on the left, mug illustration on the right.
+  On phones: headline, dates, button, then the picture.
+Reference: a ceramics magazine cover. Take its big serif
+  headline and wide margins. Nothing else.
+Constraints: terracotta #B84A33 on cream #FBF4EA.
+  All text passes WCAG AA contrast (4.5 : 1).
+Don'ts: no gradients, no emoji, no feature cards,
+  don't center everything.
+Before you start: list any choice you make that isn't in this brief.</pre>
+      <h3 style="margin-top:18px">AI defaults to name and ban</h3>
+      <p class="muted">When you see these, the AI is guessing. Say what you want instead, and add the ones you never want to your Don'ts.</p>
+      <div class="slop-list"><span>Purple-to-blue gradients</span><span>Emoji as icons</span><span>Three identical feature cards</span><span>A colored stripe on top of every card</span><span>Everything centered</span><span>"Unlock your potential" copy</span><span>A "New" pill above the headline</span><span>Glowing gradient buttons</span><span>Get Started + Learn More</span><span>Faint gray body text</span></div>
+    </div>
+  </section>
+</main>
+<script src="../assets/cs-school.js"></script>
+<script>
+(() => {
+const { $, $$, esc, reduce } = CS;
+
+CS.lesson({
+  id: '213',
+  parts: [
+    { id: 'p1', title: 'Vague vs precise' },
+    { id: 'p2', title: 'Anatomy of a brief' },
+    { id: 'p3', title: 'Try it' },
+    { id: 'p4', title: 'Steer the AI' },
+    { id: 'p5', title: 'Check' }
+  ]
+});
+
+/* ================= the mockup renderer ================= */
+const SLOP = { layout: 'center', pal: 'violet', bg: 'gradient', cream: false, font: 'sans', head: 1, headline: 'Unlock Your Creative Potential', sub: 'Discover the art of pottery with expert-led classes for every skill level.', body: 'cards', emoji: true, badge: true, cta: 'two', ctaText: 'Get Started', space: 'tight', lowc: true, price: false, priceText: '', art: 'mug', masthead: false, photo: false, crowd: false };
+const TARGET = { ...SLOP, layout: 'split', pal: 'clay', bg: 'flat', cream: true, font: 'serif', head: 2, headline: 'Make your own mug in two Saturdays.', sub: 'A small wheel class for complete beginners. You leave with two mugs you made yourself.', body: 'dates', emoji: false, badge: false, cta: 'one', ctaText: 'Book a seat · $95', space: 'airy', lowc: false, price: true };
+const PAL = {
+  violet: { a: '#7C3AED', ai: '#FFFFFF', bg: '#FFFFFF', flat: '#F5F3FF', ink: '#1E1B4B', sub: '#55557A', lsub: '#B5B2CC', card: '#FFFFFF', grad: 'linear-gradient(135deg,#7C3AED 0%,#6366F1 50%,#3B82F6 100%)' },
+  neon: { a: '#DB2777', ai: '#FFFFFF', bg: '#FFFFFF', flat: '#FDF2F8', ink: '#3B0A24', sub: '#6B4458', lsub: '#D8B8C9', card: '#FFFFFF', grad: 'linear-gradient(135deg,#EC4899 0%,#8B5CF6 55%,#06B6D4 100%)' },
+  teal: { a: '#0F766E', ai: '#FFFFFF', bg: '#FFFFFF', flat: '#F0FDFA', ink: '#042F2E', sub: '#3F5F5C', lsub: '#A9C6C2', card: '#FFFFFF', grad: 'linear-gradient(135deg,#14B8A6,#0EA5E9)' },
+  clay: { a: '#B84A33', ai: '#FFFFFF', bg: '#FBF4EA', flat: '#FBF4EA', ink: '#2B1D14', sub: '#5E4A3D', lsub: '#CDBDAC', card: '#FFFDF9', grad: 'linear-gradient(135deg,#F97316,#E11D48)' },
+  mono: { a: '#1A1A1A', ai: '#FFFFFF', bg: '#FFFFFF', flat: '#FFFFFF', ink: '#141414', sub: '#555555', lsub: '#BBBBBB', card: '#FFFFFF', grad: 'linear-gradient(135deg,#4A4A4A,#111111)' },
+  listing: { a: '#E4FF3A', ai: '#111111', bg: '#0B0B0B', flat: '#0B0B0B', ink: '#F5F5F5', sub: '#B5B5B5', lsub: '#666666', card: '#1A1A1A', grad: 'linear-gradient(135deg,#1A1A1A,#000000)' }
+};
+const lum = hex => { const c = hex.replace('#', ''); const v = [0, 2, 4].map(i => parseInt(c.substr(i, 2), 16) / 255).map(x => x <= 0.03928 ? x / 12.92 : Math.pow((x + 0.055) / 1.055, 2.4)); return 0.2126 * v[0] + 0.7152 * v[1] + 0.0722 * v[2]; };
+const shade = (hex, k) => '#' + [0, 2, 4].map(i => Math.max(0, Math.min(255, Math.round(parseInt(hex.substr(i + 1, 2), 16) * k)))).map(n => n.toString(16).padStart(2, '0')).join('');
+function palOf(M) {
+  if (PAL[M.pal]) return PAL[M.pal];
+  const h = M.pal; const dark = lum(h) < 0.35;
+  return { a: h, ai: dark ? '#FFFFFF' : '#111111', bg: '#FFFFFF', flat: '#FFFFFF', ink: '#1A1A1A', sub: '#555555', lsub: '#BBBBBB', card: '#FFFFFF', grad: `linear-gradient(135deg,${h},${shade(h, 0.55)})` };
+}
+const MUG = { body: 'M56 64H160V146a24 24 0 0 1-24 24H80a24 24 0 0 1-24-24Z', glaze: 'M56 64H160V90c-6 0-6 12-12 12s-6-16-12-16-6 22-12 22-7-18-13-18-6 12-12 12-6-20-12-20-6 14-12 14-6-8-11-8Z', handle: 'M160 88c32-2 34 48 0 50', bowl: 'M170 150h58a29 20 0 0 1-58 0Z' };
+function artSVG(M) {
+  const steam = '<path d="M92 46c-8-9 8-14 0-24M118 48c-8-9 8-14 0-24" fill="none" stroke="currentColor" stroke-opacity=".32" stroke-width="3" stroke-linecap="round"/>';
+  const shadow = '<ellipse cx="116" cy="182" rx="96" ry="8" fill="currentColor" opacity=".1"/>';
+  if (M.photo) return `<div class="mk-photo"><svg viewBox="0 0 240 200" aria-hidden="true"><rect width="240" height="200" rx="10" fill="#B9B2A8"/><rect width="240" height="110" rx="10" fill="#CFC9C0"/><path d="M104 40h32v14c22 10 30 40 22 70-6 22-20 40-38 40s-32-18-38-40c-8-30 0-60 22-70z" fill="#5E574F"/><path d="M112 58c-10 10-16 30-12 56" stroke="#8C847A" stroke-width="4" fill="none" stroke-linecap="round"/></svg><span>Photo © Ceramica</span></div>`;
+  if (M.art === 'hand') return `<svg viewBox="0 0 240 200" aria-hidden="true">${shadow}<g transform="translate(7 6)"><path d="${MUG.bowl}" fill="#8FA27A"/><path d="${MUG.handle}" fill="none" stroke="var(--a)" stroke-width="13" stroke-linecap="round"/><path d="${MUG.body}" fill="var(--a)"/></g>
+    <g fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="${MUG.bowl}"/><path d="${MUG.handle}"/><path d="${MUG.body}"/><ellipse cx="108" cy="64" rx="52" ry="9"/><path d="M60 98c12 8 22-6 34 2s22-6 34 2 18-4 28 0"/><path d="M70 128l12-12M78 146l22-22M94 160l24-24M180 162l10-10M194 166l14-14" stroke-width="2" opacity=".55"/></g>${steam}</svg>`;
+  return `<svg viewBox="0 0 240 200" aria-hidden="true">${shadow}<path d="${MUG.bowl}" fill="var(--a)" opacity=".55"/><ellipse cx="199" cy="150" rx="29" ry="5" fill="#E6D2B6"/><path d="${MUG.handle}" fill="none" stroke="var(--a)" stroke-width="13" stroke-linecap="round"/><path d="${MUG.body}" fill="var(--a)"/><path d="${MUG.glaze}" fill="#F3E4CF"/><ellipse cx="108" cy="64" rx="52" ry="9" fill="#D9BF9C"/>${steam}</svg>`;
+}
+const LINE_ICONS = [
+  '<svg viewBox="0 0 24 24" fill="none" stroke="var(--a)" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="8" r="3.2"/><path d="M3.5 19c.6-3.4 2.8-5.2 5.5-5.2s4.9 1.8 5.5 5.2"/><circle cx="17" cy="9" r="2.4"/><path d="M16 13.8c2.6-.2 4.2 1.4 4.6 4.2"/></svg>',
+  '<svg viewBox="0 0 24 24" fill="none" stroke="var(--a)" stroke-width="1.8" stroke-linejoin="round"><path d="M4 8l8-4 8 4-8 4z"/><path d="M4 8v8l8 4 8-4V8M12 12v8"/></svg>',
+  '<svg viewBox="0 0 24 24" fill="none" stroke="var(--a)" stroke-width="1.8" stroke-linejoin="round"><path d="M12 3.5l2.6 5.3 5.9.9-4.3 4.1 1 5.8-5.2-2.8-5.2 2.8 1-5.8L3.5 9.7l5.9-.9z"/></svg>'
+];
+const CARDS = [['🎨', 'Expert Instructors', 'Learn from passionate, experienced artists.'], ['🏺', 'All Materials Included', 'Everything you need to create beautiful pieces.'], ['✨', 'Small Class Sizes', 'Personal attention in every session.']];
+const DATES = [['Sat 10 & 17 Oct', '10:00 to 13:00', '3 seats left'], ['Sat 7 & 14 Nov', '10:00 to 13:00', '6 seats left']];
+function mockHTML(M, fresh) {
+  const P = palOf(M), grad = M.bg === 'gradient';
+  const pbg = M.cream && !grad ? '#FBF4EA' : P.bg;
+  const hbg = grad ? P.grad : (M.cream ? '#FBF4EA' : P.flat);
+  const hink = grad ? '#FFFFFF' : P.ink;
+  const hsub = grad ? (M.lowc ? 'rgba(255,255,255,.55)' : 'rgba(255,255,255,.9)') : (M.lowc ? P.lsub : P.sub);
+  const E = M.emoji;
+  const style = `--a:${P.a};--ai:${P.ai};--pbg:${pbg};--hbg:${hbg};--hink:${hink};--hsub:${hsub};--ink:${P.ink};--sub:${P.sub};--card:${P.card}`;
+  const ctas = M.cta === 'one' ? `<span class="mk-btn one">${esc(M.ctaText)}</span>`
+    : `<span class="mk-btn${M.cta === 'glow' ? ' glow' : ''}">${esc(M.ctaText)}${M.cta === 'glow' && E ? ' ✨' : ' →'}</span><span class="mk-btn ghost">Learn More</span>`;
+  const dates = M.body === 'dates' ? `<div class="mk-dates">${DATES.map(d => `<div class="mk-date"><b>${E ? '📅 ' : ''}${d[0]}</b><span>${d[1]}</span><span class="seats">${d[2]}</span></div>`).join('')}</div>` : '';
+  const price = M.price ? `<p class="mk-price">${esc(M.priceText || '$95 for both Saturdays. Clay, glazes and firing included.')}</p>` : '';
+  const cards = (M.body === 'cards' || M.body === 'icons') ? `<div class="mk-cards">${CARDS.map((c, i) => `<div class="mk-card"><span class="ic">${M.body === 'cards' && E ? c[0] : LINE_ICONS[i]}</span><b>${c[1]}</b><small>${c[2]}</small></div>`).join('')}</div>` : '';
+  const busy = M.crowd ? '<div class="mk-busy"><span>Workshops</span><span>Gift cards</span><span>Open studio</span><span>Kids club</span><span>Parties</span><span>Glaze night</span></div>' : '';
+  return `<div class="mk${fresh ? ' fresh' : ''} lay-${M.layout} f-${M.font} sp-${M.space} h${M.head} ${grad ? 'grad' : 'flat'}" style="${style}">
+    <div class="mk-top"><div class="mk-nav"><span class="mk-logo"><i></i>Slow Clay</span><span class="mk-links"><span>Classes</span><span>Studio</span><span>Gift cards</span></span></div>
+    <div class="mk-hero"><div class="mk-txt">${M.masthead ? '<div class="mk-mast">CERAMICA</div>' : ''}${M.badge ? `<span class="mk-badge">${E ? '✨ ' : ''}New spring classes</span>` : ''}
+      <div class="mk-h">${esc(M.headline)}</div><p class="mk-sub">${esc(M.sub)}</p>${busy}${dates}${price}<div class="mk-ctas">${ctas}</div></div>
+      ${M.layout === 'split' ? `<div class="mk-art">${artSVG(M)}</div>` : ''}</div></div>${cards}</div>`;
+}
+const GENERIC_H = /(unlock|unleash|elevate|discover|journey|potential|transform|inner artist|creativity|experience the|welcome to|joy of)/i;
+const goodHead = h => !GENERIC_H.test(h) && /(mug|saturday)/i.test(h);
+function guesses(M) {
+  const g = [];
+  if (M.bg === 'gradient') g.push('a gradient background');
+  if (M.pal === 'violet' || M.pal === 'neon') g.push('purple, its favorite color');
+  if (M.emoji) g.push('emoji as icons');
+  if (M.badge) g.push('a "New" badge');
+  if (M.body === 'cards' || M.body === 'icons') g.push('three feature cards');
+  if (M.layout === 'center') g.push('everything centered');
+  if (M.cta !== 'one') g.push('Get Started + Learn More');
+  else if (!/book|reserve|seat|join|shop/i.test(M.ctaText)) g.push(`a "${M.ctaText}" button`);
+  if (GENERIC_H.test(M.headline)) g.push(`"${M.headline}"`);
+  if (M.sub === SLOP.sub) g.push('copy for "every skill level"');
+  if (M.lowc) g.push('faint gray text');
+  if (M.font === 'sans' && M.head === 1) g.push('a small, safe headline');
+  if (M.space === 'tight') g.push('cramped spacing');
+  if (M.ignoredRef) g.push('ignored your reference');
+  return g;
+}
+const paintGuesses = (el, M) => { const g = guesses(M); el.innerHTML = g.length ? g.map(x => `<span class="gs">${esc(x)}</span>`).join('') : '<span class="none">Nothing. Every choice came from you.</span>'; };
+const render = (el, M, fresh) => { el.innerHTML = mockHTML(M, fresh && !reduce); };
+
+/* ================= HERO: one precise instruction at a time ================= */
+(function hero() {
+  const HS = [
+    ['Make a landing page for my pottery class.', null, M => ({ ...SLOP })],
+    ['Left-align the text. Mug illustration on the right.', 'Layout', M => ({ ...M, layout: 'split' })],
+    ['No gradient. Terracotta #B84A33 on cream.', 'Color', M => ({ ...M, pal: 'clay', bg: 'flat', cream: true, lowc: false })],
+    ['Serif headline, twice the body size.', 'Type', M => ({ ...M, font: 'serif', head: 2 })],
+    ['Swap the emoji cards for the class dates.', 'Content', M => ({ ...M, body: 'dates', emoji: false, badge: false, price: true })],
+    ['Headline: "Make your own mug in two Saturdays."', 'Copy', M => ({ ...M, headline: TARGET.headline, sub: TARGET.sub, cta: 'one', ctaText: TARGET.ctaText })],
+    ['Double the space between everything.', 'Spacing', M => ({ ...M, space: 'airy' })]
+  ];
+  const COLORS = ['var(--l2)', 'var(--l1)', 'var(--l5)', 'var(--l3)', 'var(--l4)', 'var(--ink)'];
+  const layers = $$('#heroMock > div'), cap = $('#heroCap'), ver = $('#heroVer');
+  $('#heroSteps').innerHTML = HS.slice(1).map((h, i) => `<span data-i="${i + 1}" style="--c:${COLORS[i]}"><i></i>${h[1]}</span>`).join('');
+  let M = { ...SLOP }, front = 0, i = 0;
+  const show = (m, n) => {
+    const back = 1 - front;
+    layers[back].innerHTML = mockHTML(m); layers[back].style.opacity = 1; layers[front].style.opacity = 0; front = back;
+    ver.textContent = `v${n + 1}`;
+    $$('#heroSteps span').forEach(s => s.classList.toggle('on', +s.dataset.i <= n));
+  };
+  if (reduce) { HS.forEach(h => { M = h[2](M); }); layers[0].innerHTML = mockHTML(M); layers[1].style.opacity = 0; cap.textContent = HS[HS.length - 1][0]; ver.textContent = `v${HS.length}`; $$('#heroSteps span').forEach(s => s.classList.add('on')); return; }
+  layers[0].innerHTML = mockHTML(M); layers[1].style.opacity = 0;
+  const type = (txt, done) => { let k = 0; cap.textContent = ''; const t = setInterval(() => { cap.textContent = txt.slice(0, ++k); if (k >= txt.length) { clearInterval(t); done(); } }, 34); };
+  const step = () => {
+    const h = HS[i];
+    type(h[0], () => setTimeout(() => {
+      M = h[2](M); show(M, i);
+      i = (i + 1) % HS.length;
+      setTimeout(step, i === 0 ? 4200 : 1500);
+    }, 350));
+  };
+  $$('#heroSteps span').forEach(s => s.classList.remove('on'));
+  setTimeout(step, 900);
+})();
+
+/* ================= PART 1: the feedback loop ================= */
+const VAGUE_RE = /\b(pop|modern|clean(er)?|better|premium|sleek|fresh|nicer|nice|professional|stunning|beautiful|polish(ed)?|elevate|vibe|wow|cool|fun|interesting|unique|creative|luxur(y|ious)|minimal(ist)?|bold(er)?|improve|fix it|like it|love it|more me|high[- ]end|classy|elegant|punch(y|ier)?|exciting|engaging|dynamic|warmer|friendlier|vibrant)\b/i;
+const DIMS = [
+  { id: 'layout', name: 'Layout', c: 'var(--l2)', ok: M => M.layout === 'split', hint: 'In your head, the text sits on the left and a mug illustration on the right.' },
+  { id: 'color', name: 'Color', c: 'var(--l1)', ok: M => M.pal === 'clay' && M.bg === 'flat' && !M.lowc, hint: 'Terracotta #B84A33 on a flat cream background, with dark text that\'s easy to read. No gradient.' },
+  { id: 'type', name: 'Type', c: 'var(--l5)', ok: M => M.font === 'serif' && M.head === 2, hint: 'A serif headline, about twice the size of the body text.' },
+  { id: 'content', name: 'Content', c: 'var(--l3)', ok: M => M.body === 'dates' && !M.emoji && !M.badge, hint: 'The next two class dates with seats left, where the cards are now. No emoji, no badge.' },
+  { id: 'copy', name: 'Copy', c: 'var(--l4)', ok: M => goodHead(M.headline) && M.cta === 'one' && /book|reserve|seat/i.test(M.ctaText), hint: 'The headline "Make your own mug in two Saturdays." and a single button: "Book a seat · $95".' },
+  { id: 'space', name: 'Spacing', c: 'var(--ink-2)', ok: M => M.space === 'airy', hint: 'Generous space around the edges and between sections.' }
+];
+const matchCount = M => DIMS.filter(d => d.ok(M)).length;
+const VAGUE_MOVES = [
+  { say: 'I made it pop with a bolder, more vibrant gradient!', apply: M => { M.pal = 'neon'; M.bg = 'gradient'; } },
+  { say: 'I added a glowing gradient button so it feels more modern.', apply: M => { M.cta = 'glow'; if (M.ctaText !== 'Get Started' && !/book/i.test(M.ctaText)) M.ctaText = 'Get Started'; } },
+  { say: 'I switched to a friendlier rounded font.', apply: M => { M.font = 'rounded'; M.head = 1; } },
+  { say: 'I centered everything for a cleaner, more balanced look.', apply: M => { M.layout = 'center'; } },
+  { say: 'I tightened the spacing so it feels more polished.', apply: M => { M.space = 'tight'; } },
+  { say: 'I added feature cards with icons to build trust.', apply: M => { M.body = 'cards'; M.emoji = true; } },
+  { say: 'I punched up the headline: "Unleash Your Inner Artist".', apply: M => { M.headline = 'Unleash Your Inner Artist'; } },
+  { say: 'I added a "New" badge so it feels fresh.', apply: M => { M.badge = true; M.emoji = true; } },
+  { say: 'I softened the text color for a more elegant feel.', apply: M => { M.lowc = true; } }
+];
+const neg = w => new RegExp(`\\b(no|drop|remove|lose|kill|delete|get rid of|without|ditch|nix|scrap|cut|remove all)\\b[^.;,]{0,22}${w}`, 'i');
+function interpret(text, M0) {
+  const t = text.replace(/[“”]/g, '"').replace(/[‘’]/g, "'");
+  const M = { ...M0 }; const did = []; const notes = [];
+  // layout
+  if (/(left[- ]?align|align\w*\s+(\w+\s+){0,2}(to\s+the\s+)?left|text\s+(\w+\s+){0,2}(on|to)\s+the\s+left|(image|illustration|picture|photo|mug|art|drawing)\s+(\w+\s+){0,2}(on|to)\s+the\s+right|two[- ]col|2[- ]col|split|side[- ]by[- ]side|(stop|don'?t|not|no longer)\s+(be\s+)?(\w+\s+)?(center|centre)|off[- ]cent)/i.test(t)) { if (M.layout !== 'split') did.push('Moved the text to the left and put a mug illustration on the right.'); M.layout = 'split'; }
+  else if (/\b(center|centre)(ed)?\b/i.test(t)) { if (M.layout !== 'center') did.push('Centered everything.'); M.layout = 'center'; }
+  // color
+  const hex = (t.match(/#([0-9a-f]{6})\b/i) || [])[0];
+  if (/(terracotta|clay[- ]?colou?r|burnt orange|\brust\b|earthy|earth[- ]tones?|b84a33)/i.test(t)) { if (M.pal !== 'clay') did.push('Switched the accent color to terracotta.'); M.pal = 'clay'; }
+  else if (hex) { M.pal = hex.toUpperCase(); did.push(`Switched the accent color to ${hex.toUpperCase()}.`); notes.push('hex'); }
+  else if (neg('purple').test(t) || /(not|less)\s+purple/i.test(t)) { if (M.pal === 'violet' || M.pal === 'neon') { M.pal = 'teal'; did.push('Swapped the purple for teal.'); notes.push('notwhat'); } }
+  const creamy = /(cream|off[- ]white|ivory|fbf4ea|paper)/i.test(t);
+  if (creamy || neg('(the\\s+)?gradients?').test(t) || /(flat|solid)\s+(background|colou?r)/i.test(t)) {
+    if (M.bg !== 'flat' || (creamy && !M.cream)) did.push(creamy ? 'Replaced the gradient with a flat cream background.' : 'Replaced the gradient with a flat background.');
+    M.bg = 'flat'; if (creamy) M.cream = true;
+  }
+  if (/(contrast|4\.5|darker\s+(text|gray|grey)|dark\s+(brown\s+)?text|readable|legible|wcag)/i.test(t)) { if (M.lowc) did.push('Darkened the small text so it passes 4.5 : 1 contrast.'); M.lowc = false; }
+  // type
+  if ((/\bserif\b/i.test(t) && !/sans[- ]?serif/i.test(t)) || /(georgia|editorial)/i.test(t)) { if (M.font !== 'serif') did.push('Set the headline in a serif.'); M.font = 'serif'; }
+  else if (/sans[- ]?serif/i.test(t)) { if (M.font !== 'sans') did.push('Set the headline in a sans-serif.'); M.font = 'sans'; }
+  if (/(headline|heading|title|h1)[^.;]{0,50}(bigger|larger|huge|twice|2x|double|much larger|dominant|biggest|largest|\b\d{2,3}\s?px)/i.test(t) || /(bigger|larger|huge|giant|oversized)\s+(serif\s+)?(headline|heading|title)/i.test(t)) { if (M.head !== 2) did.push('Made the headline about twice the size of the body text.'); M.head = 2; }
+  // content
+  if (/(\bdates?\b|schedule|class\s+times|next\s+(two\s+|2\s+)?class|upcoming|sessions|seats?\s+left|calendar)/i.test(t)) { if (M.body !== 'dates') did.push('Replaced the feature cards with the next two class dates and seats left.'); M.body = 'dates'; M.price = true; }
+  else if (neg('(three\\s+|3\\s+|feature\\s+|the\\s+)*(cards|boxes|features)').test(t)) { if (M.body === 'cards' || M.body === 'icons') { M.body = 'none'; did.push('Removed the feature cards.'); notes.push('gap'); } }
+  if (neg('(the\\s+|all\\s+)?emoj(i|is)').test(t) || /emoji[- ]free/i.test(t)) { if (M.emoji) { M.emoji = false; if (M.body === 'cards') { M.body = 'icons'; notes.push('icons'); } did.push(M.body === 'icons' ? 'Replaced the emoji with line icons.' : 'Removed the emoji.'); } }
+  if (neg('(badge|pill|sparkles?)').test(t)) { if (M.badge) { M.badge = false; did.push('Removed the "New" badge.'); } }
+  // copy
+  const q = t.match(/(headline|heading|title|h1)[^"]{0,30}"([^"]{3,90})"/i);
+  if (q) { M.headline = q[2].trim(); did.push(`Changed the headline to "${q[2].trim()}".`); if (GENERIC_H.test(M.headline)) notes.push('generic'); else if (!goodHead(M.headline)) notes.push('head'); }
+  const bl = t.match(/(button|cta|action)[^"]{0,24}"([^"]{2,40})"/i);
+  if (/\b(one|single|only\s+one|just\s+one|a\s+single)\s+(clear\s+|main\s+|primary\s+)?(button|call[- ]to[- ]action|cta|action)|only\s+(button|cta)/i.test(t) || neg('"?learn more').test(t)) {
+    if (bl) M.ctaText = bl[2].trim(); else notes.push('label');
+    if (M.cta !== 'one') did.push(`Kept one button${bl ? `, "${bl[2].trim()}",` : ''} and removed Learn More.`); else if (bl) did.push(`Changed the button to "${bl[2].trim()}".`);
+    M.cta = 'one';
+  } else if (bl) { M.ctaText = bl[2].trim(); did.push(`Changed the button label to "${bl[2].trim()}".`); }
+  // spacing
+  if (/(more|extra|lots\s+of|generous|double|plenty\s+of|increase|bigger)\s+(the\s+)?(white\s?space|space|spacing|padding|margins?|breathing\s+room|room|gaps?)|breathing\s+room|airy|space\s+(between|around)/i.test(t)) { if (M.space !== 'airy') did.push('Doubled the space around and between sections.'); M.space = 'airy'; }
+  else if (/(less|tighter|reduce|smaller)\s+(the\s+)?(space|spacing|padding|gaps?)|compact|denser/i.test(t)) { if (M.space !== 'tight') did.push('Tightened the spacing.'); M.space = 'tight'; }
+  const vw = (t.match(VAGUE_RE) || [])[0];
+  return { M, did, notes, vw };
+}
+
+let cur = { ...SLOP }; const history = []; let version = 1;
+const PRECISE = [
+  ['Layout', 'var(--l2)', 'Left-align the text and put a mug illustration on the right.'],
+  ['Color', 'var(--l1)', 'Drop the gradient. Cream background, terracotta #B84A33 for the button, and dark text that passes 4.5 : 1 contrast.'],
+  ['Type', 'var(--l5)', 'Set the headline in a serif, about twice the size of the body text.'],
+  ['Content', 'var(--l3)', 'Replace the three feature cards with the next two class dates and seats left. No emoji, no "New" badge.'],
+  ['Copy', 'var(--l4)', 'Headline: "Make your own mug in two Saturdays." One button only, labelled "Book a seat · $95".'],
+  ['Spacing', 'var(--ink-2)', 'Double the space between sections and around the edges.']
+];
+const VAGUES = ['Make it pop', 'Make it more modern', 'Cleaner, please', 'Make it feel premium'];
+$('#vagueChips').innerHTML = VAGUES.map(v => `<button class="fb-chip" data-fill="${esc(v)}">${esc(v)}</button>`).join('');
+$('#preciseChips').innerHTML = PRECISE.map(p => `<button class="fb-chip" data-fill="${esc(p[2])}" style="--c:${p[1]}"><i></i>${p[0]}</button>`).join('');
+$$('.fb-chip').forEach(b => b.addEventListener('click', () => { const f = $('#fb'); f.value = b.dataset.fill; f.focus(); }));
+
+function paintDims(flash) {
+  const n = matchCount(cur);
+  $('#dims').innerHTML = DIMS.map(d => `<button class="dimbtn${d.ok(cur) ? ' ok' : ''}" data-dim="${d.id}" ${flash && flash.includes(d.id) ? '' : 'style="animation:none"'}><span class="ck" aria-hidden="true">✓</span>${d.name}<span class="vh">${d.ok(cur) ? ': matches' : ': different'}</span></button>`).join('');
+  if (!flash) $$('#dims .ck').forEach(c => { c.style.animation = 'none'; });
+  $('#matchN').textContent = `${n} of 6`;
+  return n;
+}
+$('#dims').addEventListener('click', e => { const b = e.target.closest('.dimbtn'); if (!b) return; const d = DIMS.find(x => x.id === b.dataset.dim); showExchange(null, `<strong>${d.name}: ${d.ok(cur) ? 'matches' : 'still different'}.</strong> ${esc(d.hint)}`, d.ok(cur) ? 'good' : 'info', true); });
+function showExchange(pair, noteHTML, kind = 'info', keep) {
+  const ex = $('#exchange');
+  if (pair) ex.innerHTML = `<div class="msg me"><span class="who">You</span>${esc(pair[0])}</div><div class="msg ai"><span class="who">AI designer · version ${version}</span>${pair[1]}</div><div class="note" id="fbNote"></div>`;
+  else if (!keep || !$('#fbNote')) ex.innerHTML = '<div class="note" id="fbNote"></div>';
+  if (!$('#fbNote')) ex.insertAdjacentHTML('beforeend', '<div class="note" id="fbNote"></div>');
+  CS.say($('#fbNote'), noteHTML, kind);
+}
+function send() {
+  const text = $('#fb').value.trim();
+  if (!text) { showExchange(null, '<strong>Nothing to send.</strong> Type some feedback, or start from one of the suggestions.', 'info', true); return; }
+  if (/^(undo|go back|revert)/i.test(text)) { undo(); return; }
+  const before = matchCount(cur), okBefore = DIMS.filter(d => d.ok(cur)).map(d => d.id);
+  const r = interpret(text, cur);
+  let reply, noteHTML, kind = 'info';
+  history.push({ ...cur });
+  if (r.did.length) {
+    cur = r.M;
+    reply = `Done. ${r.did.map(esc).join(' ')}` + (r.vw ? ` I wasn't sure what "${esc(r.vw)}" meant, so I didn't change anything else.` : '');
+  } else {
+    const opts = VAGUE_MOVES.filter(v => { const T = { ...cur }; v.apply(T); return JSON.stringify(T) !== JSON.stringify(cur); });
+    const breaking = opts.filter(v => { const T = { ...cur }; v.apply(T); return matchCount(T) < before; });
+    const pool = breaking.length && Math.random() < 0.7 ? breaking : opts;
+    const mv = pool[Math.random() * pool.length | 0];
+    if (mv) { const T = { ...cur }; mv.apply(T); cur = T; }
+    reply = mv ? `Done! ${esc(mv.say)} What do you think?` : 'Done! I refined the overall look. What do you think?';
+    CS.tick('p1', 'vague');
+  }
+  version++;
+  const okAfter = DIMS.filter(d => d.ok(cur)).map(d => d.id);
+  const gained = okAfter.filter(x => !okBefore.includes(x)), lost = okBefore.filter(x => !okAfter.includes(x));
+  const after = matchCount(cur);
+  const nm = id => DIMS.find(d => d.id === id).name;
+  if (!r.did.length) {
+    noteHTML = lost.length ? `<strong>It got further away.</strong> Your words didn't say what to change, so the AI guessed, and the guess broke <b>${lost.map(nm).join(' and ')}</b>, which already matched. Vague feedback can undo good work.`
+      : `<strong>Something changed, but not toward your design.</strong> "${esc(text.slice(0, 40))}" could mean a hundred different edits. The AI picked a popular one. Try naming one element and exactly how it should change.`;
+    kind = 'bad';
+  } else if (gained.length) {
+    noteHTML = `<strong>${gained.map(nm).join(' and ')} now match${gained.length > 1 ? '' : 'es'}.</strong> You named the element and the change, so the AI had nothing to guess.`;
+    kind = 'good'; CS.tick('p1', 'precise');
+  } else if (r.notes.includes('notwhat')) noteHTML = '<strong>You said what you don\'t want, not what you do.</strong> So the AI swapped in its next favorite color. Name the color you want, ideally with its hex code.';
+  else if (r.notes.includes('gap')) noteHTML = '<strong>You said what to remove, not what goes there.</strong> Now there\'s an empty space. In your head, that space holds the class dates.';
+  else if (r.notes.includes('icons')) noteHTML = '<strong>You banned the emoji, so it swapped in line icons.</strong> The cards are still the generic three-card grid. Say what should replace them.';
+  else if (r.notes.includes('label')) noteHTML = '<strong>One button, but with the old label.</strong> You didn\'t say what the button says, so it kept "Get Started". Put the exact words in quotes.';
+  else if (r.notes.includes('hex')) noteHTML = '<strong>Precise, but a different color from the one in your head.</strong> The AI did exactly what you said. That\'s the upside of precision: when it\'s wrong, you know why.';
+  else if (r.notes.includes('generic')) noteHTML = '<strong>That\'s a headline the AI would have written.</strong> "Unleash", "unlock" and "journey" are what generic pages say. The headline in your head is concrete: what you make, and how long it takes.';
+  else if (r.notes.includes('head')) noteHTML = '<strong>The AI used your words exactly.</strong> They just aren\'t the headline in your head. Copy is part of the design: quote the exact words you want.';
+  else noteHTML = `<strong>Changed exactly what you asked.</strong> ${after < 6 ? 'Compare with the design in your head: what\'s still different?' : ''}`;
+  if (after === 6) { noteHTML = '<strong>That\'s the design in your head.</strong> Six precise messages got you there. Vague ones would still be guessing. You\'ll get there even faster with a brief, up next.'; kind = 'good'; CS.tick('p1', 'match'); }
+  render($('#mock'), cur, true);
+  $('#ver').textContent = `Version ${version}`;
+  paintDims(gained);
+  showExchange([text, reply], noteHTML, kind);
+  $('#undoFb').disabled = false;
+  $('#fb').value = '';
+  showMock();
+}
+function showMock() {
+  if (!matchMedia('(max-width: 900px)').matches) return;
+  $('#fb').blur();
+  const y = $('#mockFrame').getBoundingClientRect().top + scrollY - 68;
+  scrollTo({ top: y, behavior: reduce ? 'auto' : 'smooth' });
+}
+function undo() {
+  if (!history.length) return;
+  cur = history.pop(); version++;
+  render($('#mock'), cur, true); $('#ver').textContent = `Version ${version}`; paintDims();
+  showExchange(null, '<strong>Undone.</strong> Back to how it was before your last message. Real AI tools can do this too: ask it to "go back to the previous version".', 'info');
+  $('#undoFb').disabled = !history.length; $('#fb').value = '';
+  showMock();
+}
+$('#sendFb').addEventListener('click', send);
+$('#undoFb').addEventListener('click', undo);
+$('#fb').addEventListener('keydown', e => { if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) { e.preventDefault(); send(); } });
+render($('#targetMock'), TARGET);
+render($('#mock'), cur);
+paintDims();
+showExchange(null, '<strong>Version 1 is the AI\'s first try.</strong> Compare it with the design in your head, then send feedback. Start vague to see what happens.', 'info');
+
+/* ================= PART 2: brief anatomy ================= */
+const WF = `<svg class="wf" viewBox="0 0 300 150" role="img" aria-label="A rough wireframe: headline, dates and a button stacked on the left, a box for the mug drawing on the right.">
+  <g fill="none" style="stroke:var(--ink)" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M6 6.5c96-1 192 1 288-.5M6 6.5c-.5 46 1 92-.5 137M294 6c1 46-1 92 .5 138M5.5 143.5c96 1 192-1 289 .5" opacity=".35"/>
+    <path d="M20 26c40-1 72 1 102-.5M20 38c30 1 56-1 80 .5" stroke-width="5" opacity=".85"/>
+    <path d="M20 64h102M20 80h102" opacity=".5"/>
+    <path d="M21 100c20-.5 40 .5 58 0 1 6-.5 12 0 17-19 .5-39-.5-58 0-.5-6 .5-11 0-17z" style="fill:var(--l1)" fill-opacity=".25"/>
+    <path d="M190 22c32-1 64 1 94-.5.5 34-1 68 .5 98-32 1-64-1-95 .5-1-34 1-64 .5-98zM190 22l95 98M284 22l-94 98" opacity=".55"/>
+  </g>
+  <g style="fill:var(--ink-2); font-family:var(--f-display)" font-size="12" font-weight="700"><text x="130" y="36">headline</text><text x="130" y="76">dates</text><text x="86" y="113">button</text><text x="200" y="138">mug drawing</text></g></svg>`;
+const PARTS = [
+  { id: 'aud', name: 'Audience', c: 'var(--l2)', txt: 'Adults who have never touched clay, mostly 25 to 45, booking on their phones in the evening.', gap: 'It writes for everyone: "expert-led classes for every skill level".', off: M => { M.sub = SLOP.sub; } },
+  { id: 'goal', name: 'Goal', c: 'var(--l1)', txt: 'Get them to book a seat in the next beginner class.', gap: 'No single goal, so two vague buttons: Get Started and Learn More.', off: M => { M.cta = 'two'; M.ctaText = 'Get Started'; M.price = false; } },
+  { id: 'content', name: 'Content, most important first', c: 'var(--l3)', txt: '1. Headline: "Make your own mug in two Saturdays."\n2. The next two class dates, with seats left.\n3. Price: $95, clay and firing included.\n4. One button: "Book a seat".', gap: 'Generic filler: "Unlock Your Creative Potential" and three feature cards.', off: M => { M.body = 'cards'; M.headline = SLOP.headline; M.price = false; } },
+  { id: 'layout', name: 'Layout', c: 'var(--l5)', txt: 'Text on the left, a mug illustration on the right. On phones: headline, dates, button, then the picture.', gap: 'Everything centered, the most common layout there is.', off: M => { M.layout = 'center'; }, extra: WF },
+  { id: 'refs', name: 'References', c: 'var(--l4)', txt: 'From a ceramics magazine cover, take the oversized serif headline and the wide margins. Nothing else.', gap: 'A small, safe sans-serif headline and cramped spacing.', off: M => { M.font = 'sans'; M.head = 1; M.space = 'tight'; } },
+  { id: 'cons', name: 'Constraints', c: 'var(--ink-2)', txt: 'Terracotta #B84A33 on cream #FBF4EA. All text passes WCAG AA contrast (4.5 : 1).', gap: 'Its favorite purple, and faint gray text that fails contrast.', off: M => { M.pal = 'violet'; M.cream = false; M.lowc = true; } },
+  { id: 'donts', name: 'Don\'ts', c: 'var(--bad)', txt: 'No gradients. No emoji. No "New" badges. Don\'t center everything.', gap: 'A gradient, emoji icons and a "New" badge.', off: M => { M.bg = 'gradient'; M.emoji = true; M.badge = true; } }
+];
+const briefOn = new Set(PARTS.map(p => p.id)); const everOff = new Set();
+function briefState() { const M = { ...TARGET }; PARTS.forEach(p => { if (!briefOn.has(p.id)) p.off(M); }); if (briefOn.has('donts') && M.layout === 'center' && !briefOn.has('layout')) M.layout = 'split'; return M; }
+$('#brief').innerHTML = PARTS.map(p => `<div class="bp" data-bp="${p.id}"><button class="toggle" aria-pressed="true" aria-label="${esc(p.name)} in the brief"><span class="sw" aria-hidden="true"></span></button>
+  <h4 style="--c:${p.c}"><i></i>${esc(p.name)}</h4><div><p class="txt">${esc(p.txt)}</p><p class="gap"><b>Gap.</b> ${esc(p.gap)}</p>${p.extra || ''}</div></div>`).join('');
+function paintBrief(fresh) { const M = briefState(); render($('#briefMock'), M, fresh); paintGuesses($('#briefGuess'), M); }
+$('#brief').addEventListener('click', e => {
+  const b = e.target.closest('.toggle'); if (!b) return;
+  const row = b.closest('.bp'), id = row.dataset.bp;
+  if (briefOn.has(id)) { briefOn.delete(id); everOff.add(id); } else briefOn.add(id);
+  b.setAttribute('aria-pressed', briefOn.has(id)); row.classList.toggle('off', !briefOn.has(id));
+  paintBrief(true);
+  if (everOff.size >= 3) CS.tick('p2', 'gaps');
+});
+paintBrief();
+
+/* references */
+const MIX_BASE = { ...TARGET, pal: 'mono', cream: false, font: 'sans', head: 1, body: 'none', space: 'tight', price: true, art: 'mug' };
+const REFS = [
+  { id: 'mag', name: 'A ceramics magazine cover', short: 'the magazine cover',
+    thumb: `<div class="ref ref-mag" aria-hidden="true"><div class="m1">CERAMICA</div><div class="m2">The quiet return of the handmade cup</div><svg viewBox="0 0 100 110" preserveAspectRatio="xMidYMid slice"><rect width="100" height="110" fill="#CFC6B8"/><rect y="78" width="100" height="32" fill="#B9AE9E"/><path d="M40 22h20v9c15 7 19 28 14 48-4 13-12 20-24 20s-20-7-24-20c-5-20-1-41 14-48z" fill="#6B5B4B"/><path d="M44 38c-9 9-12 26-9 44" stroke="#8C7B69" stroke-width="3" fill="none" stroke-linecap="round"/></svg></div>`,
+    chips: [
+      { id: 'serif', t: 'Big serif headline', good: 1, why: 'A large serif headline feels crafted and editorial, which suits a pottery studio.', apply: M => { M.font = 'serif'; M.head = 2; } },
+      { id: 'margins', t: 'Wide cream margins', good: 1, why: 'Generous space feels calm and gives the class dates room to breathe.', apply: M => { M.space = 'airy'; M.cream = true; } },
+      { id: 'mast', t: 'Their masthead logo', good: 0, why: 'That logo is their brand, not yours. Copying it confuses people and can break trademark law.', apply: M => { M.masthead = true; } },
+      { id: 'photo', t: 'Their vase photo', good: 0, why: 'That photo belongs to the photographer. Use pictures of your own studio and classes.', apply: M => { M.photo = true; } }] },
+  { id: 'gig', name: 'A concert listings page', short: 'the concert listings',
+    thumb: `<div class="ref ref-gig" aria-hidden="true"><div class="g1">Live this month</div><div class="g2"><span>Fri 09 Oct</span><span>The Moths</span><i>12 left</i></div><div class="g2"><span>Sat 17 Oct</span><span>Low Tide</span><i>4 left</i></div><div class="g2"><span>Fri 23 Oct</span><span>Paper Suns</span><i>Sold out</i></div></div>`,
+    chips: [
+      { id: 'dates', t: 'Date list with seats left', good: 1, why: 'A scannable list of dates with seats left is exactly what someone booking a class needs.', apply: M => { M.body = 'dates'; } },
+      { id: 'neon', t: 'Black and neon yellow', good: 0, why: 'Loud night-out colors fight the warm, calm feel of a pottery class.', apply: M => { M.pal = 'listing'; M.cream = false; } },
+      { id: 'caps', t: 'All-caps condensed type', good: 0, why: 'Shouty caps suit a gig poster. For a gentle beginner class they feel wrong, and long caps text is harder to read.', apply: M => { M.font = 'condensed'; } }] },
+  { id: 'mkt', name: 'A farmers\' market poster', short: 'the market poster',
+    thumb: `<div class="ref ref-mkt" aria-hidden="true"><div class="k1">Saturday Market</div><div class="k2">Veg · bread · honey · flowers · music · 8 till 1 · bring a bag!</div><svg viewBox="0 0 120 90" fill="none" stroke="#FFF3E2" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M22 70c-6-20 6-40 22-40s24 22 16 40c-8 14-32 14-38 0z" fill="#8FA27A"/><path d="M44 30c-2-8 2-14 8-18M46 28c6-6 14-6 18-2"/><path d="M78 76l18-44 10 4-16 44z" fill="#E8A23A"/><path d="M96 32l4-10M102 34l8-6"/></svg></div>`,
+    chips: [
+      { id: 'earth', t: 'Terracotta and sage colors', good: 1, why: 'Earthy colors echo clay and glaze. They make the page feel like the studio.', apply: M => { M.pal = 'clay'; } },
+      { id: 'drawn', t: 'Hand-drawn illustration', good: 1, why: 'A drawn mug feels handmade and personal, like the class itself.', apply: M => { M.art = 'hand'; } },
+      { id: 'crowd', t: 'Crowded layout', good: 0, why: 'The poster crams everything in. Your page needs one clear path to the button.', apply: M => { M.space = 'tight'; M.crowd = true; M.badge = true; } },
+      { id: 'lettering', t: 'Hand-lettered font', good: 0, why: 'Charming on a poster, hard to read on a phone at small sizes.', apply: M => { M.font = 'hand'; } }] }
+];
+const picked = new Set();
+$('#refs').innerHTML = REFS.map(r => `<div class="ref-card glass">${r.thumb}<h4>${esc(r.name)}</h4><div class="take" role="group" aria-label="What to take from ${esc(r.name)}">${r.chips.map(c => `<button data-ref="${r.id}" data-chip="${c.id}" aria-pressed="false">${esc(c.t)}</button>`).join('')}</div><p class="note ref-why" aria-live="polite"></p></div>`).join('');
+const listJoin = a => a.length < 2 ? a.join('') : a.slice(0, -1).join(', ') + ' and ' + a[a.length - 1];
+function paintMix(fresh) {
+  const M = { ...MIX_BASE };
+  const sel = REFS.flatMap(r => r.chips.filter(c => picked.has(r.id + ':' + c.id)).map(c => ({ r, c })));
+  sel.filter(x => x.c.good).forEach(x => x.c.apply(M));
+  sel.filter(x => !x.c.good).forEach(x => x.c.apply(M));
+  render($('#mixMock'), M, fresh);
+  const lines = REFS.map(r => { const cs = r.chips.filter(c => picked.has(r.id + ':' + c.id)); const its = c => (/^their /i.test(c.t) ? '' : 'its ') + c.t.toLowerCase(); return cs.length ? `From ${r.short}, take ${listJoin(cs.map(c => c.good ? esc(its(c)) : `<span class="bad">${esc(its(c))}</span>`))}.` : ''; }).filter(Boolean);
+  const allGood = REFS.every(r => r.chips.some(c => c.good && picked.has(r.id + ':' + c.id))) && !sel.some(x => !x.c.good);
+  $('#refLine').innerHTML = lines.length ? `"${lines.join(' ')}${allGood ? ' Don\'t copy anyone\'s logo, photos or text."' : '"'}` : '<span class="empty">Nothing picked yet. Right now the brief just says "make it like these", and the AI has to guess what you meant.</span>';
+  return allGood;
+}
+$('#refs').addEventListener('click', e => {
+  const b = e.target.closest('[data-chip]'); if (!b) return;
+  const key = b.dataset.ref + ':' + b.dataset.chip; const r = REFS.find(x => x.id === b.dataset.ref); const c = r.chips.find(x => x.id === b.dataset.chip);
+  if (picked.has(key)) picked.delete(key); else picked.add(key);
+  b.setAttribute('aria-pressed', picked.has(key));
+  const ok = paintMix(true);
+  const why = $('.ref-why', b.closest('.ref-card'));
+  if (!picked.has(key)) { why.className = 'note ref-why'; why.textContent = ''; }
+  else CS.say(why, `<strong>${c.good ? 'Worth taking.' : 'Leave this one.'}</strong> ${esc(c.why)}`, c.good ? 'good' : 'bad');
+  const n = $('#refNote');
+  const missing = REFS.filter(x => !x.chips.some(y => y.good && picked.has(x.id + ':' + y.id))).map(x => x.short);
+  const bads = REFS.flatMap(x => x.chips.filter(y => !y.good && picked.has(x.id + ':' + y.id)));
+  if (ok) { CS.say(n, `<strong>That's a strong reference line.</strong> One useful thing from each reference, nothing that belongs to someone else, and all of it pointing the same way: warm, calm, easy to book.`, 'good'); CS.tick('p2', 'refs'); }
+  else if (bads.length) CS.say(n, `<strong>Look at the mockup.</strong> ${esc((t => t[0].toUpperCase() + t.slice(1))(listJoin(bads.map(y => y.t.toLowerCase()))))} ${bads.length > 1 ? 'are' : 'is'} pulling it away from your studio. Unpick ${bads.length > 1 ? 'them' : 'it'}.`, 'bad');
+  else if (!picked.size) CS.say(n, 'Pick parts from the references above. Each choice changes the mockup.', 'info');
+  else CS.say(n, `<strong>So far, so good.</strong> Now take something from ${esc(listJoin(missing))}.`, 'info');
+});
+paintMix();
+
+/* ================= PART 3: brief-writing lab ================= */
+const RX = {
+  aud: /\b(audience|for (complete |total |absolute |nervous )?(beginners?|adults|people|students|parents|families|couples|locals|anyone|newcomers|first[- ]timers|busy|young|older|retirees)|beginners?|never (touched|tried|done|held|made)|first[- ]time|aged? \d|\d{2}\s*(to|-|–)\s*\d{2}|people who|who (have|has|are|want|need))/i,
+  goal: /\b(goal|so (that )?(they|people|visitors|users|someone)|should (book|sign|buy|reserve|join|register)|get (them|people|visitors|users) to|(book|reserve|buy|register|sign up|join)\b.{0,30}\b(class|seat|spot|place|course|workshop)|book(ing)? a (seat|spot|place)|conversion)/i,
+  layout: /\b(layout|left|right|columns?|stack(ed)?|on top|at the top|bottom|below|above|next to|beside|side[- ]by[- ]side|split|grid|wireframe|sketch|full[- ]width)\b|\[[^\]]+\]/i,
+  ref: /\b(references?|inspired by|similar to|in the style of|looks? like|feels? like|like (a|an|the|this|that) \w+|https?:\/\/|www\.)/i,
+  take: /\b(take|borrow|steal|use (its|their|the)|copy (its|their|only)|keep (its|their)|only (its|their|the)|(want|like|love) (its|their|the way))\b/i,
+  color: /#[0-9a-f]{3,6}\b|\b(terracotta|cream|off[- ]white|brand colou?rs?|navy|sage|olive|rust|charcoal|beige|ivory|red|orange|yellow|green|blue|pink|brown|gold|black|teal|gr[ae]y|white(?![- ]?space))\b/i,
+  access: /\b(contrast|accessib\w*|wcag|4\.5|screen readers?|keyboard|alt text|readable|legible)\b/i,
+  dont: /\b(don'?t|do not|avoid|never use|no (gradients?|emoji|emojis|icons?|cards?|feature cards|stock|badges?|purple|cent(er|re)(ed|ing)?|drop shadows?|shadows?|glow|carousels?|testimonials?|animations?|clip ?art|generic|pills?)|without (gradients?|emoji|cards?|icons?)|not (cent(er|re)d|purple|generic))\b|^\s*(don'?ts?|avoid|never)\s*:/im
+};
+const CONTENT = [['a headline', /\b(headline|heading|title|h1)\b/i], ['class dates', /\b(dates?|schedule|times|sessions|saturdays?)\b/i], ['the price', /(\$\s?\d+|\bprice|\bcost|\bfee)/i], ['a button', /\b(button|cta|call to action)\b/i], ['a picture', /\b(photo|image|picture|illustration|drawing)\b/i], ['seats left', /\b(seats?|spots?|places?) (left|remaining|available)|availability/i]];
+const snippet = (text, re) => { const parts = text.split(/\n+|(?<=[.!?])\s+/); const p = parts.find(x => re.test(x)); if (!p) return ''; const s = p.trim(); return s.length > 90 ? s.slice(0, 88) + '…' : s; };
+function readBrief(text) {
+  const t = text.replace(/[“”]/g, '"').replace(/[‘’]/g, "'");
+  const f = {}; Object.keys(RX).forEach(k => { f[k] = RX[k].test(t); });
+  const content = CONTENT.filter(c => c[1].test(t)).map(c => c[0]);
+  const M = { ...SLOP, price: false };
+  const refText = snippet(t, RX.ref) + ' ' + snippet(t, RX.take);
+  // audience & goal
+  if (f.aud) M.sub = /beginner|never|first[- ]time/i.test(t) ? 'A small wheel class for complete beginners. No experience needed.' : 'A small, friendly wheel class, planned around you.';
+  const amt = (t.match(/\$\s?\d+/) || [])[0];
+  if (f.goal) {
+    M.cta = 'one';
+    M.ctaText = /sign up|newsletter|join the list/i.test(t) ? 'Join the list' : /\bbuy\b|shop/i.test(t) && !/book/i.test(t) ? 'Shop now' : /book|reserve|seat|spot/i.test(t) ? 'Book a seat' + (amt ? ` · ${amt.replace(/\s/g, '')}` : '') : 'Get started';
+  }
+  const bq = t.match(/(button|cta)[^"\n]{0,24}"([^"\n]{2,40})"/i); if (bq) { M.ctaText = bq[2].trim(); M.cta = 'one'; }
+  // content
+  const hq = t.match(/(headline|heading|title|h1)[^"\n]{0,30}"([^"\n]{3,90})"/i);
+  if (hq) M.headline = hq[2].trim(); else if (content.includes('a headline')) M.headline = 'Discover the Joy of Pottery';
+  if (content.includes('class dates')) M.body = 'dates';
+  if (content.includes('the price')) { M.price = true; M.priceText = amt ? `${amt.replace(/\s/g, '')} for the class. Clay and firing included.` : 'Prices on request.'; }
+  // layout
+  if (/\b(left|right|next to|beside|side[- ]by[- ]side|split|two columns?|2 columns?)\b/i.test(t) && !/\b(center|centre)\b(?![^.\n]*\b(not|don'?t|no)\b)/i.test(snippet(t, /left|right/i) || '')) M.layout = 'split';
+  else if (/\b(center|centre)(ed)?\b/i.test(t) && !/(don'?t|not|no|never)\s+(\w+\s+)?(center|centre)/i.test(t)) M.layout = 'center';
+  // references
+  if (f.ref && f.take) {
+    if (/serif|type|typography|headline|font|lettering/i.test(refText)) { M.font = 'serif'; M.head = 2; }
+    if (/margin|space|white ?space|breathing|air/i.test(refText)) M.space = 'airy';
+    if (/date|list|schedule/i.test(refText)) M.body = 'dates';
+    if (/terracotta|earth|clay colou?r|warm colou?r/i.test(refText)) M.pal = 'clay';
+    if (/illustrat|drawing|hand[- ]drawn/i.test(refText)) M.art = 'hand';
+  } else if (f.ref) M.ignoredRef = true;
+  if (/\bserif\b/i.test(t) && !/sans[- ]?serif/i.test(t)) M.font = 'serif';
+  if (/(big|large|huge|oversized|bold|giant)\s+(serif\s+)?(headline|heading|title)|(headline|heading|title)[^.\n]{0,30}(big|large|twice|2x|huge)/i.test(t)) M.head = 2;
+  if (/(more|generous|lots of|plenty of|wide|double|big)\s+(white ?space|space|spacing|margins?|padding|breathing room)|airy/i.test(t)) M.space = 'airy';
+  // constraints
+  const hex = (t.match(/#([0-9a-f]{6})\b/i) || [])[0];
+  if (hex) M.pal = /b84a33/i.test(hex) ? 'clay' : hex.toUpperCase();
+  else if (/terracotta|clay[- ]colou?r|\brust\b|burnt orange/i.test(t)) M.pal = 'clay';
+  else { const NAMED = [[/\bnavy\b/, '#1F2F4F'], [/\b(sage|olive)\b/, '#5F7352'], [/\bteal\b/, 'teal'], [/\bgreen\b/, '#2F6B4F'], [/\bblue\b/, '#1F4E8C'], [/\bred\b/, '#B3322C'], [/\borange\b/, '#B8561B'], [/\b(yellow|gold)\b/, '#8A6D12'], [/\bpink\b/, '#B03A6A'], [/\bbrown\b/, '#6B4226'], [/\b(black|charcoal|gr[ae]y)\b/, 'mono']];
+    const hit = NAMED.find(n => n[0].test(t.toLowerCase())); if (hit) M.pal = hit[1]; }
+  if (/(cream|off[- ]white|ivory|#fbf4ea)/i.test(t)) M.cream = true;
+  if (f.access) M.lowc = false;
+  // don'ts
+  if (/(no|avoid|don'?t use|without|never use)\s+([\w-]+[\s,]+){0,4}gradients?/i.test(t)) M.bg = 'flat';
+  if (/(no|avoid|don'?t use|without|never use)\s+([\w-]+[\s,]+){0,4}emoj/i.test(t)) { M.emoji = false; if (M.body === 'cards') M.body = 'icons'; }
+  if (/(no|avoid|without|don'?t use)\s+([\w-]+[\s,]+){0,4}(cards|feature grid|features)/i.test(t) && (M.body === 'cards' || M.body === 'icons')) M.body = 'none';
+  if (/(no|avoid|without|don'?t use)\s+([\w-]+[\s,]+){0,4}(badges?|pills?)/i.test(t)) M.badge = false;
+  if (/(don'?t|not|no|never|avoid)\s+(\w+\s+){0,2}(center|centre)/i.test(t) && M.layout === 'center' && !/\b(center|centre)d? (the|a|it)\b/i.test(t)) M.layout = 'split';
+  if (/(no|avoid|not|without)\s+purple/i.test(t) && M.pal === 'violet') M.pal = 'teal';
+  return { f, content, M, t };
+}
+function understood(B) {
+  const t = B.t, row = (ok, name, yes, no) => `<div class="und ${ok ? 'ok' : 'no'}"><span class="m">${ok ? '✓' : '✗'}</span><span><b>${name}:</b> ${ok ? yes : no}</span></div>`;
+  const q = s => `"${esc(s)}"`;
+  return [
+    row(B.f.aud, 'Audience', q(snippet(t, RX.aud)), 'missing, so I wrote for everyone.'),
+    row(B.f.goal, 'Goal', q(snippet(t, RX.goal)), 'missing, so I added Get Started and Learn More.'),
+    row(B.content.length >= 3, 'Content', `${esc(listJoin(B.content))}.`, B.content.length ? `only ${esc(listJoin(B.content))}. I filled the rest with feature cards.` : 'missing, so I used three feature cards.'),
+    row(B.f.layout, 'Layout', q(snippet(t, RX.layout)), 'missing, so I centered everything.'),
+    row(B.f.ref && B.f.take, 'Reference', q(snippet(t, RX.take) || snippet(t, RX.ref)), B.f.ref ? 'named, but you didn\'t say what to take, so I left it out.' : 'none, so I used a standard template.'),
+    row(B.f.color || B.f.access, 'Constraints', q(snippet(t, B.f.color ? RX.color : RX.access)), 'no colors given, so I used purple.'),
+    row(B.f.dont, 'Don\'ts', q(snippet(t, RX.dont)), 'none, so I used my usual gradient, emoji and badge.')
+  ].join('');
+}
+const STARTER = 'Make a landing page for my pottery class.\n';
+function paintLab(B, fresh) { render($('#labMock'), B.M, fresh); paintGuesses($('#labGuess'), B.M); }
+const lab = CS.codeLab($('#lab'), {
+  part: 'p3', mission: $('#mission'), language: 'Design brief', starter: STARTER,
+  run: text => { const B = readBrief(text); paintLab(B, true); return { html: `<div style="margin-bottom:6px;color:#9AA4B0;font-family:var(--f-body)">What the AI understood from your brief:</div>${understood(B)}`, B }; },
+  steps: [
+    { t: 'Say who it\'s for and what they should do', how: 'Add an audience and a goal.',
+      hint: 'Add two lines, for example:<br><code>Audience: adults who have never touched clay, booking on their phones.</code><br><code>Goal: book a seat in the next beginner class.</code>',
+      check: r => r.B.f.aud && r.B.f.goal,
+      nudge: r => !r.B.f.aud ? 'The AI doesn\'t know who this is for, so it wrote for everyone: "every skill level". Add a line like <code>Audience: adults who have never touched clay</code>.' : 'Who it\'s for is clear. Now the goal: what\'s the one thing visitors should do? Try <code>Goal: book a seat in the next class</code>.' },
+    { t: 'List the content, most important first', how: 'Name at least three things the page must show, with exact words in quotes.',
+      hint: 'For example:<br><code>Content: 1. Headline "Make your own mug in two Saturdays." 2. The next two class dates with seats left. 3. $95 price. 4. A "Book a seat" button.</code>',
+      check: r => r.B.content.length >= 3,
+      nudge: r => `The AI found ${r.B.content.length ? listJoin(r.B.content) : 'no content'}. Name at least three things, most important first: the headline (in quotes), class dates, the price, the button.` },
+    { t: 'Describe the layout', how: 'Say where things go, or type a quick box sketch.',
+      hint: 'For example: <code>Layout: text on the left, a mug illustration on the right. On phones, stack them.</code>',
+      check: r => r.B.f.layout,
+      nudge: () => 'Without a layout, the AI centers everything. Say where things go: <code>Layout: text on the left, a mug illustration on the right.</code>' },
+    { t: 'Add a reference and say what to take', how: 'Point to something you like and name the part you want.',
+      hint: 'For example: <code>Reference: a ceramics magazine cover. Take its big serif headline and wide margins, nothing else.</code>',
+      check: r => r.B.f.ref && r.B.f.take,
+      nudge: r => r.B.f.ref ? 'You named a reference, but not what to take from it, so the AI left it out. Add something like <code>take its big serif headline and wide margins</code>.' : 'Point to something you like and say which part to take: <code>Reference: a ceramics magazine cover. Take the big serif headline.</code>' },
+    { t: 'Add constraints and don\'ts', how: 'Brand colors or accessibility rules, plus what the AI must not do.',
+      hint: 'For example:<br><code>Constraints: terracotta #B84A33 on cream #FBF4EA. Text passes WCAG AA contrast.</code><br><code>Don\'ts: no gradients, no emoji, no feature cards, don\'t center everything.</code>',
+      check: r => (r.B.f.color || r.B.f.access) && r.B.f.dont,
+      nudge: r => !(r.B.f.color || r.B.f.access) ? 'No colors or rules yet, so the AI reached for purple. Add <code>Constraints: terracotta #B84A33 on cream. Text passes 4.5 : 1 contrast.</code>' : 'Now the don\'ts. Name the defaults you never want: <code>Don\'ts: no gradients, no emoji, don\'t center everything.</code>' }
+  ],
+  doneHTML: '<b>Mission complete.</b> Try deleting one line and pressing Run: watch the AI fill that gap with a default.',
+  doneTutor: '<b>Mission complete!</b> Look at "What the AI guessed" under the mockup. The shorter that list, the more of the design is yours. Keep this brief as a template.'
+});
+$('#lab [data-a="reset"]').textContent = 'Start over';
+$('#lab .cl-out').innerHTML = '<span class="lbl">Output</span><span class="dim">Press Run to see what the AI understood from your brief.</span>';
+let liveT;
+lab.textarea.addEventListener('input', () => { clearTimeout(liveT); liveT = setTimeout(() => paintLab(readBrief(lab.textarea.value)), 350); });
+$$('#lab [data-a="reset"]').forEach(b => b.addEventListener('click', () => paintLab(readBrief(lab.textarea.value))));
+paintLab(readBrief(STARTER));
+
+/* ================= PART 4: steer the AI ================= */
+CS.steer($('#steer'), [
+  { who: 'AI designer', ai: "Here's your pottery studio page! A modern purple gradient hero, three feature cards with emoji icons (Expert Instructors, All Materials Included, Small Classes) and a Get Started button.",
+    opts: [['Looks professional. Ship it.', 0, 'It looks like thousands of other sites because it is the AI\'s default for any landing page. Nothing on it is about your studio.'],
+           ['Make it more unique.', 0, '"Unique" is vague. The AI will swap one default for another: a new gradient, a different icon set.'],
+           ['Drop the gradient, the emoji cards and the centered layout. Text on the left with a mug illustration on the right, lead with the next two class dates and the $95 price, terracotta #B84A33 on cream, serif headline.', 1, 'Every sentence names an element and a change, so the AI has nothing left to fill with its defaults.']] },
+  { who: 'AI designer', ai: "I looked at the ceramics magazine cover you shared and updated the page: I switched the body text to a serif. Everything else stays the same.",
+    opts: [['From the magazine, take the oversized serif headline, the cream background and the wide margins. Don\'t copy its logo or photos.', 1, 'Now the reference comes with instructions: what to take, and what to leave.'],
+           ['Look at the reference again, more carefully.', 0, 'It will look again and guess again. The AI doesn\'t know which part of the reference you liked.'],
+           ['Just copy the magazine\'s design exactly.', 0, 'Copying a design wholesale can infringe on someone\'s work, and their layout was made for their content, not your class dates.']] },
+  { who: 'AI designer', ai: "Version 7: I made it more modern again, with a softer gradient and rounder buttons. Is this better?",
+    opts: [['Still not it. Try again.', 0, 'Version 8 will be another guess. Without new information the loop can\'t get closer.'],
+           ['Go back to version 3, which had the right layout. Change only the headline: serif, about twice the body size. Keep everything else.', 1, 'Anchoring on a good version and changing one named thing at a time turns guessing into steering.'],
+           ['Start over from scratch with a totally new design.', 0, 'You\'d lose what was already working and restart the lottery.']] },
+  { who: 'AI designer', ai: "Here's the redesign. Let me know what you think!",
+    opts: [['Looks fine, thanks.', 0, 'You\'d be approving choices you haven\'t noticed, including guesses that don\'t fit your brand.'],
+           ['Make 20 more versions so I can pick one.', 0, 'Twenty unguided versions are twenty guesses. Picking is slow, and you still won\'t know why any of them look the way they do.'],
+           ['Before I review: list every design choice you made that wasn\'t in my brief, and why.', 1, 'Now the AI\'s guesses are visible. Keep the good ones and put them in the brief, and ban the rest.']] }
+], { part: 'p4', counter: $('#steerCount') });
+
+/* ================= PART 5: quiz ================= */
+CS.quiz($('#quiz'), [
+  { q: 'Which feedback will change the design the way you meant?', a: [['"Make it pop"', 0], ['"Make it more modern"', 0], ['"Make the headline twice the body size and keep one button: Book a seat"', 1]], why: 'It names the element (headline, button), the change (twice the size, only one) and the words. There\'s nothing left to guess.' },
+  { q: 'You share a website you like as a reference. What else should you say?', a: [['Which parts to take (say, its type and spacing) and which to leave (its colors, logo, content)', 1], ['Nothing. The AI will work it out', 0], ['"Copy it exactly"', 0]], why: 'A reference without instructions makes the AI guess what you liked. Naming the part turns it into a precise request.' },
+  { q: 'Why do AI-made designs so often look the same?', a: [['AI models can only make one kind of design', 0], ['When the brief leaves a gap, the AI fills it with the most common pattern it has seen', 1], ['Generic designs always convert better', 0]], why: 'Purple gradients, emoji cards and centered heroes are everywhere on the web, so they\'re the likeliest guess. Fill the gaps and the defaults disappear.' },
+  { q: 'What does a quick wireframe sketch communicate best?', a: [['Brand colors', 0], ['Tone of voice', 0], ['Layout and what matters most', 1]], why: 'Boxes and labels show where things go and how big they are. Colors, fonts and words belong in other parts of the brief.' },
+  { q: 'Which line is a constraint?', a: [['"Brand color #B84A33, and all text passes 4.5 : 1 contrast"', 1], ['"Make it feel warm"', 0], ['"Something like Apple\'s website"', 0]], why: 'A constraint is a fixed rule the design must follow, precise enough to check. "Warm" is a feeling and Apple is a reference.' }
+], { part: 'p5', doneCard: $('#doneCard'), doneTitle: 'You can get the design you meant.', doneText: 'You can write a brief with no gaps, use sketches and references precisely, and turn "make it pop" into feedback an AI can act on.' });
+})();
+</script>
+</body>
+</html>

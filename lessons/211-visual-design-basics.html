@@ -1,0 +1,849 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Visual design basics · CS School</title>
+<meta name="description" content="Course 211: hierarchy, spacing, alignment, contrast and color, tuned live with sliders.">
+<link rel="icon" href="../assets/favicon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="../assets/cs-school.css">
+<style>
+/* lesson-specific styles: mock ticket and confirmation card (fixed mock colors), stages, overlays, readouts, checks */
+
+/* ---------- mock ticket: its own colors on purpose, like a website preview ---------- */
+.tk,.cf{position:relative; width:100%; max-width:340px; margin:0 auto; background:#FFFCF5; color:#1F1B16; border-radius:22px; overflow:hidden; box-shadow:0 22px 44px -20px rgba(48,36,12,.45), 0 2px 6px rgba(48,36,12,.08); text-align:left}
+.tk-art,.cf-art{display:block; width:100%; height:96px}
+.tk-body,.cf-body{transition:padding .45s, filter .3s}
+.tk-el,.cf-el{margin:0; line-height:1.4; transition:font-size .45s, margin .45s, color .45s, font-weight .45s}
+.tk-el[data-el="eyebrow"],.cf-el[data-el="eyebrow"]{text-transform:uppercase; letter-spacing:.09em; line-height:1.3}
+.tk-el[data-el="title"],.cf-el[data-el="title"]{line-height:1.08; letter-spacing:-.012em}
+.tk-el[data-el="desc"]{line-height:1.5}
+.tk-btn,.cf-btn{display:inline-block; border-radius:999px; line-height:1.2; transition:background-color .45s, color .45s, box-shadow .45s}
+.tk-art,.cf-art{transition:filter .3s}
+.tk.squint .tk-body,.tk.squint .tk-art{filter:blur(4.5px)}
+.cf-facts{display:flex; flex-direction:column}
+.cf-row{display:grid; grid-template-columns:5.2em minmax(0,1fr); gap:10px; transition:margin .45s}
+.cf-facts.al-center .cf-row{display:flex; justify-content:center; gap:8px}
+.cf-facts.al-mixed .cf-row{display:flex; justify-content:space-between; gap:8px}
+.cf-actions{display:flex; flex-wrap:wrap; align-items:center; gap:10px 18px}
+.cf-link{text-decoration:underline; text-underline-offset:3px}
+.twin{position:absolute!important; left:0; right:0; top:0; visibility:hidden; pointer-events:none}
+.twin,.twin *{transition:none!important}
+/* design overlays: tinted bands and dots, drawn over the mock */
+.tk-ov{position:absolute; inset:0; pointer-events:none; opacity:0; transition:opacity .25s}
+.tk-ov.show{opacity:1}
+.gap-band{position:absolute; left:0; right:0; background:rgba(229,72,77,.2)}
+.gap-band b{position:absolute; right:8px; top:50%; transform:translateY(-50%); font:800 11px/1 var(--f-display); color:#fff; background:#D6333A; border-radius:99px; padding:3px 7px 2px}
+.edge-dot{position:absolute; width:11px; height:11px; margin:-5.5px 0 0 -5.5px; border-radius:50%; background:#3E63DD; box-shadow:0 0 0 3px rgba(62,99,221,.25)}
+
+/* ---------- lesson chrome around the mocks ---------- */
+.stagecol{align-self:start; position:sticky; top:74px; display:flex; flex-direction:column; gap:16px}
+.stage{border-radius:22px; padding:26px 20px; position:relative}
+.readout{border-radius:20px; padding:16px 18px; display:flex; flex-direction:column; gap:12px}
+.readout-top{display:flex; align-items:center; justify-content:space-between; gap:12px; flex-wrap:wrap}
+.readout .label{font-size:1rem}
+.toggle{display:inline-flex; align-items:center; gap:10px}
+.toggle .sw{flex:none; width:38px; height:22px; border-radius:99px; background:color-mix(in srgb, var(--ink) 18%, transparent); position:relative; transition:background .2s}
+.toggle .sw::after{content:""; position:absolute; left:3px; top:3px; width:16px; height:16px; border-radius:50%; background:#fff; box-shadow:0 1px 3px rgba(0,0,0,.25); transition:transform .2s}
+.toggle[aria-pressed="true"] .sw{background:var(--l2)}
+.toggle[aria-pressed="true"] .sw::after{transform:translateX(16px)}
+.order{list-style:none; margin:0; padding:0; display:flex; flex-wrap:wrap; gap:8px}
+.order li{display:flex; align-items:center; gap:8px; border-radius:99px; padding:4px 12px 4px 4px; background:var(--glass-strong); font-family:var(--f-display); font-weight:700; font-size:.98rem; animation:rise .3s}
+.order li b{width:24px; height:24px; border-radius:50%; display:grid; place-items:center; font-size:.85rem; background:color-mix(in srgb, var(--ink) 9%, transparent)}
+.order li.hit b{background:var(--good-bg); color:var(--good)}
+.stats{display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:10px}
+.stat{border-radius:14px; background:var(--glass-strong); padding:10px 12px; display:flex; flex-direction:column; gap:2px; min-width:0}
+.stat span{font-size:.92rem; color:var(--ink-2); line-height:1.3}
+.stat b{font-family:var(--f-display); font-weight:900; font-size:1.3rem; line-height:1.15; font-variant-numeric:tabular-nums; overflow-wrap:anywhere}
+.pill{font-style:normal; align-self:flex-start; font-family:var(--f-display); font-weight:800; font-size:.85rem; border-radius:99px; padding:2px 9px; background:var(--bad-bg); color:var(--bad)}
+.pill.ok{background:var(--good-bg); color:var(--good)}
+.ctl .field{display:flex; flex-direction:column; gap:8px}
+.ctl .field + .field{margin-top:18px}
+.field-head{display:flex; justify-content:space-between; align-items:baseline; gap:10px; flex-wrap:wrap}
+.field-head label,.field-head .lbl{font-family:var(--f-display); font-weight:800; font-size:1.02rem}
+.field-head output,.field-head .val{font-family:var(--f-display); font-weight:700; font-size:.95rem; color:var(--ink-2); font-variant-numeric:tabular-nums}
+.ctl .seg-control{flex-wrap:wrap; max-width:100%; align-self:flex-start}
+.ctl .seg-control button{min-height:44px}
+.range:disabled{opacity:.35}
+.swatches{display:flex; gap:10px; flex-wrap:wrap}
+.swatch{width:44px; height:44px; border-radius:50%; border:0; cursor:pointer; background:var(--sw); box-shadow:0 1px 4px rgba(0,0,0,.18); display:grid; place-items:center; position:relative}
+.swatch[aria-pressed="true"]{box-shadow:0 0 0 3px var(--paper), 0 0 0 5.5px var(--ink)}
+.swatch span{font:800 .8rem/1 var(--f-display); color:#fff}
+.gray-sw{display:inline-block; width:14px; height:14px; border-radius:4px; vertical-align:-2px; margin-right:6px; background:var(--g)}
+
+/* explainers */
+.scale-row{display:flex; align-items:flex-end; justify-content:space-between; gap:16px 22px; flex-wrap:wrap; border-radius:20px; padding:20px 26px}
+.scale-row div{display:flex; flex-direction:column; align-items:flex-start; gap:6px}
+.scale-row span{font-family:var(--f-display); font-weight:800; line-height:1}
+.scale-row small{font-family:var(--f-display); font-weight:700; font-size:.9rem; color:var(--ink-2)}
+.ideas{margin:0; display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:14px}
+.ideas > div{border-radius:18px; padding:16px 18px}
+.ideas dt{font-family:var(--f-display); font-weight:800; font-size:1.15rem; display:flex; align-items:center; gap:10px}
+.ideas dt i{width:10px; height:10px; border-radius:50%; background:var(--c)}
+.ideas dd{margin:4px 0 0; font-size:1rem; color:var(--ink-2)}
+.eight{display:flex; align-items:flex-end; gap:14px; flex-wrap:wrap; margin-top:12px}
+.eight div{display:flex; flex-direction:column; align-items:center; gap:6px; font-family:var(--f-display); font-weight:700; font-size:.9rem; color:var(--ink-2)}
+.eight i{display:block; border-radius:4px; background:color-mix(in srgb, var(--l2) 70%, transparent)}
+
+/* hero */
+.hero-stage{display:grid; grid-template-columns:minmax(0,1fr) 200px; gap:22px; align-items:center}
+.hero-tkwrap{position:relative; display:flex; align-items:center}
+.hero-stage .tk{max-width:320px}
+.principles{list-style:none; margin:0; padding:0; display:flex; flex-direction:column; gap:10px}
+.principles li{display:grid; grid-template-columns:12px minmax(0,1fr); gap:4px 10px; align-items:center; border-radius:14px; padding:9px 12px; background:var(--glass-strong); transition:background .3s}
+.principles i{width:10px; height:10px; border-radius:50%; background:color-mix(in srgb, var(--ink) 22%, transparent); transition:background .3s, transform .3s}
+.principles b{font-family:var(--f-display); font-weight:800; font-size:.98rem}
+.principles span{grid-column:2; font-family:var(--f-mono); font-size:.9rem; color:var(--ink-2); font-variant-numeric:tabular-nums}
+.principles li.on i{background:var(--c); transform:scale(1.25)}
+.principles li.on span{color:var(--ink)}
+
+/* part 3: fix this design */
+.fix{display:grid; grid-template-columns:minmax(0,.95fr) minmax(0,1.05fr); grid-template-areas:"mission stage" "controls stage" "say stage"; gap:24px 32px; align-items:start}
+.fix .a-m{grid-area:mission} .fix .a-c{grid-area:controls; display:flex; flex-direction:column; gap:18px} .fix .a-y{grid-area:say}
+.fix .a-s{grid-area:stage; position:sticky; top:74px}
+.checks{list-style:none; margin:0; padding:0; display:flex; flex-direction:column; gap:4px}
+.checks li{display:grid; grid-template-columns:28px minmax(0,1fr); gap:12px; align-items:start; padding:6px 0}
+.checks .ck{width:28px; height:28px; border-radius:50%; display:grid; place-items:center; font-family:var(--f-display); font-weight:800; font-size:.85rem; background:color-mix(in srgb, var(--ink) 8%, transparent); color:var(--ink-2); transition:background .3s, color .3s}
+.checks li.ok .ck{background:var(--good-bg); color:var(--good)}
+.checks li.ok .ck.pop{animation:pop .4s cubic-bezier(.3,1.7,.5,1)}
+.checks b{display:block; font-family:var(--f-display); font-weight:800; line-height:1.3; padding-top:3px}
+.checks span{display:block; font-size:.95rem; color:var(--ink-2); font-variant-numeric:tabular-nums}
+.checks li:not(.ok) span{color:var(--bad)}
+.meter3{height:8px; border-radius:4px; background:color-mix(in srgb, var(--ink) 10%, transparent); overflow:hidden; margin:4px 0 14px}
+.meter3 i{display:block; height:100%; border-radius:4px; background:var(--good); transition:width .5s}
+.say{list-style:none; margin:0; padding:0; display:flex; flex-direction:column; gap:8px; counter-reset:s}
+.say li{counter-increment:s; display:grid; grid-template-columns:24px minmax(0,1fr); gap:10px; font-size:1rem; animation:rise .35s}
+.say li::before{content:counter(s); width:24px; height:24px; border-radius:50%; display:grid; place-items:center; font-family:var(--f-display); font-weight:800; font-size:.8rem; background:var(--ink); color:var(--paper); margin-top:1px}
+.say li code{white-space:nowrap}
+.say .todo{color:var(--ink-2); font-size:1rem}
+.compare{margin-top:14px; display:flex; justify-content:center}
+
+@media (max-width:900px){
+  .stagecol{position:static}
+  .stage{position:sticky; top:62px; z-index:4; padding:12px; background:color-mix(in srgb, var(--paper) 86%, transparent)}
+  .pg-col > *{align-self:stretch}
+  .hero-caption{white-space:normal; align-items:flex-start; line-height:1.5}
+  .fix{grid-template-columns:minmax(0,1fr); grid-template-areas:"mission" "stage" "controls" "say"}
+  .fix .a-s{top:62px; z-index:4}
+  .fix .a-s .stage{position:static}
+  .ideas{grid-template-columns:minmax(0,1fr)}
+  .hero-stage{grid-template-columns:minmax(0,1fr)}
+  .principles{display:grid; grid-template-columns:repeat(2,minmax(0,1fr))}
+}
+@media (max-width:640px){
+  .tk,.cf{max-width:300px; border-radius:18px}
+  .tk-art,.cf-art{height:64px}
+  .stats{grid-template-columns:minmax(0,1fr) minmax(0,1fr)}
+  .stats .stat:last-child{grid-column:1 / -1}
+}
+</style>
+</head>
+<body>
+<main id="top">
+  <section class="wrap hero">
+    <div>
+      <div class="kicker">Core curriculum · Course 211 · Visual design basics</div>
+      <h1>Good design isn't magic. It's decisions you can name.</h1>
+      <p class="lede">Hierarchy, spacing, alignment, contrast and color. You'll tune a real design with sliders, measure what's wrong with numbers, and learn the precise words that get an AI to fix it.</p>
+      <ul class="facts">
+        <li>About 15 minutes</li>
+        <li>5 parts</li>
+        <li>Live design lab</li>
+        <li>No design experience needed</li>
+      </ul>
+      <div class="row hero-cta"><a class="btn primary" href="#p1">Start the lesson</a></div>
+    </div>
+    <figure style="margin:0">
+      <div class="hero-visual glass hero-stage" role="img" aria-label="An event ticket for a spring seed swap. It starts cluttered: everything bold, six fonts, random gaps, mixed alignment, pale text and five colors. Then it is fixed one principle at a time: hierarchy, spacing, alignment, contrast and color.">
+        <div class="hero-tkwrap"><div class="tk" id="heroTk" aria-hidden="true"></div></div>
+        <ul class="principles" id="heroP" aria-hidden="true"></ul>
+      </div>
+      <div class="hero-caption glass" aria-hidden="true"><span>To the AI</span><span id="heroCap">make it pop</span></div>
+    </figure>
+  </section>
+
+  <div class="wrap">
+  <!-- PART 1 -->
+  <section class="part first" id="p1">
+    <span class="bullet glass" data-p="p1">1</span>
+    <div class="part-head">
+      <div class="kicker">Part 1 of 5</div>
+      <h2>Hierarchy: what do you see first?</h2>
+      <p>Every design tells the eye where to go: first this, then that. That order is called <b>hierarchy</b>. When everything shouts, nothing is heard.</p>
+    </div>
+
+    <div class="chat" aria-label="Example conversation">
+      <div class="msg me"><span class="who">You</span>Can you design the ticket card for our spring seed swap? Make it stand out.</div>
+      <div class="msg ai"><span class="who">AI assistant</span>Done! I made everything bold so it all stands out, and gave each line its own font for personality.</div>
+      <div class="msg me"><span class="who">You</span>Now nothing stands out. I can't even find the button.</div>
+    </div>
+
+    <div class="task glass" data-part="p1">
+      <h3>Your task</h3>
+      <ol>
+        <li data-t="squint"><span>Turn on the squint test and look at the AI's version.</span></li>
+        <li data-t="title"><span>Make the title the first thing you see.</span></li>
+        <li data-t="button"><span>Make "Reserve a spot" the second thing you see.</span></li>
+        <li data-t="quiet"><span>Quiet the rest: bold only for the title, and two fonts at most.</span></li>
+      </ol>
+    </div>
+
+    <div class="pg">
+      <div class="pg-col">
+        <div class="o3 ctl glass" id="c1">
+          <h3 class="ctl-title">Type</h3>
+          <div class="field">
+            <div class="field-head"><label for="r1">Size difference</label><output id="r1v" for="r1"></output></div>
+            <input class="range" id="r1" type="range" min="0" max="6" step="1" value="0">
+          </div>
+          <div class="field">
+            <div class="field-head"><span class="lbl" id="w1l">Bold</span></div>
+            <div class="seg-control" role="group" aria-labelledby="w1l" data-ctl="weight"><button data-v="all">Everything</button><button data-v="title">Title only</button></div>
+          </div>
+          <div class="field">
+            <div class="field-head"><span class="lbl" id="f1l">Fonts</span></div>
+            <div class="seg-control" role="group" aria-labelledby="f1l" data-ctl="fonts"><button data-v="6">6 fonts</button><button data-v="2">2 fonts</button><button data-v="1">1 font</button></div>
+          </div>
+        </div>
+        <div class="o4 ctl glass" id="c1b">
+          <h3 class="ctl-title">Button</h3>
+          <div class="seg-control" role="group" aria-label="Button style" data-ctl="btn"><button data-v="outline">Gray outline</button><button data-v="fill">Filled with color</button></div>
+        </div>
+        <div class="o5 note" id="p1Note" aria-live="polite">Start with the squint test next to the card. Blur hides the words, so only the hierarchy is left.</div>
+      </div>
+      <div class="pg-col stagecol">
+        <div class="o1 stage glass"><div class="tk" id="tk1" aria-hidden="true"></div></div>
+        <div class="o2 readout glass">
+          <div class="readout-top">
+            <span class="label">At a squint, you see</span>
+            <button class="btn toggle" id="squint" aria-pressed="false"><span class="sw" aria-hidden="true"></span>Squint test</button>
+          </div>
+          <ol class="order" id="order1" aria-live="polite"></ol>
+        </div>
+      </div>
+    </div>
+
+    <div class="stack" style="margin-top:56px">
+      <h3>Hierarchy is an order, not a volume knob</h3>
+      <p class="muted">You decide what comes first, second and third, and make everything else quieter. Size does most of the work. Weight and color support it. Use each sparingly, or they cancel out.</p>
+      <div class="scale-row glass" id="scaleRow" role="img" aria-label="A type scale with ratio 1.25: 13, 16, 20, 25, 31 and 39 pixels."></div>
+      <p>Designers pick sizes from a <b>type scale</b>: each size is the one before it multiplied by the same ratio, so the steps look related. Fonts work the same way: one family, or two at most (one for headings, one for text). The AI's six fonts made the card look like a ransom note.</p>
+      <details class="deeper glass">
+        <summary>Under the hood: type scales in CSS <small>optional</small></summary>
+        <div>
+          <p>A scale with ratio 1.25 starting at 16px gives 16, 20, 25, 31, 39. Many teams store these as design tokens, for example <code>--text-lg: 1.25rem</code>, so every screen uses the same few sizes.</p>
+          <p>When you ask an AI for changes, name the step: "make the title the 31px size from our scale" gets a consistent result. "Make it bigger" gets a random number.</p>
+        </div>
+      </details>
+    </div>
+  </section>
+
+  <!-- PART 2 -->
+  <section class="part" id="p2">
+    <span class="bullet glass" data-p="p2">2</span>
+    <div class="part-head">
+      <div class="kicker">Part 2 of 5</div>
+      <h2>Space, edges and contrast</h2>
+      <p>The hierarchy is fixed, but the card still feels off. The AI picked every gap at random, lined things up in three different ways, and made the details so pale they're hard to read. Each of these has a number you can measure.</p>
+    </div>
+
+    <div class="task glass" data-part="p2">
+      <h3>Your task</h3>
+      <ol>
+        <li data-t="scale"><span>Put every gap on the 8-point scale.</span></li>
+        <li data-t="group"><span>Make the space between groups at least twice the space inside them.</span></li>
+        <li data-t="align"><span>Line everything up on one left edge.</span></li>
+        <li data-t="contrast"><span>Darken the gray details until they pass 4.5:1 contrast.</span></li>
+      </ol>
+    </div>
+
+    <div class="pg">
+      <div class="pg-col">
+        <div class="o3 ctl glass">
+          <h3 class="ctl-title">Spacing</h3>
+          <div class="field">
+            <div class="seg-control" role="group" aria-label="Spacing values" data-ctl="space"><button data-v="ai">The AI's gaps</button><button data-v="8">8-point scale</button></div>
+          </div>
+          <div class="field">
+            <div class="field-head"><label for="in2">Inside a group</label><output id="in2v" for="in2"></output></div>
+            <input class="range" id="in2" type="range" min="0" max="2" step="1" value="1">
+          </div>
+          <div class="field">
+            <div class="field-head"><label for="bt2">Between groups</label><output id="bt2v" for="bt2"></output></div>
+            <input class="range" id="bt2" type="range" min="0" max="4" step="1" value="0">
+          </div>
+        </div>
+        <div class="o4 ctl glass">
+          <h3 class="ctl-title">Alignment</h3>
+          <div class="seg-control" role="group" aria-label="Alignment" data-ctl="align"><button data-v="mixed">Mixed</button><button data-v="center">Centered</button><button data-v="left">Left</button></div>
+        </div>
+        <div class="o5 ctl glass">
+          <h3 class="ctl-title">Detail text color</h3>
+          <div class="field">
+            <div class="field-head"><label for="g2">Gray</label><output id="g2v" for="g2"></output></div>
+            <input class="range" id="g2" type="range" min="28" max="82" step="1" value="76">
+          </div>
+        </div>
+        <div class="o6 note" id="p2Note" aria-live="polite">Turn on "Show gaps" to see the AI's spacing. Every red band is a gap it picked.</div>
+      </div>
+      <div class="pg-col stagecol">
+        <div class="o1 stage glass" id="stage2"><div class="tk" id="tk2" aria-hidden="true"></div></div>
+        <div class="o2 readout glass">
+          <div class="readout-top">
+            <button class="btn toggle" id="showGaps" aria-pressed="true"><span class="sw" aria-hidden="true"></span>Show gaps</button>
+            <button class="btn toggle" id="showEdges" aria-pressed="false"><span class="sw" aria-hidden="true"></span>Show left edges</button>
+          </div>
+          <div class="stats" aria-live="polite">
+            <div class="stat"><span>Gaps used</span><b id="st2gap"></b></div>
+            <div class="stat"><span>Left edges</span><b id="st2edge"></b></div>
+            <div class="stat"><span>Detail contrast</span><b id="st2con"></b><em class="pill" id="st2pill"></em></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="stack" style="margin-top:56px">
+      <h3>Four measurable rules</h3>
+      <dl class="ideas">
+        <div class="glass" style="--c:var(--l2)"><dt><i></i>The 8-point scale</dt><dd>Pick every gap from a short list: 8, 16, 24, 32, 48. Repeated gaps look calm and intentional, and nobody argues about 13 versus 14.</dd>
+          <div class="eight" role="img" aria-label="Squares of 4, 8, 16, 24, 32 and 48 pixels"><div><i style="width:4px;height:4px"></i>4</div><div><i style="width:8px;height:8px"></i>8</div><div><i style="width:16px;height:16px"></i>16</div><div><i style="width:24px;height:24px"></i>24</div><div><i style="width:32px;height:32px"></i>32</div><div><i style="width:48px;height:48px"></i>48</div></div></div>
+        <div class="glass" style="--c:var(--l3)"><dt><i></i>Proximity</dt><dd>People read things that sit close together as one group. Keep the gap inside a group small and the gap between groups clearly bigger, about twice or more.</dd></div>
+        <div class="glass" style="--c:var(--l5)"><dt><i></i>Alignment</dt><dd>Every extra edge is something the eye has to find. Left-aligned text gives one clean edge. Centered lines each start somewhere new, which makes paragraphs harder to read.</dd></div>
+        <div class="glass" style="--c:var(--l1)"><dt><i></i>Contrast ratio</dt><dd>How different text is from its background, from 1:1 (invisible) to 21:1 (black on white). Normal text needs at least 4.5:1 to meet the common WCAG AA standard.</dd></div>
+      </dl>
+      <details class="deeper glass">
+        <summary>Under the hood: how the contrast ratio is calculated <small>optional</small></summary>
+        <div>
+          <p>Each color gets a <b>relative luminance</b>: its brightness as the eye sees it, from 0 for black to 1 for white. Green counts most, blue least. The ratio is <code>(lighter + 0.05) / (darker + 0.05)</code>.</p>
+          <p>WCAG AA asks for 4.5:1 for normal text and 3:1 for large text (about 24px, or 19px bold). AAA, the stricter level, asks for 7:1. Course 212 covers contrast and much more about designing for everyone.</p>
+        </div>
+      </details>
+    </div>
+  </section>
+
+  <!-- PART 3 -->
+  <section class="part" id="p3">
+    <span class="bullet glass" data-p="p3">3</span>
+    <div class="part-head">
+      <div class="kicker">Part 3 of 5</div>
+      <h2>Try it: fix this design</h2>
+      <p>The AI built the booking confirmation from course 210. It works, but it breaks every rule at once. Use what you've learned to hit all six targets. Each one is measured live.</p>
+    </div>
+
+    <div class="fix">
+      <div class="a-m ctl glass">
+        <h3 class="ctl-title">Your mission</h3>
+        <p class="ctl-sub" style="margin-top:0">Hit every target. The numbers update as you change things.</p>
+        <div class="meter3" aria-hidden="true"><i id="fixMeter" style="width:0"></i></div>
+        <ol class="checks" id="checks" aria-live="polite"></ol>
+        <div class="note" id="p3Note" hidden aria-live="polite"></div>
+      </div>
+      <div class="a-s">
+        <div class="stage glass" id="stage3"><div class="cf" id="cf" aria-hidden="true"></div>
+          <div class="compare" id="compareRow" hidden><button class="btn toggle" id="compare" aria-pressed="false"><span class="sw" aria-hidden="true"></span>Show the AI's version</button></div>
+        </div>
+      </div>
+      <div class="a-c">
+        <div class="ctl glass">
+          <h3 class="ctl-title">Type</h3>
+          <div class="field">
+            <div class="field-head"><label for="h3r">Headline size</label><output id="h3v" for="h3r"></output></div>
+            <input class="range" id="h3r" type="range" min="16" max="40" step="1" value="18">
+          </div>
+          <div class="field">
+            <div class="field-head"><span class="lbl" id="w3l">Bold</span></div>
+            <div class="seg-control" role="group" aria-labelledby="w3l" data-ctl="weight"><button data-v="all">Everything</button><button data-v="head">Headline only</button></div>
+          </div>
+          <div class="field">
+            <div class="field-head"><span class="lbl" id="f3l">Fonts</span></div>
+            <div class="seg-control" role="group" aria-labelledby="f3l" data-ctl="fonts"><button data-v="4">4 fonts</button><button data-v="2">2 fonts</button><button data-v="1">1 font</button></div>
+          </div>
+        </div>
+        <div class="ctl glass">
+          <h3 class="ctl-title">Space and alignment</h3>
+          <div class="field">
+            <div class="field-head"><span class="lbl" id="s3l">Spacing</span></div>
+            <div class="seg-control" role="group" aria-labelledby="s3l" data-ctl="space"><button data-v="ai">The AI's gaps</button><button data-v="8">8-point scale</button></div>
+          </div>
+          <div class="field">
+            <div class="field-head"><span class="lbl" id="a3l">Alignment</span></div>
+            <div class="seg-control" role="group" aria-labelledby="a3l" data-ctl="align"><button data-v="mixed">Mixed</button><button data-v="center">Centered</button><button data-v="left">Left</button></div>
+          </div>
+        </div>
+        <div class="ctl glass">
+          <h3 class="ctl-title">Color</h3>
+          <div class="field">
+            <div class="field-head"><span class="lbl" id="ac3l">Accent colors</span></div>
+            <div class="seg-control" role="group" aria-labelledby="ac3l" data-ctl="accent"><button data-v="rainbow">A rainbow</button><button data-v="one">One accent</button></div>
+          </div>
+          <div class="field">
+            <div class="field-head"><span class="lbl" id="b3l">Button color</span><span class="val" id="b3v"></span></div>
+            <div class="swatches" role="group" aria-labelledby="b3l" id="swatches"></div>
+          </div>
+          <div class="field">
+            <div class="field-head"><label for="g3">Detail text gray</label><output id="g3v" for="g3"></output></div>
+            <input class="range" id="g3" type="range" min="28" max="82" step="1" value="78">
+          </div>
+        </div>
+      </div>
+      <div class="a-y ctl glass">
+        <h3 class="ctl-title">Say it to the AI</h3>
+        <p class="ctl-sub">Every fix you make is also a precise instruction. This is feedback an AI can act on. Course 213 goes deeper on writing design briefs.</p>
+        <ol class="say" id="say"></ol>
+      </div>
+    </div>
+  </section>
+
+  <!-- PART 4 -->
+  <section class="part" id="p4">
+    <span class="bullet glass" data-p="p4">4</span>
+    <div class="part-head">
+      <div class="kicker">Part 4 of 5</div>
+      <h2>Steer the AI</h2>
+      <p>AI tools are fast at visual changes, but they guess when your feedback is vague. Here are four moments from building the garden site. Pick the reply you'd send.</p>
+    </div>
+    <p class="counter" id="steerCount"></p>
+    <div id="steer"></div>
+  </section>
+
+  <!-- PART 5 -->
+  <section class="part last" id="p5">
+    <span class="bullet glass" data-p="p5">5</span>
+    <div class="part-head">
+      <div class="kicker">Part 5 of 5</div>
+      <h2>Check your understanding</h2>
+      <p>Five quick questions. Each answer explains itself.</p>
+    </div>
+    <div id="quiz"></div>
+    <div id="doneCard" aria-live="polite"></div>
+  </section>
+  </div>
+
+  <section class="after" id="cheat">
+    <div class="wrap stack">
+      <h2>Cheat sheet</h2>
+      <p class="muted">What good looks like, and the exact words to give an AI.</p>
+      <div class="table-wrap glass">
+        <table>
+          <thead><tr><th>Principle</th><th>What good looks like</th><th>Say this to the AI</th></tr></thead>
+          <tbody>
+            <tr><td><b>Hierarchy</b></td><td>One thing first, one second, the rest quiet. Check with a squint.</td><td>"Make the title the first thing I see and the button the second."</td></tr>
+            <tr><td><b>Type scale</b></td><td>Sizes from one ratio, like 16, 20, 25, 31 (×1.25).</td><td>"Use a type scale with ratio 1.25, starting at 16px."</td></tr>
+            <tr><td><b>Weight</b></td><td>Bold for one or two things, never everything.</td><td>"Bold only the title. Everything else regular."</td></tr>
+            <tr><td><b>Fonts</b></td><td>One family, or two: one for headings, one for text.</td><td>"Use at most two fonts."</td></tr>
+            <tr><td><b>Spacing</b></td><td>Every gap from 8, 16, 24, 32, 48.</td><td>"Use only 8-point spacing values."</td></tr>
+            <tr><td><b>Proximity</b></td><td>Gaps between groups at least twice the gaps inside them.</td><td>"8px inside groups, 24px between them."</td></tr>
+            <tr><td><b>Alignment</b></td><td>As few edges as possible, usually one left edge.</td><td>"Align all text and buttons to one left edge."</td></tr>
+            <tr><td><b>Contrast</b></td><td>Text at least 4.5:1 against its background (3:1 for large text).</td><td>"Every text color must pass 4.5:1. List the ratios."</td></tr>
+            <tr><td><b>Color</b></td><td>One accent color, saved for the main action.</td><td>"One accent color, used only on the primary button."</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+</main>
+<script src="../assets/cs-school.js"></script>
+<script>
+(() => {
+const { $, $$, esc, reduce } = CS;
+
+CS.lesson({
+  id: '211',
+  parts: [
+    { id: 'p1', title: 'Hierarchy' },
+    { id: 'p2', title: 'Space and contrast' },
+    { id: 'p3', title: 'Try it' },
+    { id: 'p4', title: 'Steer the AI' },
+    { id: 'p5', title: 'Check' }
+  ]
+});
+
+/* ---------------- color math (WCAG) ---------------- */
+const lum = h => { const c = [1, 3, 5].map(i => parseInt(h.slice(i, i + 2), 16) / 255).map(v => v <= .04045 ? v / 12.92 : Math.pow((v + .055) / 1.055, 2.4)); return .2126 * c[0] + .7152 * c[1] + .0722 * c[2]; };
+const ratio = (a, b) => { const x = lum(a), y = lum(b); return (Math.max(x, y) + .05) / (Math.min(x, y) + .05); };
+const fr = r => (Math.floor(r * 10) / 10).toFixed(1) + ':1';
+const gray = L => { const h = 34, s = .07, l = L / 100; const k = n => (n + h / 30) % 12; const a = s * Math.min(l, 1 - l); const f = n => l - a * Math.max(-1, Math.min(k(n) - 3, Math.min(9 - k(n), 1))); return '#' + [f(0), f(8), f(4)].map(x => Math.round(x * 255).toString(16).padStart(2, '0')).join('').toUpperCase(); };
+const small = () => matchMedia('(max-width: 640px)').matches;
+
+/* ---------------- the seed swap ticket (mock) ---------------- */
+const BG = '#FFFCF5', INK = '#1F1B16', BODY = '#3B352D', ACCENT = '#B5452A';
+const RB = { eyebrow: '#16A394', title: '#8E4EC6', date: '#E5484D', price: '#F2A016', button: '#FF6FAE' };
+const TK_ELS = ['eyebrow', 'title', 'date', 'place', 'desc', 'price', 'button'];
+const NAMES = { eyebrow: 'Garden name', title: 'Title', date: 'Date', place: 'Place', desc: 'Description', price: 'Price', button: 'Button' };
+const CHARS = { eyebrow: 18, title: 16, date: 28, place: 29, desc: 82, price: 20 };
+const AI_GAPS = [3, 17, 9, 5, 22, 13], AI_PAD = 19;
+const GROUPS = ['in', 'out', 'in', 'out', 'out', 'in'];
+const INS = [4, 8, 16], BTW = [8, 16, 24, 32, 40];
+const RATIOS = [1, 1.067, 1.125, 1.2, 1.25, 1.333, 1.414];
+const F6 = { eyebrow: "'Courier New', Courier, monospace", title: "Georgia, 'Times New Roman', serif", date: "'Trebuchet MS', Tahoma, sans-serif", place: "'Brush Script MT', 'Segoe Script', 'Apple Chancery', cursive", desc: 'Verdana, Geneva, sans-serif', price: "'Courier New', Courier, monospace", button: "Impact, Haettenschweiler, 'Arial Narrow Bold', sans-serif" };
+const F2 = { eyebrow: 'var(--f-display)', title: 'var(--f-display)', date: 'var(--f-display)', place: 'var(--f-body)', desc: 'var(--f-body)', price: 'var(--f-body)', button: 'var(--f-display)' };
+const F1 = Object.fromEntries(TK_ELS.map(e => [e, 'var(--f-body)']));
+const FONTS = { 6: F6, 4: F6, 2: F2, 1: F1 };
+const sprout = (x, y, h, s) => `<path d="M${x} ${y}V${y - h}" stroke="#2F7D4F" stroke-width="3" stroke-linecap="round"/><path d="M${x} ${y - h + 4}c-${9 * s} 0-${15 * s}-${7 * s}-${15 * s}-${14 * s}c${9 * s} 0 ${15 * s} ${6 * s} ${15 * s} ${14 * s}z" fill="#3E9A5F"/><path d="M${x} ${y - h + 8}c${8 * s} 0 ${14 * s}-${6 * s} ${14 * s}-${12 * s}c-${8 * s} 0-${14 * s} ${5 * s}-${14 * s} ${12 * s}z" fill="#5DB47A"/>`;
+const ART = `<svg class="tk-art" viewBox="0 0 340 96" preserveAspectRatio="xMidYMid slice" aria-hidden="true"><rect width="340" height="96" fill="#E4EFD8"/><circle cx="282" cy="30" r="17" fill="#F6C453"/><circle cx="282" cy="30" r="26" fill="#F6C453" opacity=".22"/>
+  <path d="M0 72C60 58 118 66 176 71S284 82 340 64V96H0Z" fill="#CFE2BC"/><path d="M0 84C78 76 150 88 226 84S310 78 340 84V96H0Z" fill="#B8D5A1"/>
+  ${sprout(58, 80, 26, 1)}${sprout(112, 82, 18, .8)}${sprout(170, 79, 34, 1.15)}${sprout(222, 83, 16, .7)}
+  <g fill="#A86B3C"><ellipse cx="252" cy="88" rx="3.2" ry="2.1"/><ellipse cx="262" cy="90" rx="2.6" ry="1.8"/><ellipse cx="86" cy="89" rx="2.8" ry="1.9"/><ellipse cx="138" cy="90" rx="3" ry="2"/><ellipse cx="300" cy="87" rx="2.6" ry="1.8"/></g></svg>`;
+function ticketHTML() {
+  return `${ART}<div class="tk-body">
+    <div class="tk-el" data-el="eyebrow">Hollow Lane Garden</div>
+    <div class="tk-el" data-el="title">Spring Seed Swap</div>
+    <div class="tk-el" data-el="date">Sat 12 April · 10 am to 1 pm</div>
+    <div class="tk-el" data-el="place">The Potting Shed, Hollow Lane</div>
+    <p class="tk-el" data-el="desc">Bring seeds you saved, take seeds you want. Soup, tea and a short talk on tomatoes.</p>
+    <div class="tk-el" data-el="price">Free · 42 spots left</div>
+    <div class="tk-el" data-el="button"><span class="tk-btn">Reserve a spot</span></div>
+  </div><div class="tk-ov"></div>`;
+}
+const tkSizes = st => { const r = st.ratio; return { eyebrow: r === 1 ? 16 : Math.max(12, Math.round(16 / r)), title: Math.round(16 * r ** 3), date: Math.round(16 * r), place: 16, desc: 16, price: 16, button: 16 }; };
+const tkWeight = (st, el) => st.weight === 'all' ? (el === 'title' ? 900 : 800) : el === 'title' ? 800 : el === 'button' || el === 'eyebrow' ? 700 : 400;
+const tkGaps = st => st.space === 'ai' ? AI_GAPS : GROUPS.map(g => g === 'in' ? st.inside : st.between);
+const tkColor = (st, el) => st.accent === 'rainbow' && RB[el] ? RB[el] : { eyebrow: gray(st.gray), title: INK, date: INK, place: gray(st.gray), desc: BODY, price: gray(st.gray) }[el];
+const MIXED = { eyebrow: 'left', title: 'center', date: 'right', place: 'center', desc: 'left', price: 'right', button: 'center' };
+function applyTicket(tk, st) {
+  const k = small() ? .74 : 1;
+  const sz = tkSizes(st), gaps = tkGaps(st), pad = st.space === 'ai' ? AI_PAD : 24;
+  $('.tk-body', tk).style.padding = `${pad * k}px ${pad * k}px ${(pad + 4) * k}px`;
+  TK_ELS.forEach((el, i) => {
+    const e = $(`[data-el="${el}"]`, tk);
+    Object.assign(e.style, { fontSize: sz[el] * k + 'px', fontWeight: tkWeight(st, el), fontFamily: FONTS[st.fonts][el], marginBottom: (gaps[i] || 0) * k + 'px', textAlign: st.align === 'mixed' ? MIXED[el] : st.align });
+    if (el !== 'button') e.style.color = tkColor(st, el);
+  });
+  const b = $('.tk-btn', tk), fill = st.accent === 'rainbow' ? RB.button : ACCENT;
+  if (st.btn === 'fill') Object.assign(b.style, { background: fill, color: '#fff', boxShadow: 'none' });
+  else { const c = st.accent === 'rainbow' ? RB.button : gray(Math.max(st.gray, 55)); Object.assign(b.style, { background: 'transparent', color: c, boxShadow: `inset 0 0 0 1.5px ${c}` }); }
+  b.style.padding = `${11 * k}px ${20 * k}px`;
+}
+function squintOrder(st) {
+  const sz = tkSizes(st);
+  return TK_ELS.map(el => {
+    if (el === 'button') return [el, st.btn === 'fill' ? 3.2 : .8];
+    const w = tkWeight(st, el) >= 700 ? 1.5 : 1;
+    const cf = .35 + .65 * Math.min(1, (ratio(tkColor(st, el), BG) - 1) / 10);
+    return [el, (sz[el] / 16) ** 2 * Math.sqrt(CHARS[el] / 16) * w * cf];
+  }).sort((a, b) => b[1] - a[1]).map(x => x[0]);
+}
+/* measure a design in an invisible twin with no transitions, so numbers are final right away */
+function measure(twin, sel) {
+  const base = twin.getBoundingClientRect();
+  const blocks = $$(sel, twin).map(e => {
+    const r = e.getBoundingClientRect();
+    let first = r;
+    const inner = $('.tk-btn,.cf-btn', e);
+    if (inner) first = inner.getBoundingClientRect();
+    else if (e.classList.contains('cf-facts')) first = $('.cf-dt', e).getBoundingClientRect();
+    else { const rg = document.createRange(); rg.selectNodeContents(e); const rs = rg.getClientRects(); if (rs.length) first = rs[0]; }
+    return { top: r.top - base.top, bottom: r.bottom - base.top, x: first.left - base.left, y: first.top - base.top + first.height / 2 };
+  });
+  const xs = blocks.map(b => b.x).sort((a, b) => a - b);
+  let edges = 0, last = -99; xs.forEach(x => { if (x - last > 2.5) { edges++; last = x; } });
+  return { blocks, edges };
+}
+
+/* ---------------- hero: from "make it pop" to five named fixes ---------------- */
+(function hero() {
+  const tk = $('#heroTk'); tk.innerHTML = ticketHTML();
+  const S0 = { ratio: 1, weight: 'all', fonts: 6, btn: 'outline', space: 'ai', inside: 8, between: 24, align: 'mixed', gray: 76, accent: 'rainbow' };
+  const STEPS = [
+    [{ ratio: 1.25, weight: 'title', fonts: 2, btn: 'fill' }, () => 'Title 31px bold, the rest regular. Two fonts.'],
+    [{ space: '8' }, () => 'Gaps from the 8-point scale: 8 inside groups, 24 between.'],
+    [{ align: 'left' }, () => 'Align everything to one left edge.'],
+    [{ gray: 40 }, () => `Details ${gray(40)}, ${fr(ratio(gray(40), BG))} contrast.`],
+    [{ accent: 'one' }, () => 'One accent color, on the button only.']
+  ];
+  const P = [['Hierarchy', 'var(--l1)'], ['Spacing', 'var(--l2)'], ['Alignment', 'var(--l3)'], ['Contrast', 'var(--l5)'], ['Color', 'var(--l4)']];
+  const vals = st => [`${tkSizes(st).title} / 16px`, st.space === 'ai' ? '3 · 17 · 9 · 5' : '8 · 24', st.align === 'left' ? '1 edge' : '6 edges', fr(ratio(gray(st.gray), BG)), st.accent === 'rainbow' ? '5 accents' : '1 accent'];
+  const list = $('#heroP');
+  list.innerHTML = P.map(([n, c]) => `<li style="--c:${c}"><i></i><b>${n}</b><span></span></li>`).join('');
+  const cap = $('#heroCap');
+  let typing;
+  const type = text => {
+    clearInterval(typing);
+    if (reduce) { cap.textContent = text; return; }
+    let i = 0; cap.textContent = '';
+    typing = setInterval(() => { cap.textContent = text.slice(0, ++i); if (i >= text.length) clearInterval(typing); }, 22);
+  };
+  const paint = (st, on) => { applyTicket(tk, st); const v = vals(st); $$('li', list).forEach((li, i) => { li.classList.toggle('on', i < on); $('span', li).textContent = v[i]; }); };
+  const wrap = tk.parentElement, twin = document.createElement('div');
+  twin.className = 'tk twin'; twin.innerHTML = ticketHTML(); wrap.appendChild(twin);
+  const fit = () => { let t = { ...S0 }, h = 0; twin.style.width = tk.offsetWidth + 'px'; [{}, ...STEPS.map(x => x[0])].forEach(d => { Object.assign(t, d); applyTicket(twin, t); h = Math.max(h, twin.offsetHeight); }); wrap.style.minHeight = h + 'px'; };
+  fit();
+  let st = { ...S0 };
+  if (reduce) { STEPS.forEach(([d]) => Object.assign(st, d)); paint(st, 5); cap.textContent = STEPS[4][1](); return; }
+  paint(st, 0);
+  let i = 0;
+  const loop = () => {
+    if (i === 0) { st = { ...S0 }; paint(st, 0); type('make it pop'); i = 1; setTimeout(loop, 2600); return; }
+    const [d, txt] = STEPS[i - 1]; Object.assign(st, d); paint(st, i); type(txt());
+    i = i === STEPS.length ? 0 : i + 1;
+    setTimeout(loop, i === 0 ? 4200 : 2500);
+  };
+  setTimeout(loop, 1800);
+  addEventListener('resize', () => { applyTicket(tk, st); fit(); });
+})();
+
+/* ---------------- shared: segmented controls ---------------- */
+function bindSeg(root, st, onChange) {
+  $$('[data-ctl]', root).forEach(g => {
+    const key = g.dataset.ctl;
+    const paint = () => $$('button', g).forEach(b => b.setAttribute('aria-pressed', String(b.dataset.v) === String(st[key])));
+    paint();
+    g.addEventListener('click', e => {
+      const b = e.target.closest('button'); if (!b) return;
+      const v = key === 'fonts' ? +b.dataset.v : b.dataset.v;
+      if (st[key] === v) return;
+      st[key] = v; paint(); onChange(key);
+    });
+  });
+}
+function toggle(btn, fn) { btn.addEventListener('click', () => { const on = btn.getAttribute('aria-pressed') !== 'true'; btn.setAttribute('aria-pressed', on); fn(on); }); }
+
+/* ---------------- Part 1: hierarchy ---------------- */
+const s1 = { ratio: 1, weight: 'all', fonts: 6, btn: 'outline', space: '8', inside: 8, between: 24, align: 'left', gray: 40, accent: 'one' };
+const tk1 = $('#tk1'); tk1.innerHTML = ticketHTML();
+function p1Hint(o) {
+  if (o[0] !== 'title') {
+    if (s1.ratio < 1.2) return `<strong>The ${NAMES[o[0]].toLowerCase()} wins, not the title.</strong> Everything is nearly the same size, so the biggest block of text takes over. Drag "Size difference" up until the title clearly leads.`;
+    return `<strong>The ${NAMES[o[0]].toLowerCase()} still competes.</strong> Everything is bold, so the paragraph reads as one big dark block. Give the title more size, or take bold away from the rest.`;
+  }
+  if (o[1] !== 'button') {
+    if (s1.btn === 'outline') return '<strong>The title leads now.</strong> But the gray outline button almost disappears. The one thing people should do next deserves color.';
+    return `<strong>The ${NAMES[o[1]].toLowerCase()} is beating the button.</strong> It's bold too. When everything is bold, bold means nothing. Keep it for the title.`;
+  }
+  if (s1.fonts > 2) return `<strong>Hierarchy fixed.</strong> Now the fonts: ${s1.fonts} families fight each other, and each is another file to download. Two is plenty, one works too.`;
+  if (s1.weight === 'all') return '<strong>Almost.</strong> Bold everywhere still makes the card feel loud. Try bold for the title only.';
+  return '<strong>Title first, button second, the rest quiet.</strong> Turn the squint test on again: that clear order is what hierarchy looks like, even blurred.';
+}
+function renderP1(changed) {
+  applyTicket(tk1, s1);
+  const r = RATIOS.indexOf(s1.ratio), sz = tkSizes(s1);
+  $('#r1v').textContent = s1.ratio === 1 ? 'None · everything 16px' : `×${s1.ratio} · title ${sz.title}px, date ${sz.date}px`;
+  $('#r1').setAttribute('aria-valuetext', $('#r1v').textContent); $('#r1').value = r;
+  const o = squintOrder(s1);
+  $('#order1').innerHTML = o.slice(0, 3).map((el, i) => `<li class="${(i === 0 && el === 'title') || (i === 1 && el === 'button') ? 'hit' : ''}"><b>${i + 1}</b>${NAMES[el]}</li>`).join('');
+  if (o[0] === 'title') CS.tick('p1', 'title');
+  if (o[0] === 'title' && o[1] === 'button') CS.tick('p1', 'button');
+  if (s1.weight === 'title' && s1.fonts <= 2) CS.tick('p1', 'quiet');
+  if (changed) { const h = p1Hint(o); CS.say($('#p1Note'), h, /Title first/.test(h) ? 'good' : ''); }
+}
+bindSeg($('#c1'), s1, () => renderP1(true));
+bindSeg($('#c1b'), s1, () => renderP1(true));
+$('#r1').addEventListener('input', e => { s1.ratio = RATIOS[+e.target.value]; renderP1(true); });
+toggle($('#squint'), on => {
+  tk1.classList.toggle('squint', on);
+  if (on) { CS.tick('p1', 'squint'); if (!CS.ticked('p1', 'title')) CS.say($('#p1Note'), `<strong>Blurred, the card is just shapes.</strong> What jumps out? The ${NAMES[squintOrder(s1)[0]].toLowerCase()}, not the title. Now use the controls to change that. You can keep squinting while you do.`); }
+});
+renderP1(false);
+$('#scaleRow').innerHTML = [[13, 'label'], [16, 'body'], [20, 'date'], [25, ''], [31, 'title'], [39, '']].map(([n, r]) => `<div><span style="font-size:${n}px">Aa</span><small>${n}px${r ? ` · ${r}` : ''}</small></div>`).join('');
+
+/* ---------------- Part 2: space, edges and contrast ---------------- */
+const s2 = { ratio: 1.25, weight: 'title', fonts: 2, btn: 'fill', space: 'ai', inside: 8, between: 8, align: 'mixed', gray: 76, accent: 'one' };
+const tk2 = $('#tk2'); tk2.innerHTML = ticketHTML();
+const twin2 = document.createElement('div'); twin2.className = 'tk twin'; twin2.setAttribute('aria-hidden', 'true'); twin2.innerHTML = ticketHTML();
+$('#stage2').appendChild(twin2);
+let ovT2;
+function overlay(tk, twin, sel, st, gaps, opts) {
+  const ov = $('.tk-ov', tk);
+  ov.classList.remove('show');
+  clearTimeout(opts.timer.t);
+  twin.style.width = tk.offsetWidth + 'px'; twin.style.left = tk.offsetLeft + 'px'; twin.style.right = 'auto'; twin.style.top = tk.offsetTop + 'px'; twin.style.margin = '0';
+  const m = measure(twin, sel);
+  const draw = () => {
+    let h = '';
+    if (opts.gaps) m.blocks.slice(0, -1).forEach((b, i) => { const n = m.blocks[i + 1]; const hgt = n.top - b.bottom; if (hgt > .5) h += `<div class="gap-band" style="top:${b.bottom}px;height:${hgt}px"><b>${gaps[i]}</b></div>`; });
+    if (opts.edges) m.blocks.forEach(b => { h += `<i class="edge-dot" style="left:${b.x}px;top:${b.y}px"></i>`; });
+    ov.innerHTML = h;
+    if (h) ov.classList.add('show');
+  };
+  if (reduce) draw(); else opts.timer.t = setTimeout(draw, 480);
+  return m;
+}
+const tmr2 = { t: 0 };
+function p2Hint() {
+  const c = ratio(gray(s2.gray), BG);
+  if (s2.space === 'ai') return '<strong>Look at the red bands.</strong> 3, 17, 9, 5, 22, 13: no two gaps match, and the date sits closer to the description than to its own place. Switch to the 8-point scale.';
+  if (s2.between < s2.inside * 2) return `<strong>Consistent, but flat.</strong> Every gap is ${s2.inside === s2.between ? 'the same' : 'about the same'}, so nothing is grouped. Make "Between groups" at least twice "Inside a group" and watch the card sort itself into chunks.`;
+  if (s2.align !== 'left') return s2.align === 'center' ? '<strong>Consistent, but ragged.</strong> Centered, every line starts at a different place, and the paragraph gets harder to read. Try Left.' : '<strong>Three kinds of alignment at once.</strong> Turn on "Show left edges": every dot is a different edge the eye has to find. Try Left.';
+  if (c < 4.5) return `<strong>Tidy, but hard to read.</strong> The details measure ${fr(c)}. Normal text needs at least 4.5:1. Slide the gray darker until the badge says it passes.`;
+  return '<strong>Calm, grouped, readable.</strong> Same content, same hierarchy as before. Only the space, edges and contrast changed, and every one of them is a number you can give an AI.';
+}
+function renderP2(changed) {
+  applyTicket(tk2, s2); applyTicket(twin2, s2);
+  const gaps = tkGaps(s2);
+  const m = overlay(tk2, twin2, '.tk-el', s2, gaps, { gaps: $('#showGaps').getAttribute('aria-pressed') === 'true', edges: $('#showEdges').getAttribute('aria-pressed') === 'true', timer: tmr2 });
+  const on8 = s2.space === '8';
+  $('#in2').disabled = $('#bt2').disabled = !on8;
+  $('#in2v').textContent = on8 ? s2.inside + 'px' : 'The AI picked';
+  $('#bt2v').textContent = on8 ? s2.between + 'px' : 'at random';
+  $('#in2').value = INS.indexOf(s2.inside); $('#bt2').value = BTW.indexOf(s2.between);
+  const uniq = [...new Set(gaps)].sort((a, b) => a - b);
+  $('#st2gap').textContent = uniq.join(', ');
+  $('#st2edge').textContent = m.edges;
+  const c = ratio(gray(s2.gray), BG), ok = c >= 4.5;
+  $('#st2con').textContent = fr(c);
+  $('#st2pill').textContent = ok ? (c >= 7 ? 'Passes AAA' : 'Passes AA') : 'Fails AA';
+  $('#st2pill').classList.toggle('ok', ok);
+  $('#g2v').innerHTML = `<span class="gray-sw" style="--g:${gray(s2.gray)}"></span>${gray(s2.gray)}`;
+  $('#g2').setAttribute('aria-valuetext', `${gray(s2.gray)}, contrast ${fr(c)}`);
+  if (on8) CS.tick('p2', 'scale');
+  if (on8 && s2.between >= 2 * s2.inside) CS.tick('p2', 'group');
+  if (s2.align === 'left') CS.tick('p2', 'align');
+  if (ok) CS.tick('p2', 'contrast');
+  if (changed) { const h = p2Hint(); CS.say($('#p2Note'), h, /Calm, grouped/.test(h) ? 'good' : ''); }
+}
+bindSeg($$('#p2 .ctl')[0], s2, () => renderP2(true));
+bindSeg($$('#p2 .ctl')[1], s2, () => renderP2(true));
+$('#in2').addEventListener('input', e => { s2.inside = INS[+e.target.value]; renderP2(true); });
+$('#bt2').addEventListener('input', e => { s2.between = BTW[+e.target.value]; renderP2(true); });
+$('#g2').addEventListener('input', e => { s2.gray = +e.target.value; renderP2(true); });
+toggle($('#showGaps'), () => renderP2(false));
+toggle($('#showEdges'), () => renderP2(false));
+renderP2(false);
+
+/* ---------------- Part 3: fix this design ---------------- */
+const BTN = { sun: ['Sunflower', '#F4C542'], coral: ['Coral', '#FF7F66'], leaf: ['Leaf', '#2E7D4F'], plum: ['Plum', '#6E3AA7'] };
+const CRB = { eyebrow: '#19B3A0', title: '#9D5CE6', amount: '#F29F05', link: '#4C8DF6', map: '#FF6FAE' };
+const CF_AI = [2, 13, 7, 3, 19], CF_8 = [8, 8, 24, 8, 24];
+const CF4 = { eyebrow: "'Courier New', Courier, monospace", title: "Georgia, 'Times New Roman', serif", sub: "'Trebuchet MS', Tahoma, sans-serif", facts: "'Trebuchet MS', Tahoma, sans-serif", actions: "Impact, Haettenschweiler, 'Arial Narrow Bold', sans-serif" };
+const CF2 = { eyebrow: 'var(--f-display)', title: 'var(--f-display)', sub: 'var(--f-body)', facts: 'var(--f-body)', actions: 'var(--f-display)' };
+const CF1 = { eyebrow: 'var(--f-body)', title: 'var(--f-body)', sub: 'var(--f-body)', facts: 'var(--f-body)', actions: 'var(--f-body)' };
+const CFF = { 4: CF4, 2: CF2, 1: CF1 };
+const CF_MIX = { eyebrow: 'center', title: 'left', sub: 'center' };
+const MAP = c => `<svg class="cf-art" viewBox="0 0 340 96" preserveAspectRatio="xMidYMid slice" aria-hidden="true"><rect width="340" height="96" fill="#E9F1E1"/><path d="M0 50H340" stroke="#F6F1E4" stroke-width="10"/>
+  ${[0, 1, 2, 3, 4, 5, 6].map(i => `<rect x="${22 + i * 44}" y="12" width="36" height="28" rx="5" fill="${i === 4 ? c : '#CFE2BC'}"/><rect x="${22 + i * 44}" y="60" width="36" height="26" rx="5" fill="#CFE2BC"/>`).join('')}
+  <text x="${22 + 4 * 44 + 18}" y="31" text-anchor="middle" font-family="Overpass, Arial, sans-serif" font-weight="800" font-size="13" fill="#fff">12</text>
+  <circle cx="${22 + 4 * 44 + 18}" cy="50" r="4" fill="#1F1B16" opacity=".35"/></svg>`;
+function cfHTML(c) {
+  return `${MAP(c)}<div class="cf-body">
+    <div class="cf-el" data-el="eyebrow">Booking confirmed</div>
+    <div class="cf-el" data-el="title">Plot 12 is yours</div>
+    <div class="cf-el" data-el="sub">Hollow Lane Garden · April to October</div>
+    <div class="cf-el cf-facts" data-el="facts">
+      <div class="cf-row"><span class="cf-dt">Bed</span><span class="cf-dd">Raised, 2 × 1 m</span></div>
+      <div class="cf-row"><span class="cf-dt">Where</span><span class="cf-dd">By the east gate</span></div>
+      <div class="cf-row"><span class="cf-dt">Paid</span><span class="cf-dd cf-amt">$25</span></div>
+    </div>
+    <div class="cf-el cf-actions" data-el="actions"><span class="cf-btn">Add to calendar</span><span class="cf-link">View garden map</span></div>
+  </div><div class="tk-ov"></div>`;
+}
+const S3_AI = { head: 18, weight: 'all', fonts: 4, space: 'ai', align: 'mixed', accent: 'rainbow', btn: 'sun', gray: 78 };
+const s3 = { ...S3_AI };
+const cf = $('#cf'), twin3 = document.createElement('div');
+twin3.className = 'cf twin'; twin3.setAttribute('aria-hidden', 'true');
+$('#stage3').appendChild(twin3);
+function applyCF(el, st) {
+  const k = small() ? .74 : 1;
+  const c = st.accent === 'rainbow' ? CRB.map : BTN[st.btn][1];
+  if (el.dataset.map !== c) { const art = $('.cf-art', el); if (art) art.outerHTML = MAP(c); else el.innerHTML = cfHTML(c); el.dataset.map = c; }
+  const g = gray(st.gray), rb = st.accent === 'rainbow', gaps = st.space === 'ai' ? CF_AI : CF_8, pad = st.space === 'ai' ? 15 : 24;
+  $('.cf-body', el).style.padding = `${pad * k}px ${pad * k}px ${(pad + 4) * k}px`;
+  const bold = st.weight === 'all';
+  const set = (name, o) => Object.assign($(`[data-el="${name}"]`, el).style, o);
+  const al = n => st.align === 'mixed' ? (CF_MIX[n] || 'left') : st.align;
+  set('eyebrow', { fontSize: 13 * k + 'px', fontWeight: 700, color: rb ? CRB.eyebrow : g, fontFamily: CFF[st.fonts].eyebrow, marginBottom: gaps[0] * k + 'px', textAlign: al('eyebrow') });
+  set('title', { fontSize: st.head * k + 'px', fontWeight: bold ? 900 : 800, color: rb ? CRB.title : INK, fontFamily: CFF[st.fonts].title, marginBottom: gaps[1] * k + 'px', textAlign: al('title') });
+  set('sub', { fontSize: 16 * k + 'px', fontWeight: bold ? 700 : 400, color: g, fontFamily: CFF[st.fonts].sub, marginBottom: gaps[2] * k + 'px', textAlign: al('sub') });
+  const facts = $('[data-el="facts"]', el);
+  facts.className = `cf-el cf-facts al-${st.align}`;
+  Object.assign(facts.style, { fontSize: 16 * k + 'px', fontFamily: CFF[st.fonts].facts, marginBottom: gaps[4] * k + 'px' });
+  $$('.cf-row', el).forEach((r, i) => { r.style.marginBottom = i < 2 ? gaps[3] * k + 'px' : '0'; });
+  $$('.cf-dt', el).forEach(d => Object.assign(d.style, { color: g, fontWeight: bold ? 700 : 400 }));
+  $$('.cf-dd', el).forEach(d => Object.assign(d.style, { color: INK, fontWeight: bold ? 800 : 400 }));
+  $('.cf-amt', el).style.color = rb ? CRB.amount : INK;
+  const act = $('[data-el="actions"]', el);
+  Object.assign(act.style, { fontSize: 16 * k + 'px', fontFamily: CFF[st.fonts].actions, justifyContent: st.align === 'left' ? 'flex-start' : st.align === 'center' ? 'center' : 'flex-end' });
+  Object.assign($('.cf-btn', el).style, { background: BTN[st.btn][1], color: '#fff', fontWeight: bold ? 800 : 700, padding: `${11 * k}px ${20 * k}px` });
+  Object.assign($('.cf-link', el).style, { color: rb ? CRB.link : INK, fontWeight: bold ? 800 : 400 });
+}
+function cfChecks(st, edges) {
+  const g = gray(st.gray);
+  const texts = [['detail text', g, BG], ['button label', '#FFFFFF', BTN[st.btn][1]]];
+  if (st.accent === 'rainbow') texts.push(['"Booking confirmed"', CRB.eyebrow, BG], ['headline', CRB.title, BG], ['"$25"', CRB.amount, BG], ['map link', CRB.link, BG]);
+  const low = texts.map(([n, a, b]) => [n, ratio(a, b)]).sort((a, b) => a[1] - b[1])[0];
+  const hOK = st.head >= 28 && st.weight === 'head';
+  return [
+    { k: 'hier', t: 'The headline leads', ok: hOK, v: hOK ? `Headline ${st.head}px bold, the rest regular` : st.head < 28 ? `Headline ${st.head}px, barely bigger than 16px text${st.weight === 'all' ? ', and everything is bold' : ''}` : 'Everything is bold, so nothing leads' },
+    { k: 'fonts', t: 'Two fonts at most', ok: st.fonts <= 2, v: `${st.fonts} font${st.fonts > 1 ? 's' : ''} in use` },
+    { k: 'space', t: 'Spacing on the 8-point scale', ok: st.space === '8', v: st.space === 'ai' ? 'Gaps: 2, 3, 7, 13, 19px' : 'Gaps: 8 inside groups, 24 between' },
+    { k: 'align', t: 'One left edge', ok: st.align === 'left' && edges === 1, v: `${edges} left edge${edges > 1 ? 's' : ''}` },
+    { k: 'contrast', t: 'All text passes 4.5:1', ok: low[1] >= 4.5, v: low[1] >= 4.5 ? `Lowest: ${low[0]}, ${fr(low[1])}` : `Fails: ${low[0]}, ${fr(low[1])}` },
+    { k: 'accent', t: 'One accent color', ok: st.accent === 'one', v: st.accent === 'one' ? `${BTN[st.btn][0]}, on the button only` : '5 accent colors compete' }
+  ];
+}
+const was = {};
+let comparing = false, done3 = false;
+const tmr3 = { t: 0 };
+function renderP3() {
+  const view = comparing ? S3_AI : s3;
+  applyCF(cf, view); applyCF(twin3, s3);
+  const m = overlay(cf, twin3, '.cf-el', s3, [], { timer: tmr3 });
+  const cs = cfChecks(s3, m.edges);
+  $('#checks').innerHTML = cs.map((c, i) => `<li class="${c.ok ? 'ok' : ''}"><span class="ck${c.ok && !was[c.k] ? ' pop' : ''}">${c.ok ? '✓' : i + 1}</span><div><b>${c.t}</b><span>${c.v}</span></div></li>`).join('');
+  cs.forEach(c => { was[c.k] = c.ok; });
+  const n = cs.filter(c => c.ok).length;
+  $('#fixMeter').style.width = (n / cs.length * 100) + '%';
+  $('#h3v').textContent = s3.head + 'px'; $('#h3r').value = s3.head;
+  const g = gray(s3.gray);
+  $('#g3v').innerHTML = `<span class="gray-sw" style="--g:${g}"></span>${g} · ${fr(ratio(g, BG))}`;
+  $('#g3').setAttribute('aria-valuetext', `${g}, contrast ${fr(ratio(g, BG))}`);
+  $('#b3v').textContent = `${BTN[s3.btn][0]} · label ${fr(ratio('#FFFFFF', BTN[s3.btn][1]))}`;
+  $$('.swatch').forEach(b => b.setAttribute('aria-pressed', b.dataset.b === s3.btn));
+  const lines = {
+    hier: `Headline <code>${s3.head}px</code>, bold. Everything else <code>16px</code> regular.`,
+    fonts: s3.fonts === 1 ? 'One font for everything: Atkinson Hyperlegible.' : 'Two fonts: Overpass for headings, Atkinson Hyperlegible for text.',
+    space: 'Spacing only from the 8-point scale: <code>8px</code> inside groups, <code>24px</code> between them.',
+    align: 'Align every line and the button to one left edge.',
+    contrast: `Detail text <code>${g}</code> (${fr(ratio(g, BG))} on the card). White button label on <code>${BTN[s3.btn][1]}</code> (${fr(ratio('#FFFFFF', BTN[s3.btn][1]))}).`,
+    accent: `One accent color, <code>${BTN[s3.btn][1]}</code>, only on the main button and plot 12.`
+  };
+  const okList = cs.filter(c => c.ok);
+  $('#say').innerHTML = okList.map(c => `<li><span>${lines[c.k]}</span></li>`).join('') + (okList.length < cs.length ? `<p class="todo">${okList.length ? `${cs.length - okList.length} more to go.` : 'Nothing yet. Fix something and its instruction appears here.'}</p>` : '');
+  if (n === cs.length && !done3) {
+    done3 = true;
+    CS.completePart('p3');
+    CS.say($('#p3Note'), '<strong>All six targets hit.</strong> Same words, same plot, same button. Compare it with the AI\'s version: that difference came from six decisions you can now name.', 'good');
+    $('#compareRow').hidden = false;
+  }
+  return cs;
+}
+$('#swatches').innerHTML = Object.entries(BTN).map(([k, [n, c]]) => `<button class="swatch" data-b="${k}" style="--sw:${c}" aria-label="${n}, white label contrast ${fr(ratio('#FFFFFF', c))}" aria-pressed="false"><span>Aa</span></button>`).join('');
+$('#swatches').addEventListener('click', e => { const b = e.target.closest('.swatch'); if (!b) return; s3.btn = b.dataset.b; renderP3(); });
+$$('#p3 .a-c .ctl').forEach(c => bindSeg(c, s3, () => renderP3()));
+$('#h3r').addEventListener('input', e => { s3.head = +e.target.value; renderP3(); });
+$('#g3').addEventListener('input', e => { s3.gray = +e.target.value; renderP3(); });
+toggle($('#compare'), on => { comparing = on; renderP3(); });
+renderP3();
+addEventListener('resize', () => { applyTicket(tk1, s1); renderP2(false); renderP3(); });
+
+/* ---------------- Part 4: steer the AI ---------------- */
+CS.steer($('#steer'), [
+  { ai: 'I made it pop! I added a purple-to-orange gradient, a drop shadow on every card, three new accent colors, and made all the text bigger.',
+    opts: [['Tone the gradient and shadows down a bit, and make the button bigger so it pops more.', 0, "Closer, but 'a bit' and 'more' still leave the AI guessing. Say what should come first, and give sizes."],
+           ['Undo that. Title 32px bold, everything else 16px regular, one accent color on the button only.', 1, 'Specific sizes, weights and one job for color. The AI can do exactly this, and you can check it did.'],
+           ['Still not popping. Can you make it pop more?', 0, 'Vague feedback makes the AI guess again, and its usual guess is to add even more.']] },
+  { ai: 'For personality, I used Playfair for headings, Lobster for dates, Roboto for body text, Montserrat for labels, Courier for prices and Pacifico for buttons.',
+    opts: [['Keep them, but load them all from one font service so the page stays fast.', 0, 'Still six fonts competing and looking inconsistent. Hosting them well does not fix that, and six downloads are still six downloads.'],
+           ["Swap Lobster for Comic Sans.", 0, 'Still six fonts. Swapping one keeps the real problem.'],
+           ['Use two fonts at most: one for headings, one for text. Show hierarchy with size and weight.', 1, 'Right. Personality comes from a well-chosen pair used consistently, not from variety.']] },
+  { ai: 'I centered all the text and buttons on the event page so it looks balanced.',
+    opts: [['Left-align text, details and buttons to one edge. Center only short single lines.', 1, 'Yes. One left edge makes paragraphs easy to scan. Centering suits a short line or two, not whole blocks of text.'],
+           ['Justify the text so both the left and right edges are straight and tidy.', 0, 'Justified text stretches the gaps between words unevenly, which is harder to read, especially on narrow phone screens.'],
+           ['Keep it centered, but make the text bigger so it is easier to read on phones.', 0, 'Bigger text does not fix the ragged left edge that makes centered paragraphs harder to read.']] },
+  { ai: 'I used light gray #AAAAAA on white for the dates and details. It keeps things clean and minimal.',
+    opts: [['Keep the gray, but bump the details up to 18px so they are easier to read.', 0, '18px regular still counts as normal-size text, so it still needs 4.5:1. #AAAAAA on white is about 2.3:1 and fails.'],
+           ['Make it bold instead of darker.', 0, 'Bold text only gets the lower 3:1 bar when it is large, and 2.3:1 fails even that.'],
+           ['Darken it to at least 4.5:1, like #767676. Use size and spacing to make details secondary.', 1, 'Exactly. #767676 on white is 4.5:1. Details can be quieter through size and position without becoming unreadable.']] }
+], { part: 'p4', counter: $('#steerCount') });
+
+/* ---------------- Part 5: quiz ---------------- */
+CS.quiz($('#quiz'), [
+  { q: 'What does the squint test show you?', a: [['Which things stand out first: the hierarchy', 1], ['Whether the words are spelled right', 0], ['Which colors are brand colors', 0]], why: 'Blurring hides the words, so only size, weight, color and contrast are left. What you notice first while squinting is what people notice first.' },
+  { q: 'Which set of gaps follows an 8-point scale?', a: [['5, 13, 22, 7', 0], ['8, 16, 24, 32', 1], ['10, 15, 20, 25', 0]], why: 'Every value is a multiple of 8. A short, repeated list of gaps is what makes a layout feel calm.' },
+  { q: 'Your gray details measure 3.2:1 against the background. For normal-size text, WCAG AA asks for...', a: [['At least 4.5:1, so it fails', 1], ['At least 3:1, so it passes', 0], ['Anything above 1:1', 0]], why: 'The 3:1 minimum only applies to large text, about 24px or 19px bold. Normal text needs 4.5:1.' },
+  { q: 'Which feedback is most likely to get you the design you meant?', a: [['"Make it pop."', 0], ['"It feels off. Can you improve it?"', 0], ['"Title 32px bold, everything else 16px regular, one accent color on the button."', 1]], why: 'Precise values leave nothing to guess, and you can check the result against them.' },
+  { q: 'Why should the gap between groups be bigger than the gap inside a group?', a: [['Browsers require it', 0], ['People read things that sit close together as related', 1], ['It uses fewer pixels', 0]], why: 'That is proximity. Space itself groups the date with its place and the price with its button, without any lines or boxes.' }
+], { part: 'p5', doneCard: $('#doneCard'), doneTitle: 'You can name what makes a design work.', doneText: 'You can check hierarchy with a squint, set spacing from a scale, align to one edge, measure contrast, limit fonts and colors, and give an AI feedback it can act on.' });
+})();
+</script>
+</body>
+</html>

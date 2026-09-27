@@ -1,0 +1,863 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Algorithms &amp; speed · CS School</title>
+<meta name="description" content="Course 302: why some programs crawl as data grows, what Big-O really means, and how to spot the slow loop AI tools write most often.">
+<link rel="icon" href="../assets/favicon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="../assets/cs-school.css">
+<style>
+/* lesson-specific styles: number lines, races, sorting bars, growth chart, step counter */
+.cl-lines{font-size:16px}
+.big-stats{display:flex; gap:12px; flex-wrap:wrap}
+.stat{flex:1 1 120px; border-radius:14px; background:var(--glass-strong); padding:10px 14px; display:flex; flex-direction:column}
+.stat b{font-family:var(--f-display); font-weight:900; font-size:1.8rem; line-height:1.1; font-variant-numeric:tabular-nums}
+.stat span{font-size:.95rem; color:var(--ink-2)}
+.guess-row{display:flex; gap:10px; flex-wrap:wrap; align-items:center}
+.guess-row .input{width:140px; font-family:var(--f-mono); font-size:1.1rem}
+.nl{display:block; width:100%; height:auto}
+.nl-axis{stroke:color-mix(in srgb, var(--ink) 18%, var(--paper)); stroke-width:10; stroke-linecap:round}
+.nl-band{stroke:var(--l2); stroke-width:10; stroke-linecap:round; transition:all .4s cubic-bezier(.3,1.2,.5,1)}
+.nl-band.found{stroke:var(--l3)}
+.nl-tick{font-family:var(--f-mono); font-size:13px; fill:var(--ink-2)}
+.nl-g{fill:var(--paper); stroke:var(--ink); stroke-width:2.5}
+.nl-g.last{fill:var(--l4); stroke:var(--ink)}
+.nl-g.hit{fill:var(--l3)}
+.nl-lab{font-family:var(--f-display); font-weight:800; font-size:14px; fill:var(--ink)}
+.chips{display:flex; flex-wrap:wrap; gap:6px}
+.gchip{font-family:var(--f-mono); font-size:.92rem; border-radius:99px; padding:3px 10px; background:var(--glass-strong); border:1px solid var(--hair); animation:rise .3s}
+.gchip.up{color:var(--l2)} .gchip.down{color:var(--l5)} .gchip.hit{background:var(--good-bg); color:var(--good); font-weight:700}
+.gchip.waste{text-decoration:line-through; text-decoration-thickness:1.5px; color:var(--ink-2)}
+.lane{display:grid; grid-template-columns:minmax(0,190px) minmax(0,1fr) minmax(0,150px); gap:6px 18px; align-items:center; padding:12px 0}
+.lane + .lane{border-top:1px solid var(--hair)}
+.lane .nm{font-family:var(--f-display); font-weight:800; font-size:1.1rem; line-height:1.2}
+.lane .nm small{display:block; font-family:var(--f-body); font-weight:400; font-size:.92rem; color:var(--ink-2)}
+.lane .cnt{text-align:right; font-family:var(--f-display); font-weight:900; font-size:1.5rem; font-variant-numeric:tabular-nums; line-height:1.1}
+.lane .cnt small{display:block; font-family:var(--f-body); font-weight:400; font-size:.9rem; color:var(--ink-2)}
+.lane .cnt.win{color:var(--good)}
+.ff{font-size:.95rem; color:var(--tip); min-height:1.5em}
+/* sorting */
+.sorts{display:grid; grid-template-columns:minmax(0,1fr) minmax(0,1fr); gap:18px}
+.sortlane{border-radius:18px; padding:14px 16px; background:var(--glass-strong); display:flex; flex-direction:column; gap:8px}
+.sortlane .head{display:flex; justify-content:space-between; align-items:baseline; gap:10px}
+.sortlane h4{font-family:var(--f-display); font-weight:800; font-size:1.1rem; margin:0}
+.sortlane .how{font-size:.95rem; color:var(--ink-2)}
+.sortlane svg{width:100%; height:150px; display:block}
+.sortlane .cmp{font-family:var(--f-display); font-weight:900; font-size:1.35rem; font-variant-numeric:tabular-nums}
+.sortlane .cmp small{font-family:var(--f-body); font-weight:400; font-size:.9rem; color:var(--ink-2); margin-left:6px}
+.sortlane .cmp.win{color:var(--good)}
+.bar{fill:var(--l2)} .bar.cmp{fill:var(--l4)} .bar.done{fill:var(--l3)}
+.mrange{fill:color-mix(in srgb, var(--l5) 14%, transparent)}
+/* growth chart */
+.growth{display:grid; grid-template-columns:minmax(0,1.15fr) minmax(0,1fr); gap:24px; align-items:start}
+.gchart svg{display:block; width:100%; height:auto}
+.gl-grid{stroke:var(--hair); stroke-width:1}
+.gl-lab{font-family:var(--f-display); font-weight:700; font-size:12.5px; fill:var(--ink-2)}
+.gl-curve{fill:none; stroke-width:3; stroke-linecap:round; transition:opacity .3s, stroke-width .3s}
+.gl-curve.dim{opacity:.32}
+.gl-curve.sel{stroke-width:5}
+.gl-marker{stroke:var(--ink); stroke-width:1.5; stroke-dasharray:4 4}
+.nval{font-family:var(--f-display); font-weight:900; font-size:1.6rem; font-variant-numeric:tabular-nums}
+.presets{display:flex; gap:6px; flex-wrap:wrap; margin-top:10px}
+.presets .btn{min-height:40px; padding:6px 12px; font-size:.95rem}
+.grows{display:flex; flex-direction:column; gap:8px}
+.grow{display:grid; grid-template-columns:14px minmax(0,1fr) auto; gap:2px 12px; align-items:baseline; text-align:left; font:inherit; color:var(--ink); background:var(--glass-strong); border:1px solid var(--hair); border-radius:14px; padding:10px 14px; cursor:pointer}
+.grow:hover{background:var(--paper)}
+.grow[aria-pressed="true"]{background:var(--paper); box-shadow:0 0 0 2px var(--ink)}
+.grow i{width:12px; height:12px; border-radius:50%; align-self:center}
+.grow .nm{font-family:var(--f-display); font-weight:800; font-size:1rem}
+.grow .nm code{font-size:.85rem; margin-left:6px}
+.grow .t{font-family:var(--f-display); font-weight:900; font-size:1.05rem; text-align:right; white-space:nowrap; font-variant-numeric:tabular-nums}
+.grow .ex{grid-column:2 / 3; font-size:.92rem; color:var(--ink-2)}
+.grow .st{grid-column:3 / 4; font-size:.9rem; color:var(--ink-2); text-align:right; white-space:nowrap; font-variant-numeric:tabular-nums}
+.grow.slow .t{color:var(--bad)}
+/* lab */
+.runs{display:flex; flex-direction:column; gap:10px}
+.run{display:flex; flex-direction:column; gap:4px; animation:rise .4s}
+.run .top{display:flex; justify-content:space-between; gap:10px; font-size:.95rem}
+.run .top b{font-family:var(--f-display); font-weight:800; font-variant-numeric:tabular-nums}
+.run .track{height:10px; border-radius:5px; background:color-mix(in srgb, var(--ink) 8%, transparent); overflow:hidden}
+.run .track i{display:block; height:100%; border-radius:5px; background:var(--l1); transition:width .6s}
+.run.fast .track i{background:var(--l3)}
+.run small{font-size:.9rem; color:var(--ink-2)}
+.bigcount{font-family:var(--f-display); font-weight:900; font-size:2.4rem; line-height:1; font-variant-numeric:tabular-nums}
+@media (min-width:901px){ .lab-left{grid-template-areas:"mission work" "side work" "extra work"; grid-template-rows:auto auto 1fr} }
+.pattern{display:grid; grid-template-columns:minmax(0,1fr) minmax(0,1fr); gap:18px}
+.pattern > div{display:flex; flex-direction:column; gap:8px}
+@media (max-width:900px){
+  .pg{align-items:stretch} .pg > *, .pg-col > *{min-width:0}
+  .growth,.sorts,.pattern{grid-template-columns:minmax(0,1fr)}
+  .lane{grid-template-columns:minmax(0,1fr) auto; }
+  .lane .line{grid-column:1 / -1; grid-row:2}
+}
+@media (max-width:640px){ .stat b{font-size:1.5rem} .bigcount{font-size:2rem} .grow .ex,.grow .st{grid-column:2 / 4; text-align:left} }
+.grow .nm code{white-space:nowrap}
+</style>
+</head>
+<body>
+<main id="top">
+  <section class="wrap hero">
+    <div>
+      <div class="kicker">Theory elective · Course 302 · Algorithms &amp; speed</div>
+      <h1>Fast code doesn't work harder. It does less work.</h1>
+      <p class="lede">With ten users, almost any code feels instant. With a million, the way the work grows decides whether a page loads in a blink or never loads at all. You'll race search and sorting strategies, watch growth curves take off, and learn to spot the slow pattern AI tools write most often.</p>
+      <ul class="facts">
+        <li>About 15 minutes</li>
+        <li>5 parts</li>
+        <li>Code lab</li>
+        <li>No math needed</li>
+      </ul>
+      <div class="row hero-cta"><a class="btn primary" href="#p1">Start the lesson</a></div>
+    </div>
+    <figure style="margin:0">
+      <div class="hero-visual glass">
+        <svg id="heroArt" viewBox="0 0 520 250" role="img" aria-label="An animated shelf of 31 books sorted by size. A search checks the middle book, rules out half the shelf, and repeats until it finds the one it wants in about five steps."></svg>
+        <div class="legend"><span><i style="background:var(--l2)"></i>still possible</span><span><i style="background:var(--l4)"></i>checking now</span><span><i style="background:color-mix(in srgb, var(--ink) 16%, transparent)"></i>ruled out</span></div>
+      </div>
+      <div class="hero-caption glass" aria-hidden="true"><span>search</span><span id="heroCap">step 1 · 31 books left</span></div>
+    </figure>
+  </section>
+
+  <div class="wrap">
+  <!-- PART 1 -->
+  <section class="part" id="p1">
+    <span class="bullet glass" data-p="p1">1</span>
+    <div class="part-head">
+      <div class="kicker">Part 1 of 5</div>
+      <h2>Guess my number</h2>
+      <p>An <b>algorithm</b> is a step-by-step way to get a job done. Two algorithms can give the same answer with wildly different amounts of work. Feel it with a guessing game.</p>
+    </div>
+
+    <div class="chat" aria-label="Example conversation">
+      <div class="msg me"><span class="who">You</span>Search on Otto's Bookshop was instant at launch. Now we have 400,000 books and it takes seconds.</div>
+      <div class="msg ai"><span class="who">AI assistant</span>The search checks every book one by one. The list is already sorted by title, so I could switch to binary search.</div>
+      <div class="msg me"><span class="who">You</span>What's binary search, and why would it be faster?</div>
+    </div>
+
+    <div class="task glass" data-part="p1">
+      <h3>Your task</h3>
+      <ol>
+        <li data-t="find"><span>Find my secret number between 1 and 1,000.</span></li>
+        <li data-t="ten"><span>Find a new secret number in 10 guesses or fewer.</span></li>
+        <li data-t="race"><span>Race "one by one" against "halving" on 1,000 numbers.</span></li>
+        <li data-t="big"><span>Race them again on 1 million.</span></li>
+      </ol>
+    </div>
+
+    <div class="ctl glass stack" id="gameCard" style="gap:16px">
+      <div>
+        <h3 class="ctl-title">I'm thinking of a number from 1 to 1,000</h3>
+        <p class="ctl-sub" style="margin-bottom:0">Type a guess. After each one I'll say higher or lower.</p>
+      </div>
+      <form class="guess-row" id="guessForm" autocomplete="off">
+        <label class="vh" for="guessIn">Your guess</label>
+        <input class="input" id="guessIn" type="number" inputmode="numeric" min="1" max="1000" placeholder="1 to 1000">
+        <button class="btn primary" type="submit">Guess</button>
+        <button class="btn" type="button" id="newNum">New number</button>
+      </form>
+      <div class="big-stats">
+        <div class="stat"><b id="gCount">0</b><span>guesses so far</span></div>
+        <div class="stat"><b id="gLeft">1,000</b><span>numbers still possible</span></div>
+      </div>
+      <svg class="nl" id="gLine" role="img" aria-label="Number line from 1 to 1000"></svg>
+      <div class="chips" id="gHist" aria-label="Your guesses"></div>
+      <div class="note" id="gNote" aria-live="polite">Make your first guess. Any number is fine.</div>
+    </div>
+
+    <div class="stack" style="margin-top:32px">
+      <div class="ctl glass stack" id="raceCard" style="gap:14px">
+        <div>
+          <h3 class="ctl-title">Race: one by one vs halving</h3>
+          <p class="ctl-sub" style="margin-bottom:0">Same secret number, same pace: one check per tick. Who finds it first?</p>
+        </div>
+        <div class="row" style="gap:12px">
+          <div class="seg-control" id="raceSize" role="group" aria-label="How many numbers">
+            <button aria-pressed="true" data-n="1000">1,000</button><button aria-pressed="false" data-n="1000000">1 million</button><button aria-pressed="false" data-n="1000000000">1 billion</button>
+          </div>
+          <button class="btn primary" id="raceGo">Start the race</button>
+        </div>
+        <div id="lanes"></div>
+        <div class="ff" id="raceFF" aria-live="polite"></div>
+      </div>
+      <div class="note" id="raceNote" hidden aria-live="polite"></div>
+    </div>
+
+    <div class="stack" style="margin-top:56px">
+      <h3>You just used binary search</h3>
+      <p>Guessing the middle rules out half of what's left every time: 1,000, then 500, 250, 125… down to 1 in about 10 guesses. That strategy is called <b>binary search</b>. Checking one by one is called <b>linear search</b>.</p>
+      <div class="table-wrap glass">
+        <table>
+          <thead><tr><th>How many items</th><th>One by one, worst case</th><th>Halving, worst case</th></tr></thead>
+          <tbody>
+            <tr><td>1,000</td><td>1,000 checks</td><td>10 checks</td></tr>
+            <tr><td>1 million</td><td>1,000,000 checks</td><td>20 checks</td></tr>
+            <tr><td>1 billion</td><td>1,000,000,000 checks</td><td>30 checks</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p>Every time the data grows 1,000 times bigger, halving needs only 10 more checks. There's one catch: halving only works when the data is <b>sorted</b>. If the numbers were shuffled, "higher" and "lower" would tell you nothing. That's why sorting is one of the most important jobs a computer does.</p>
+      <details class="deeper glass">
+        <summary>Under the hood: where halving hides in real software <small>optional</small></summary>
+        <div>
+          <p>A <b>database index</b> keeps a column sorted in a tree shape so the database can halve its way to a row instead of reading the whole table. When an AI says "add an index on email", this is what it means.</p>
+          <p><code>git bisect</code> uses the same trick to find which of 1,000 commits introduced a bug: test the middle commit, then keep halving. About 10 tests instead of 1,000.</p>
+          <p>The math name for "how many times can I halve n until 1 is left" is <b>log₂ n</b>, the logarithm. log₂ of 1,000 is about 10. log₂ of 1 billion is about 30.</p>
+        </div>
+      </details>
+    </div>
+  </section>
+
+  <!-- PART 2 -->
+  <section class="part" id="p2">
+    <span class="bullet glass" data-p="p2">2</span>
+    <div class="part-head">
+      <div class="kicker">Part 2 of 5</div>
+      <h2>How work grows</h2>
+      <p>Otto wants his books sorted by price. There are many ways to sort, and they don't grow the same way. Race two of them, then see what growth means with real numbers of users.</p>
+    </div>
+
+    <div class="task glass" data-part="p2">
+      <h3>Your task</h3>
+      <ol>
+        <li data-t="race20"><span>Race bubble sort against merge sort on 20 books.</span></li>
+        <li data-t="race100"><span>Race them again on 100 books.</span></li>
+        <li data-t="slide"><span>In the growth chart, go to 1 million users.</span></li>
+        <li data-t="nested"><span>At 1 million, pick the "loop inside a loop" row. How long does it take?</span></li>
+      </ol>
+    </div>
+
+    <div class="ctl glass stack" id="sortCard" style="gap:14px">
+      <div>
+        <h3 class="ctl-title">Sorting race</h3>
+        <p class="ctl-sub" style="margin-bottom:0">Both sort the same shuffled books, at the same pace: one comparison of two books per tick.</p>
+      </div>
+      <div class="row" style="gap:12px">
+        <div class="seg-control" id="sortSize" role="group" aria-label="How many books">
+          <button aria-pressed="true" data-n="20">20 books</button><button aria-pressed="false" data-n="100">100 books</button>
+        </div>
+        <button class="btn primary" id="sortGo">Start the race</button>
+      </div>
+      <div class="sorts">
+        <div class="sortlane">
+          <div class="head"><h4>Bubble sort</h4><span class="cmp" id="bCmp">0<small>comparisons</small></span></div>
+          <span class="how">Walks along the shelf swapping neighbours that are out of order. Repeats until nothing moves.</span>
+          <svg id="bBars" preserveAspectRatio="none" role="img" aria-label="Bubble sort bars"></svg>
+        </div>
+        <div class="sortlane">
+          <div class="head"><h4>Merge sort</h4><span class="cmp" id="mCmp">0<small>comparisons</small></span></div>
+          <span class="how">Sorts small piles, then merges sorted piles into bigger sorted piles.</span>
+          <svg id="mBars" preserveAspectRatio="none" role="img" aria-label="Merge sort bars"></svg>
+        </div>
+      </div>
+      <div class="note info" id="sortNote" aria-live="polite">Press Start. Each bar is a book; taller means pricier.</div>
+    </div>
+
+    <div class="stack" id="growCard" style="margin-top:32px">
+      <div class="ctl glass">
+        <h3 class="ctl-title">What growth means with real users</h3>
+        <p class="ctl-sub">Each step takes one microsecond (a millionth of a second), a middle-of-the-road guess for app work. Drag to change how many users you have.</p>
+        <div class="growth">
+          <div class="stack" style="gap:10px">
+            <label class="label" for="nSlide">Users: <span class="nval" id="nVal">1,000</span></label>
+            <input class="range" id="nSlide" type="range" min="0" max="9" step="0.05" value="3">
+            <div class="presets" id="presets"><button class="btn" data-v="2">100</button><button class="btn" data-v="4">10,000</button><button class="btn" data-v="6">1 million</button><button class="btn" data-v="9">1 billion</button></div>
+            <div class="gchart"><svg id="gChart" role="img" aria-label="Chart of time against number of users for five kinds of growth"></svg></div>
+            <p class="muted small">Both scales stretch: each mark along the bottom is 1,000 times the one before.</p>
+          </div>
+          <div class="grows" id="grows"></div>
+        </div>
+      </div>
+      <div class="note" id="growNote" aria-live="polite">Tap a row to highlight its curve.</div>
+    </div>
+
+    <div class="stack" style="margin-top:56px">
+      <h3>The name for growth: Big-O</h3>
+      <p>Programmers describe how work grows with <b>Big-O</b>. <code>O(n)</code>, said "order n", means the work grows in step with the data: twice the users, twice the work. <code>O(n²)</code> means twice the users, four times the work. Big-O ignores small details, like whether a step takes 1 or 2 microseconds, because at scale the growth always wins.</p>
+      <p>When an AI says "this is O(n²)", translate it as: fine on test data, trouble with real users.</p>
+      <h3 style="margin-top:24px">The slow pattern AI writes most: a loop inside a loop</h3>
+      <div class="pattern">
+        <div>
+          <p>Here's code an AI might write to show each order with its customer's name. For every order, it searches the whole customer list.</p>
+          <div class="code"><span class="k">for</span> (<span class="k">const</span> order <span class="k">of</span> orders) {        <span class="c">// n orders</span>
+  <span class="k">for</span> (<span class="k">const</span> c <span class="k">of</span> customers) {   <span class="c">// × n customers</span>
+    <span class="k">if</span> (c.id === order.customerId) …
+  }
+}</div>
+        </div>
+        <div>
+          <p>It often hides in one tidy line. <code>.find()</code>, <code>.filter()</code> and <code>.includes()</code> are loops too, so this is also n × n:</p>
+          <div class="code">orders.<span class="f">map</span>(o =&gt;
+  customers.<span class="f">find</span>(c =&gt; c.id === o.customerId)
+)</div>
+          <p class="muted small">With 1,000 of each, that's up to a million checks. With 100,000 of each, 10 billion.</p>
+        </div>
+      </div>
+      <details class="deeper glass">
+        <summary>Under the hood: why merge sort grows slower <small>optional</small></summary>
+        <div>
+          <p>Bubble sort compares nearly every pair of books: about n × n ÷ 2 comparisons. Merge sort splits the shelf in half again and again (that's log₂ n levels), and each level does about n comparisons while merging. Total: about <b>n × log₂ n</b>.</p>
+          <p>For 1 million books that's roughly 500 billion comparisons for bubble sort versus 20 million for merge sort. Real programming languages use merge-sort-style methods in their built-in <code>sort()</code>, so when an AI writes its own sorting loop, ask why.</p>
+        </div>
+      </details>
+    </div>
+  </section>
+
+  <!-- PART 3 -->
+  <section class="part" id="p3">
+    <span class="bullet glass" data-p="p3">3</span>
+    <div class="part-head">
+      <div class="kicker">Part 3 of 5</div>
+      <h2>Try it: fix the slow loop</h2>
+      <p>Otto's order page shows each order with the customer's name. The AI wrote it with a loop inside a loop. You'll count the steps, swap the inner loop for a <b>Map</b> (a lookup table that finds things by key in one step), and watch the count collapse.</p>
+    </div>
+
+    <div class="lab lab-left">
+      <div class="a-mission ctl glass">
+        <h3 class="ctl-title">Your mission</h3>
+        <p class="ctl-sub" style="margin-top:0">The step counter counts every time the code reads a customer or an order, or looks something up in a Map.</p>
+        <ol class="mission" id="mission"></ol>
+      </div>
+      <div class="a-work" id="lab"></div>
+      <div class="a-side ctl glass">
+        <h3 class="ctl-title">Step counter</h3>
+        <div class="bigcount" id="lastSteps">not run yet</div>
+        <p class="muted small" id="lastInfo" style="margin-top:6px">Press Run to count.</p>
+        <div class="runs" id="runs" style="margin-top:14px"></div>
+      </div>
+      <details class="a-extra deeper glass">
+        <summary>Under the hood: why a Map lookup is one step <small>optional</small></summary>
+        <div>
+          <p>A Map turns each key (like <code>"c417"</code>) into a number that says exactly which slot to look in. This is called <b>hashing</b>. No searching needed, so a lookup takes about the same time with 10 customers or 10 million. Course 303 shows how it works.</p>
+          <p>Building the Map costs one pass over the customers. After that, every lookup is cheap. One loop plus one loop is 2n, which grows far slower than n × n.</p>
+        </div>
+      </details>
+    </div>
+  </section>
+
+  <!-- PART 4 -->
+  <section class="part" id="p4">
+    <span class="bullet glass" data-p="p4">4</span>
+    <div class="part-head">
+      <div class="kicker">Part 4 of 5</div>
+      <h2>Steer the AI</h2>
+      <p>AI tools write code that works on the test data. Your job is to ask how it behaves when the data grows, and to know when speed doesn't matter.</p>
+    </div>
+    <p class="counter" id="steerCount"></p>
+    <div id="steer"></div>
+  </section>
+
+  <!-- PART 5 -->
+  <section class="part" id="p5">
+    <span class="bullet glass" data-p="p5">5</span>
+    <div class="part-head">
+      <div class="kicker">Part 5 of 5</div>
+      <h2>Check your understanding</h2>
+      <p>Five quick questions. Each answer explains itself.</p>
+    </div>
+    <div id="quiz"></div>
+    <div id="doneCard" aria-live="polite"></div>
+  </section>
+  </div>
+
+  <section class="after" id="cheat">
+    <div class="wrap stack">
+      <h2>Cheat sheet</h2>
+      <p class="muted">How work grows, with 1 million items at one microsecond per step.</p>
+      <div class="table-wrap glass">
+        <table>
+          <thead><tr><th>Big-O</th><th>Steps for 1 million</th><th>Time</th><th>Where you'll see it</th></tr></thead>
+          <tbody>
+            <tr><td><code>O(1)</code> constant</td><td>1</td><td>instant</td><td>Map or Set lookup, <code>array[i]</code></td></tr>
+            <tr><td><code>O(log n)</code> logarithmic</td><td>20</td><td>instant</td><td>Binary search, database index</td></tr>
+            <tr><td><code>O(n)</code> linear</td><td>1,000,000</td><td>1 second</td><td>One loop over the data, <code>.find()</code>, <code>.includes()</code></td></tr>
+            <tr><td><code>O(n log n)</code></td><td>20,000,000</td><td>20 seconds</td><td>Good sorting, like the built-in <code>sort()</code></td></tr>
+            <tr><td><code>O(n²)</code> quadratic</td><td>1,000,000,000,000</td><td>11.6 days</td><td>A loop inside a loop, <code>.find()</code> inside <code>.map()</code></td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p class="muted">Questions to ask the AI: "How does this scale with 100,000 users?" · "Is there a loop inside a loop?" · "Could a Map or Set replace this search?" · "Is this fast enough already?"</p>
+    </div>
+  </section>
+</main>
+<script src="../assets/cs-school.js"></script>
+<script>
+(() => {
+const { $, $$, esc, reduce } = CS;
+const fmt = n => Math.round(n).toLocaleString('en-US');
+
+CS.lesson({
+  id: '302',
+  parts: [
+    { id: 'p1', title: 'Guess my number' },
+    { id: 'p2', title: 'How work grows' },
+    { id: 'p3', title: 'Try it' },
+    { id: 'p4', title: 'Steer the AI' },
+    { id: 'p5', title: 'Check' }
+  ]
+});
+
+/* seeded random so the lab data is the same every run */
+function rng(seed) { let s = seed >>> 0; return () => { s = (s * 1664525 + 1013904223) >>> 0; return s / 4294967296; }; }
+
+/* ---------------- hero: binary search on a shelf ---------------- */
+(function hero() {
+  const svg = $('#heroArt'), cap = $('#heroCap');
+  const N = 31, X0 = 18, BW = 13, GAP = 2.9, BASE = 222;
+  const H = Array.from({ length: N }, (_, i) => 40 + i * 5.6);
+  let lo, hi, mid, target, step, found;
+  const reset = () => { lo = 0; hi = N - 1; step = 0; found = false; mid = null; target = 3 + Math.floor(Math.random() * (N - 6)); };
+  const draw = () => {
+    let s = `<line x1="10" y1="${BASE + 1}" x2="510" y2="${BASE + 1}" style="stroke:var(--hair)" stroke-width="2"/>`;
+    s += `<line x1="10" x2="510" y1="${BASE - H[target]}" y2="${BASE - H[target]}" style="stroke:var(--ink-2)" stroke-width="1.5" stroke-dasharray="5 6"/>`;
+    s += `<line x1="12" x2="40" y1="14" y2="14" style="stroke:var(--ink-2)" stroke-width="1.5" stroke-dasharray="5 6"/><text x="48" y="19" style="font-family:var(--f-display);font-weight:700;font-size:14px;fill:var(--ink-2)">the size we're looking for</text>`;
+    H.forEach((h, i) => {
+      const x = X0 + i * (BW + GAP);
+      const out = i < lo || i > hi;
+      const col = found && i === target ? 'var(--l3)' : i === mid ? 'var(--l4)' : out ? 'color-mix(in srgb, var(--ink) 14%, transparent)' : 'var(--l2)';
+      s += `<rect x="${x}" y="${BASE - h}" width="${BW}" height="${h}" rx="3" style="fill:${col};transition:fill .35s"/>`;
+    });
+    svg.innerHTML = s;
+    cap.textContent = found ? `found it in ${step} steps` : `step ${step} · ${hi - lo + 1} books left`;
+  };
+  const tick = () => {
+    if (found) { reset(); draw(); return 1400; }
+    if (mid !== null) { if (mid < target) lo = mid + 1; else if (mid > target) hi = mid - 1; }
+    mid = Math.floor((lo + hi) / 2); step++;
+    if (mid === target) found = true;
+    draw();
+    return found ? 2400 : 1000;
+  };
+  reset(); draw();
+  if (reduce) { tick(); tick(); return; }
+  const loop = () => setTimeout(loop, tick());
+  setTimeout(loop, 1200);
+})();
+
+/* ---------------- number line helper ---------------- */
+function numberLine(svg, { max, lo, hi, marks = [], found = false, ticks }) {
+  const W = Math.max(280, Math.round(svg.getBoundingClientRect().width) || 600), P = 18, Y = 46;
+  const x = v => P + (W - 2 * P) * ((v - 1) / (max - 1));
+  let s = `<line class="nl-axis" x1="${P}" x2="${W - P}" y1="${Y}" y2="${Y}"/>`;
+  s += `<line class="nl-band${found ? ' found' : ''}" x1="${x(lo)}" x2="${Math.max(x(hi), x(lo) + .01)}" y1="${Y}" y2="${Y}"/>`;
+  (ticks || [1, max / 4, max / 2, max * 3 / 4, max]).forEach(t => { s += `<text class="nl-tick" x="${x(t)}" y="${Y + 30}" text-anchor="${t === 1 ? 'start' : t === max ? 'end' : 'middle'}">${fmt(t)}</text>`; });
+  marks.forEach((m, i) => {
+    const last = i === marks.length - 1;
+    s += `<circle class="nl-g${last ? ' last' : ''}${m.hit ? ' hit' : ''}" cx="${x(m.v)}" cy="${Y}" r="${last ? 8 : 5}"/>`;
+    if (last) s += `<text class="nl-lab" x="${Math.min(Math.max(x(m.v), 20), W - 20)}" y="${Y - 16}" text-anchor="middle">${fmt(m.v)}</text>`;
+  });
+  svg.setAttribute('viewBox', `0 0 ${W} 86`);
+  svg.innerHTML = s;
+}
+
+/* ---------------- Part 1: the guessing game ---------------- */
+const G = { secret: 0, lo: 1, hi: 1000, guesses: [], done: false, rounds: 0 };
+function newGame() { G.secret = 1 + Math.floor(Math.random() * 1000); G.lo = 1; G.hi = 1000; G.guesses = []; G.done = false; renderGame(); }
+function renderGame() {
+  $('#gCount').textContent = G.guesses.length;
+  $('#gLeft').textContent = fmt(G.done ? 1 : G.hi - G.lo + 1);
+  numberLine($('#gLine'), { max: 1000, lo: G.done ? G.secret : G.lo, hi: G.done ? G.secret : G.hi, marks: G.guesses.map(g => ({ v: g.v, hit: g.r === 'hit' })), found: G.done });
+  $('#gLine').setAttribute('aria-label', G.done ? `Found: ${G.secret}` : `The number is between ${G.lo} and ${G.hi}`);
+  $('#gHist').innerHTML = G.guesses.map(g => `<span class="gchip ${g.r}${g.waste ? ' waste' : ''}">${g.v} ${g.r === 'up' ? '↑ higher' : g.r === 'down' ? '↓ lower' : '✓'}</span>`).join('');
+}
+function gNote(html, kind = '') { CS.say($('#gNote'), html, kind); }
+$('#guessForm').addEventListener('submit', e => {
+  e.preventDefault();
+  const inp = $('#guessIn');
+  if (G.done) { gNote('You found that one. Press <b>New number</b> to play again.'); return; }
+  const v = Number(inp.value);
+  if (!Number.isInteger(v) || v < 1 || v > 1000) { gNote('Type a whole number from 1 to 1,000.', 'bad'); return; }
+  inp.value = '';
+  const waste = v < G.lo || v > G.hi;
+  const before = G.hi - G.lo + 1;
+  if (v === G.secret) {
+    G.guesses.push({ v, r: 'hit' }); G.done = true; G.rounds++;
+    const n = G.guesses.length;
+    CS.tick('p1', 'find');
+    if (n <= 10) {
+      CS.tick('p1', 'ten');
+      gNote(`<strong>Got it: ${v}, in ${n} guess${n > 1 ? 'es' : ''}.</strong> ${n <= 10 && G.guesses.length > 3 ? 'Guessing the middle halves what\'s left each time, so 10 guesses are always enough for 1,000 numbers.' : 'Lucky, or clever. Guessing the middle guarantees 10 or fewer every time.'} Now try the race below.`, 'good');
+    } else {
+      gNote(`<strong>Got it: ${v}, in ${n} guesses.</strong> Now press <b>New number</b> and try this: always guess the <b>middle</b> of what's still possible. Start with 500.`, 'good');
+    }
+  } else {
+    const up = v < G.secret;
+    if (up) G.lo = Math.max(G.lo, v + 1); else G.hi = Math.min(G.hi, v - 1);
+    G.guesses.push({ v, r: up ? 'up' : 'down', waste });
+    const left = G.hi - G.lo + 1;
+    if (waste) gNote(`<strong>${up ? 'Higher' : 'Lower'}.</strong> But you already knew it was between ${fmt(G.lo)} and ${fmt(G.hi)}, so that guess taught you nothing. Guess inside the blue part.`, 'bad');
+    else {
+      const cut = before - left;
+      const mid = Math.floor((G.lo + G.hi) / 2);
+      gNote(`<strong>${up ? 'Higher' : 'Lower'}.</strong> That ruled out ${fmt(cut)} number${cut > 1 ? 's' : ''}. ${fmt(left)} still possible, between ${fmt(G.lo)} and ${fmt(G.hi)}.${G.rounds > 0 || G.guesses.length > 5 ? ` The middle of that is ${fmt(mid)}.` : ''}`);
+    }
+  }
+  renderGame();
+  inp.focus({ preventScroll: true });
+});
+$('#newNum').addEventListener('click', () => { newGame(); gNote(G.rounds ? 'New number. Try guessing the middle each time: 500 first, then the middle of what\'s left.' : 'New number. Make your first guess.'); $('#guessIn').focus({ preventScroll: true }); });
+newGame();
+
+/* race */
+const R = { n: 1000, running: false, timer: null, raf: null };
+function lanesHTML() {
+  return [['lin', 'One by one', 'checks 1, 2, 3…'], ['bin', 'Halving', 'guesses the middle']].map(([k, nm, how]) =>
+    `<div class="lane"><div class="nm">${nm}<small>${how}</small></div><svg class="nl line" id="${k}Line" aria-hidden="true"></svg><div class="cnt" id="${k}Cnt">0<small>checks</small></div></div>`).join('');
+}
+$('#lanes').innerHTML = lanesHTML();
+function drawLanes(st) {
+  const ticks = [1, R.n / 2, R.n];
+  numberLine($('#linLine'), { max: R.n, lo: st.linDone ? st.secret : Math.min(st.lin + 1, R.n), hi: st.linDone ? st.secret : R.n, marks: st.lin ? [{ v: st.linDone ? st.secret : Math.max(1, st.lin), hit: st.linDone }] : [], found: st.linDone, ticks });
+  numberLine($('#binLine'), { max: R.n, lo: st.binDone ? st.secret : st.lo, hi: st.binDone ? st.secret : st.hi, marks: st.mid ? [{ v: st.mid, hit: st.binDone }] : [], found: st.binDone, ticks });
+  $('#linCnt').innerHTML = `${fmt(st.lin)}<small>checks</small>`;
+  $('#binCnt').innerHTML = `${fmt(st.bin)}<small>checks</small>`;
+  $('#binCnt').classList.toggle('win', st.binDone);
+}
+const human = ms => { const s = ms / 1000; if (s < 90) return `${Math.round(s)} seconds`; if (s < 5400) return `${Math.round(s / 60)} minutes`; if (s < 172800) return `${(s / 3600).toFixed(1)} hours`; if (s < 86400 * 400) return `${Math.round(s / 86400)} days`; return `${(s / 86400 / 365).toFixed(1)} years`; };
+function race() {
+  if (R.running) return;
+  R.running = true; $('#raceGo').disabled = true; $$('#raceSize button').forEach(b => b.disabled = true);
+  const n = R.n, secret = Math.floor(n * (.35 + Math.random() * .6));
+  const st = { secret, lin: 0, bin: 0, lo: 1, hi: n, mid: 0, linDone: false, binDone: false };
+  const T = Math.round(2600 / Math.log2(n));
+  $('#raceFF').textContent = '';
+  $('#raceNote').hidden = true;
+  const finish = () => {
+    R.running = false; $('#raceGo').disabled = false; $$('#raceSize button').forEach(b => b.disabled = false);
+    st.lin = secret; st.linDone = true; drawLanes(st);
+    $('#raceFF').textContent = `At the same pace as halving, one by one needed ${human(secret * T)} in all.`;
+    const ratio = Math.round(secret / st.bin);
+    CS.say($('#raceNote'), `<strong>The secret was ${fmt(secret)}.</strong> Halving found it in <b>${st.bin}</b> checks. One by one took <b>${fmt(secret)}</b>, about ${fmt(ratio)} times more work. ${n >= 1e6 ? `With ${n === 1e6 ? '1,000 times more numbers than before, halving needed only about 10 more checks.' : 'a billion numbers, halving still needs only about 30 checks.'}` : 'Now try 1 million.'}`, 'good');
+    CS.tick('p1', 'race');
+    if (n >= 1e6) CS.tick('p1', 'big');
+  };
+  const binStep = () => {
+    st.mid = Math.floor((st.lo + st.hi) / 2); st.bin++;
+    if (st.mid === secret) st.binDone = true;
+    else if (st.mid < secret) st.lo = st.mid + 1; else st.hi = st.mid - 1;
+  };
+  if (reduce) { while (!st.binDone) binStep(); finish(); return; }
+  const tick = () => {
+    binStep(); st.lin++;
+    drawLanes(st);
+    if (!st.binDone) { R.timer = setTimeout(tick, T); return; }
+    // halving is done: fast-forward the other lane
+    const start = st.lin, rest = secret - start;
+    $('#raceFF').textContent = `Halving is done. Fast-forwarding one by one: at the same pace it needs another ${human(rest * T)}.`;
+    const t0 = performance.now(), D = 2600;
+    const ff = now => {
+      const t = Math.min(1, (now - t0) / D);
+      st.lin = Math.round(start + rest * t * t * t);
+      drawLanes(st);
+      if (t < 1) R.raf = requestAnimationFrame(ff); else finish();
+    };
+    R.raf = requestAnimationFrame(ff);
+  };
+  drawLanes(st);
+  R.timer = setTimeout(tick, 300);
+}
+$('#raceSize').addEventListener('click', e => { const b = e.target.closest('[data-n]'); if (!b || R.running) return; R.n = +b.dataset.n; $$('#raceSize button').forEach(x => x.setAttribute('aria-pressed', x === b)); drawLanes({ secret: 1, lin: 0, bin: 0, lo: 1, hi: R.n, mid: 0 }); $('#raceFF').textContent = ''; });
+$('#raceGo').addEventListener('click', race);
+drawLanes({ secret: 1, lin: 0, bin: 0, lo: 1, hi: R.n, mid: 0 });
+
+/* ---------------- Part 2: sorting race ---------------- */
+function bubbleOps(a) {
+  a = a.slice(); const ops = [], n = a.length;
+  for (let i = 0; i < n - 1; i++) {
+    let swapped = false;
+    for (let j = 0; j < n - 1 - i; j++) {
+      ops.push(['c', j, j + 1]);
+      if (a[j] > a[j + 1]) { [a[j], a[j + 1]] = [a[j + 1], a[j]]; ops.push(['s', j, j + 1]); swapped = true; }
+    }
+    ops.push(['d', n - 1 - i]);
+    if (!swapped) { ops.push(['all']); break; }
+  }
+  ops.push(['all']);
+  return ops;
+}
+function mergeOps(a) {
+  a = a.slice(); const ops = [], n = a.length;
+  for (let w = 1; w < n; w *= 2) {
+    for (let lo = 0; lo < n - w; lo += 2 * w) {
+      const mid = lo + w, hi = Math.min(lo + 2 * w, n), tmp = [];
+      ops.push(['r', lo, hi]);
+      let i = lo, j = mid;
+      while (i < mid && j < hi) { ops.push(['c', i, j]); tmp.push(a[i] <= a[j] ? a[i++] : a[j++]); }
+      while (i < mid) tmp.push(a[i++]);
+      while (j < hi) tmp.push(a[j++]);
+      tmp.forEach((v, k) => { a[lo + k] = v; ops.push(['w', lo + k, v]); });
+    }
+  }
+  ops.push(['all']);
+  return ops;
+}
+const S = { n: 20, running: false, hist: {} };
+function makeLane(svg, cmpEl, ops, arr) { return { svg, cmpEl, ops, a: arr.slice(), k: 0, cmps: 0, hi: [], done: new Set(), range: null, fin: false }; }
+function drawSort(L) {
+  const n = L.a.length, W = 400, Hh = 150, bw = W / n;
+  let s = L.range ? `<rect class="mrange" x="${L.range[0] * bw}" y="0" width="${(L.range[1] - L.range[0]) * bw}" height="${Hh}"/>` : '';
+  L.a.forEach((v, i) => {
+    const h = 8 + (v / n) * (Hh - 12);
+    const cls = L.fin || L.done.has(i) ? 'done' : L.hi.includes(i) ? 'cmp' : '';
+    s += `<rect class="bar ${cls}" x="${i * bw + bw * .12}" y="${Hh - h}" width="${bw * .76}" height="${h}" rx="${Math.min(3, bw * .2)}"/>`;
+  });
+  L.svg.setAttribute('viewBox', `0 0 ${W} ${Hh}`);
+  L.svg.innerHTML = s;
+  L.cmpEl.innerHTML = `${fmt(L.cmps)}<small>comparisons</small>`;
+  L.cmpEl.classList.toggle('win', !!L.win);
+}
+function stepLane(L, budget) {
+  while (L.k < L.ops.length && budget > 0) {
+    const op = L.ops[L.k++];
+    if (op[0] === 'c') { L.cmps++; budget--; L.hi = [op[1], op[2]]; }
+    else if (op[0] === 's') { [L.a[op[1]], L.a[op[2]]] = [L.a[op[2]], L.a[op[1]]]; }
+    else if (op[0] === 'd') L.done.add(op[1]);
+    else if (op[0] === 'r') L.range = [op[1], op[2]];
+    else if (op[0] === 'w') { L.a[op[1]] = op[2]; L.hi = [op[1]]; }
+    else if (op[0] === 'all') { L.fin = true; L.hi = []; L.range = null; }
+  }
+  if (L.k >= L.ops.length) { L.fin = true; L.hi = []; L.range = null; }
+}
+function shuffled(n) { const a = Array.from({ length: n }, (_, i) => i + 1); for (let i = n - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; }
+let lanes = null;
+function resetSort() {
+  const arr = shuffled(S.n);
+  lanes = [makeLane($('#bBars'), $('#bCmp'), bubbleOps(arr), arr), makeLane($('#mBars'), $('#mCmp'), mergeOps(arr), arr)];
+  lanes.forEach(drawSort);
+}
+function sortRace() {
+  if (S.running) return;
+  resetSort();
+  S.running = true; $('#sortGo').disabled = true; $$('#sortSize button').forEach(b => b.disabled = true);
+  CS.say($('#sortNote'), 'Racing… Yellow bars are the two books being compared right now.', 'info');
+  const rate = S.n === 20 ? 30 : 560; // comparisons per second, same for both
+  let acc = 0, last = performance.now();
+  const done = () => {
+    S.running = false; $('#sortGo').disabled = false; $$('#sortSize button').forEach(b => b.disabled = false);
+    const [b, m] = lanes.map(l => l.cmps);
+    S.hist[S.n] = [b, m];
+    let msg = `<strong>Both sorted.</strong> Bubble sort needed <b>${fmt(b)}</b> comparisons, merge sort <b>${fmt(m)}</b>.`;
+    if (S.hist[20] && S.hist[100]) {
+      const [b1, m1] = S.hist[20], [b2, m2] = S.hist[100];
+      msg += ` Going from 20 to 100 books (5 times more), bubble sort's work grew about <b>${Math.round(b2 / b1)}×</b> and merge sort's about <b>${Math.round(m2 / m1)}×</b>. That difference in growth is what separates fast code from slow code.`;
+    } else if (S.n === 20) msg += ' Close-ish. Now try 100 books.';
+    CS.say($('#sortNote'), msg, 'good');
+    CS.tick('p2', S.n === 20 ? 'race20' : 'race100');
+  };
+  if (reduce) { lanes.forEach(l => stepLane(l, 1e9)); lanes[lanes[0].cmps <= lanes[1].cmps ? 0 : 1].win = true; lanes.forEach(drawSort); done(); return; }
+  const frame = now => {
+    acc += (now - last) / 1000 * rate; last = now;
+    const k = Math.floor(acc); acc -= k;
+    lanes.forEach(l => { if (!l.fin) { stepLane(l, k); if (l.fin && !lanes.some(o => o.win)) l.win = true; drawSort(l); } });
+    if (lanes.every(l => l.fin)) done(); else requestAnimationFrame(frame);
+  };
+  requestAnimationFrame(frame);
+}
+$('#sortSize').addEventListener('click', e => { const b = e.target.closest('[data-n]'); if (!b || S.running) return; S.n = +b.dataset.n; $$('#sortSize button').forEach(x => x.setAttribute('aria-pressed', x === b)); resetSort(); CS.say($('#sortNote'), `${S.n} shuffled books. Press Start.`, 'info'); });
+$('#sortGo').addEventListener('click', sortRace);
+resetSort();
+
+/* ---------------- Part 2: growth chart ---------------- */
+const GROWS = [
+  { k: '1', nm: 'Constant', o: 'O(1)', ex: 'Look up a user by ID in a Map', f: n => 1, c: 'var(--l3)' },
+  { k: 'log', nm: 'Logarithmic', o: 'O(log n)', ex: 'Binary search, a database index', f: n => Math.max(1, Math.log2(n)), c: 'var(--l2)' },
+  { k: 'n', nm: 'Linear', o: 'O(n)', ex: 'One loop over all users', f: n => n, c: 'var(--l5)' },
+  { k: 'nlog', nm: 'n log n', o: 'O(n log n)', ex: 'A good sort, like merge sort', f: n => n * Math.max(1, Math.log2(n)), c: 'var(--l4)' },
+  { k: 'n2', nm: 'Quadratic', o: 'O(n²)', ex: 'A loop inside a loop over all users', f: n => n * n, c: 'var(--l1)' }
+];
+const GS = { v: 3, sel: null };
+const nOf = v => { const n = Math.pow(10, v); const p = Math.pow(10, Math.max(0, Math.floor(v) - 1)); return Math.max(1, Math.round(n / p) * p); };
+const timeText = us => {
+  const s = us / 1e6;
+  if (s < 1e-3) return 'instant';
+  const u = (v, one) => `${v} ${one}${v === 1 ? '' : 's'}`;
+  if (s < 1) return `${+(s * 1000).toPrecision(2)} ms`;
+  if (s < 60) return u(+s.toPrecision(2), 'second');
+  if (s < 3600) return u(+(s / 60).toPrecision(2), 'minute');
+  if (s < 86400) return u(+(s / 3600).toPrecision(2), 'hour');
+  if (s < 86400 * 365) return u(+(s / 86400).toPrecision(3), 'day');
+  const y = s / 86400 / 365;
+  return y < 1e6 ? `${fmt(+y.toPrecision(3))} years` : `${(y / 1e6).toPrecision(2)} million years`;
+};
+const SUP = '⁰¹²³⁴⁵⁶⁷⁸⁹';
+const bigNum = n => { if (n < 1e15) return fmt(n); const e = Math.floor(Math.log10(n)), m = n / Math.pow(10, e); return `${m >= 9.95 ? '10' : m.toFixed(1)} × 10${String(e).split('').map(d => SUP[d]).join('')}`; };
+function drawChart() {
+  const svg = $('#gChart');
+  const W = Math.max(290, Math.round(svg.getBoundingClientRect().width) || 520), H = 300;
+  const L = W < 420 ? 56 : 66, R = 14, T = 12, B = 30;
+  const YMAX = 18.5;
+  const x = lv => L + (W - L - R) * (lv / 9);
+  const y = lv => T + (H - T - B) * (1 - Math.min(lv, YMAX) / YMAX);
+  const sm = W < 420;
+  const UNITS = [[0, '1 µs'], [3, '1 ms'], [6, sm ? '1 s' : '1 sec'], [Math.log10(6e7), '1 min'], [Math.log10(3.6e9), sm ? '1 hr' : '1 hour'], [Math.log10(8.64e10), '1 day'], [Math.log10(3.15e13), sm ? '1 yr' : '1 year'], [Math.log10(3.15e16), sm ? '1000 yr' : '1,000 yrs']];
+  let s = '';
+  UNITS.forEach(([lv, t]) => { s += `<line class="gl-grid" x1="${L}" x2="${W - R}" y1="${y(lv)}" y2="${y(lv)}"/><text class="gl-lab" x="${L - 8}" y="${y(lv) + 4}" text-anchor="end">${t}</text>`; });
+  [[0, '1'], [3, '1K'], [6, '1M'], [9, '1B']].forEach(([lv, t]) => { s += `<text class="gl-lab" x="${x(lv)}" y="${H - 8}" text-anchor="${lv === 0 ? 'start' : lv === 9 ? 'end' : 'middle'}">${t}${sm ? '' : ' users'}</text>`; });
+  s += `<defs><clipPath id="gclip"><rect x="${L}" y="${T - 4}" width="${W - L - R}" height="${H - T - B + 8}"/></clipPath></defs><g clip-path="url(#gclip)">`;
+  GROWS.forEach(g => {
+    let d = '';
+    for (let i = 0; i <= 90; i++) { const lv = i / 10; d += (i ? 'L' : 'M') + x(lv).toFixed(1) + ' ' + y(Math.log10(g.f(Math.pow(10, lv)))).toFixed(1); }
+    s += `<path class="gl-curve${GS.sel ? (GS.sel === g.k ? ' sel' : ' dim') : ''}" d="${d}" style="stroke:${g.c}"/>`;
+  });
+  s += '</g>';
+  const n = nOf(GS.v);
+  s += `<line class="gl-marker" x1="${x(GS.v)}" x2="${x(GS.v)}" y1="${T}" y2="${H - B}"/>`;
+  GROWS.forEach(g => { const lv = Math.log10(g.f(n)); if (lv <= YMAX) s += `<circle cx="${x(GS.v)}" cy="${y(lv)}" r="${GS.sel === g.k ? 7 : 5.5}" style="fill:${g.c};stroke:var(--paper)" stroke-width="2"/>`; else s += `<path d="M${x(GS.v) - 6} ${T + 8}l6 -8l6 8z" style="fill:${g.c}"/>`; });
+  svg.setAttribute('viewBox', `0 0 ${W} ${H}`);
+  svg.innerHTML = s;
+}
+function renderGrowth() {
+  const n = nOf(GS.v);
+  $('#nVal').textContent = fmt(n);
+  $('#nSlide').setAttribute('aria-valuetext', `${fmt(n)} users`);
+  $('#grows').innerHTML = GROWS.map(g => {
+    const st = g.f(n), slow = st > 1e9;
+    return `<button class="grow${slow ? ' slow' : ''}" aria-pressed="${GS.sel === g.k}" data-g="${g.k}"><i style="background:${g.c}"></i><span class="nm">${g.nm}<code>${g.o}</code></span><span class="t">${timeText(st)}</span><span class="ex">${g.ex}</span><span class="st">${bigNum(st)} step${st === 1 ? '' : 's'}</span></button>`;
+  }).join('');
+  drawChart();
+}
+function growthNote() {
+  const n = nOf(GS.v), g = GROWS.find(x => x.k === GS.sel);
+  if (!g) return;
+  const st = g.f(n);
+  const msg = {
+    '1': `A Map lookup takes one step whether you have ${fmt(n)} users or ten. That's why AI tools reach for Maps and Sets.`,
+    log: `Halving through ${fmt(n)} users takes about ${Math.ceil(Math.log2(n))} steps. Growth this slow is basically free.`,
+    n: `One pass over ${fmt(n)} users takes ${fmt(st)} steps: ${timeText(st)}. Fine for a nightly job, slow for every page load.`,
+    nlog: `Sorting ${fmt(n)} users well takes about ${bigNum(st)} steps: ${timeText(st)}.`,
+    n2: `A loop inside a loop over ${fmt(n)} users takes ${bigNum(st)} steps: <b>${timeText(st)}</b>.${n >= 1e6 ? ' The same code felt instant with 100 test users.' : ' Now drag to 1 million.'}`
+  }[g.k];
+  CS.say($('#growNote'), `<strong>${g.nm}, ${g.o}.</strong> ${msg}`, g.k === 'n2' && n >= 1e5 ? 'bad' : 'info');
+  if (g.k === 'n2' && n >= 1e6) CS.tick('p2', 'nested');
+}
+$('#nSlide').addEventListener('input', e => { GS.v = +e.target.value; if (GS.v >= 6) CS.tick('p2', 'slide'); renderGrowth(); growthNote(); });
+$('#presets').addEventListener('click', e => { const b = e.target.closest('[data-v]'); if (!b) return; GS.v = +b.dataset.v; $('#nSlide').value = GS.v; if (GS.v >= 6) CS.tick('p2', 'slide'); renderGrowth(); growthNote(); });
+$('#grows').addEventListener('click', e => { const b = e.target.closest('[data-g]'); if (!b) return; GS.sel = GS.sel === b.dataset.g ? null : b.dataset.g; renderGrowth(); growthNote(); const nb = $(`#grows [data-g="${b.dataset.g}"]`); if (nb) nb.focus({ preventScroll: true }); });
+renderGrowth();
+let rT; addEventListener('resize', () => { clearTimeout(rT); rT = setTimeout(() => { drawChart(); renderGame(); lanes.forEach(drawSort); drawLanes({ secret: 1, lin: 0, bin: 0, lo: 1, hi: R.n, mid: 0 }); }, 150); });
+
+/* ---------------- Part 3: code lab with a step counter ---------------- */
+const FIRST = ['Ada', 'Bo', 'Cy', 'Dee', 'Eli', 'Fay', 'Gus', 'Hana', 'Ivo', 'Jo', 'Kai', 'Lin', 'Mo', 'Nia', 'Oz', 'Pia', 'Quin', 'Rae', 'Sol', 'Tam'];
+const LAST = ['Park', 'Reyes', 'Okafor', 'Silva', 'Novak', 'Chen', 'Haddad', 'Berg', 'Mehta', 'Ito'];
+const LIMIT = 5e6;
+let RUNS = [];
+function runLab(code) {
+  let steps = 0, stopped = false, report = null;
+  const count = () => { if (++steps > LIMIT) { stopped = true; throw new Error('STOP'); } };
+  const counted = arr => new Proxy(arr, { get(t, k, r) { if (typeof k === 'string' && k !== 'length' && /^\d+$/.test(k)) count(); return Reflect.get(t, k, r); } });
+  class CMap extends Map { get(k) { count(); return super.get(k); } has(k) { count(); return super.has(k); } }
+  class CSet extends Set { has(k) { count(); return super.has(k); } }
+  let expected = null, N0 = 0;
+  const getCustomers = n => { n = Math.floor(n); N0 = n; return counted(Array.from({ length: n }, (_, i) => ({ id: 'c' + (i + 1), name: FIRST[i % 20] + ' ' + LAST[Math.floor(i / 20) % 10] }))); };
+  const getOrders = n => {
+    n = Math.floor(n); const r = rng(42 + n);
+    const os = Array.from({ length: n }, (_, i) => ({ id: 'o' + (i + 1), customerId: 'c' + (1 + Math.floor(r() * (N0 || n))) }));
+    expected = os.map(o => { const i = +o.customerId.slice(1) - 1; return FIRST[i % 20] + ' ' + LAST[Math.floor(i / 20) % 10]; });
+    return counted(os);
+  };
+  const logs = [];
+  const con = { log: (...a) => logs.push(a.map(v => typeof v === 'string' ? v : JSON.stringify(v)).join(' ')) };
+  const doReport = names => { report = { names: Array.isArray(names) ? names.slice() : names, steps }; };
+  let error = null;
+  const guarded = code.replace(/\b(for|while)\s*\(([^)]*)\)\s*\{/g, m => m + ' if (++__g > 20000000) throw new Error("Stopped: this loop ran more than 20 million times. Is it infinite?");');
+  const t0 = performance.now();
+  try { new Function('console', 'Map', 'Set', 'getCustomers', 'getOrders', 'report', '"use strict"; let __g = 0;\n' + guarded)(con, CMap, CSet, getCustomers, getOrders, doReport); }
+  catch (e) { if (!stopped) error = e.name + ': ' + e.message; }
+  const ms = performance.now() - t0;
+  const N = expected ? expected.length : 0;
+  const correct = !!(report && Array.isArray(report.names) && expected && report.names.length === N && report.names.every((x, i) => x === expected[i]));
+  const res = { logs, error, steps: stopped ? LIMIT : (report ? report.steps : steps), stopped, correct, N, ms, reported: !!report };
+  let html = '';
+  if (stopped) {
+    html = `<div class="r">Stopped after ${fmt(LIMIT)} steps.</div><div>At ${fmt(N)} orders, a loop inside a loop needs about ${fmt(N * N / 2)} steps. That page would freeze.</div>`;
+  } else if (!error) {
+    if (!report) html = '<div class="dim">No report. Keep the last line: report(names);</div>';
+    else if (!correct) html = `<div class="r">The names don't match the orders yet (${Array.isArray(report.names) ? fmt(report.names.length) : 'no'} names for ${fmt(N)} orders).</div>`;
+    else html = `<div class="g">✓ Matched ${fmt(N)} orders in ${fmt(res.steps)} steps.</div><div class="dim">First three: ${report.names.slice(0, 3).map(esc).join(', ')}</div><div class="dim">Your browser took ${Math.max(1, Math.round(ms))} ms.</div>`;
+  }
+  res.html = html;
+  if (!error && (report || stopped)) {
+    const nested = res.steps > 20 * Math.max(1, N);
+    RUNS.push({ steps: res.steps, N, correct, stopped, nested });
+    RUNS = RUNS.slice(-4);
+    renderRuns();
+  }
+  return res;
+}
+function renderRuns() {
+  const last = RUNS[RUNS.length - 1];
+  $('#lastSteps').textContent = last.stopped ? `${fmt(LIMIT)}+` : fmt(last.steps);
+  $('#lastInfo').innerHTML = `steps for ${fmt(last.N)} orders${last.stopped ? ', and it had to be stopped' : last.nested ? '. That\'s a loop inside a loop.' : '. One pass each, no nesting.'}`;
+  const mx = Math.max(...RUNS.map(r => r.steps));
+  $('#runs').innerHTML = RUNS.map((r, i) => `<div class="run${r.nested || r.stopped ? '' : ' fast'}"><div class="top"><span>Run ${i + 1} · ${fmt(r.N)} orders</span><b>${r.stopped ? fmt(LIMIT) + '+' : fmt(r.steps)}</b></div><div class="track"><i style="width:${Math.max(1.5, 100 * Math.log10(r.steps + 1) / Math.log10(mx + 1)).toFixed(1)}%"></i></div></div>`).join('') + (RUNS.length > 1 ? '<small>Bar lengths use a stretched scale, like the growth chart.</small>' : '');
+}
+CS.codeLab($('#lab'), {
+  part: 'p3', mission: $('#mission'), language: 'JavaScript',
+  starter: `// Give every order its customer's name.
+const N = 2000;
+// customers: [{ id: 'c1', name: 'Ada Park' }, …]
+// orders:    [{ id: 'o1', customerId: 'c417' }, …]
+const customers = getCustomers(N);
+const orders = getOrders(N);
+
+// The AI's version: search every customer,
+// once for each order.
+const names = [];
+for (const order of orders) {
+  for (const customer of customers) {
+    if (customer.id === order.customerId) {
+      names.push(customer.name);
+      break;
+    }
+  }
+}
+
+report(names);
+`,
+  run: runLab,
+  steps: [
+    { t: "Run the AI's code", how: 'Press Run and look at the step counter.', hint: 'Press <b>Run</b>. Watch how many steps 2,000 orders take.', check: r => r.reported || r.stopped },
+    { t: 'Replace the inner loop with a Map', how: 'Build a Map from id to customer once. Then look each order up with .get().',
+      hint: 'Replace everything between <b>const names = [];</b> and <b>report</b> with:<br><b>const byId = new Map();<br>for (const c of customers) byId.set(c.id, c);<br>for (const order of orders) names.push(byId.get(order.customerId).name);</b>',
+      check: r => r.correct && r.N >= 1000 && r.steps <= r.N * 5,
+      nudge: r => r.stopped ? '' : r.correct && r.steps > r.N * 5 ? `Still ${fmt(r.steps)} steps. Is there still a loop over <b>customers</b> inside the loop over <b>orders</b>? Use <b>.find()</b>? That's a loop too.` : '' },
+    { t: 'Grow the shop to 100,000 orders', how: 'Change N to 100000 and run it again.', hint: 'Change <b>const N = 2000;</b> to <b>const N = 100000;</b> and press Run.',
+      check: r => r.correct && r.N >= 100000 && r.steps <= r.N * 5,
+      nudge: r => r.N < 100000 ? 'Change <b>const N = 2000;</b> to <b>const N = 100000;</b> and run again.' : '' }
+  ],
+  explainError: e => /is not a function/.test(e) ? 'Something was called like a function but isn\'t one. Check spelling: <b>byId.get(…)</b>, <b>byId.set(…)</b>.' : /Cannot read properties of undefined/.test(e) ? 'A lookup returned nothing. Check that you stored each customer with <b>byId.set(c.id, c)</b> and looked up <b>order.customerId</b>.' : /SyntaxError/.test(e) ? 'A <b>SyntaxError</b> means a bracket or brace is missing or extra. Compare with the hint.' : /ReferenceError/.test(e) ? 'A <b>ReferenceError</b> means a name doesn\'t exist. Did you name your Map <b>byId</b> everywhere?' : '',
+  doneTutor: '<b>Mission complete!</b> Fifty times more orders, and the Map version barely noticed. The nested version would need about 5 billion steps. Same answer, different growth.'
+});
+
+/* ---------------- Part 4: steer the AI ---------------- */
+CS.steer($('#steer'), [
+  { ai: "To show each order with its customer's name, I loop over the orders and use customers.find() inside. Works great on the test data!",
+    opts: [['Great, ship it.', 0, 'The test data has a few dozen rows. With 100,000 orders and customers, that is up to 10 billion checks.'],
+           ['.find() inside a loop is a loop inside a loop. Build a Map of customers by id first, so each lookup is one step.', 1, 'Exactly. One pass to build the Map, then a one-step lookup per order: the work grows with n, not n × n.'],
+           ['Add a loading spinner in case it gets slow.', 0, "A spinner hides the symptom. The growth problem is still there, and it gets worse with every customer."]] },
+  { ai: "I rewrote the loop on the settings page in hand-tuned code. It's 30% faster, though it's much harder to read now.",
+    opts: [['Nice, faster is always better.', 0, "The settings page loops over about a dozen items. Nobody will notice 30% of nothing, but everyone will notice code they can't read."],
+           ['Keep the readable version. With a dozen items, speed isn\'t the problem, clarity is.', 1, 'Right. Optimizing code that isn\'t slow is called premature optimization. Save the effort for where data actually grows.'],
+           ['Make it even faster by adding caching.', 0, 'More complexity for a problem that does not exist. Caches also bring their own bugs.']] },
+  { ai: 'Search is getting slow now that we have 400,000 books. I suggest upgrading to a bigger server.',
+    opts: [['Sure, upgrade the server.', 0, "A server twice as fast only buys time. If search checks every book, it slows down again as the catalog grows."],
+           ['Only search the first 1,000 books.', 0, "That makes search fast by making it wrong. Customers can't find most of the books."],
+           ['First tell me how search works. If it checks every book one by one, can we use an index or binary search instead?', 1, "Yes. Fix the growth, not the symptom. A sorted index turns 400,000 checks into about 19."]] },
+  { ai: "Here's a function that finds duplicate emails in the signup list. It compares every email with every other email.",
+    opts: [["What's the Big-O of this? For 1 million signups that's a trillion comparisons. Could you use a Set to spot repeats in one pass?", 1, 'Good steer. A Set remembers what it has seen with one-step lookups, so one pass over the list is enough.'],
+           ['Thanks, looks good.', 0, 'Comparing every pair is O(n²). Fine for 100 signups, hopeless for a million.'],
+           ['Rewrite it in a faster programming language.', 0, "A faster language might do each step quicker, but a trillion steps is still a trillion steps. Change the algorithm."]] }
+], { part: 'p4', counter: $('#steerCount') });
+
+/* ---------------- Part 5: quiz ---------------- */
+CS.quiz($('#quiz'), [
+  { q: 'You guess a number from 1 to 1,000,000, always picking the middle of what is left. At most about how many guesses do you need?', a: [['20', 1], ['1,000', 0], ['500,000', 0]], why: 'Each guess halves what is left. Halving a million about 20 times gets you down to one number.' },
+  { q: 'Binary search only works when…', a: [['the data is sorted', 1], ['the list is short', 0], ['the computer is fast', 0]], why: '"Higher" and "lower" only rule out half the list if the list is in order. On shuffled data you have to check one by one.' },
+  { q: 'Your code is O(n²). Your users grow from 1,000 to 10,000 (10 times more). The work becomes about…', a: [['10 times more', 0], ['100 times more', 1], ['20 times more', 0]], why: 'O(n²) means the work grows with n × n. Ten times the users means 10 × 10 = 100 times the work.' },
+  { q: 'Which line hides a loop inside a loop?', a: [['orders.map(o => customers.find(c => c.id === o.customerId))', 1], ['const byId = new Map(customers.map(c => [c.id, c]))', 0], ['customers.length', 0]], why: '.map() loops over the orders, and .find() loops over the customers for each one. That is n × n. The Map line loops once.' },
+  { q: 'An AI offers to make a report that runs once a day on 50 rows 30% faster, but much harder to read. Best response?', a: [['Keep it simple. It is not a bottleneck.', 1], ['Yes, always optimize.', 0], ['Rewrite it in another language.', 0]], why: 'Speed matters where data grows or code runs constantly. Optimizing something already instant is premature optimization.' }
+], { part: 'p5', doneCard: $('#doneCard'), doneTitle: 'You can think about speed now.', doneText: 'You know why halving beats checking one by one, what Big-O says about growth, how to spot a loop inside a loop, and when speed does not matter at all.' });
+})();
+</script>
+</body>
+</html>

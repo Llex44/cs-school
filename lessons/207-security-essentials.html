@@ -1,0 +1,740 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Security essentials · CS School</title>
+<meta name="description" content="Course 207: spot leaked secrets, weak logins, missing permission checks and the other holes AI-written code often leaves, and learn to fix them.">
+<link rel="icon" href="../assets/favicon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="../assets/cs-school.css">
+<style>
+/* ---------- hero ---------- */
+#heroArt .t-lbl{font-family:var(--f-display); font-weight:800; font-size:14px}
+#heroArt .t-code{font-family:var(--f-mono); font-size:12.5px}
+#heroArt .lock .shackle{transition:transform .5s cubic-bezier(.3,1.6,.5,1)}
+#heroArt .lock.open .shackle{transform:translateX(-9px) rotate(-32deg)}
+
+/* ---------- mock browser (shared) ---------- */
+.demo{border-radius:16px; overflow:hidden; box-shadow:var(--float); background:#fff}
+:root[data-theme="dark"] .demo, :root:not([data-theme="light"]) .demo{background:#12151b}
+@media (prefers-color-scheme: dark){ :root:not([data-theme="light"]) .demo{background:#12151b} }
+.demo-bar{display:flex; align-items:center; gap:8px; padding:9px 12px; background:var(--panel); border-bottom:1px solid var(--hair)}
+.demo-bar i{width:11px; height:11px; border-radius:50%; background:var(--rule); flex:none}
+.demo-url{margin-left:6px; flex:1; min-width:0; display:flex; align-items:center; gap:6px; background:var(--paper); border-radius:8px; padding:5px 10px; font-family:var(--f-mono); font-size:.82rem; color:var(--ink-2)}
+.demo-url .lk{width:11px; height:11px; flex:none; opacity:.6}
+.demo-url form{display:flex; flex:1; min-width:0}
+.demo-url input{flex:1; min-width:0; border:0; background:none; font:inherit; font-family:var(--f-mono); font-size:.82rem; color:var(--ink); outline:none}
+.demo-view{padding:18px 18px 20px; background:var(--paper); color:var(--ink); min-height:200px}
+.demo-app-name{font-family:var(--f-display); font-weight:900; font-size:1.25rem; display:flex; align-items:center; justify-content:space-between; gap:10px; margin-bottom:14px}
+.demo-app-name .who{font-family:var(--f-body); font-weight:400; font-size:.85rem; color:var(--ink-2)}
+.note-item{background:var(--panel); border-radius:10px; padding:10px 14px; margin-bottom:8px}
+.note-item h4{font-family:var(--f-display); font-weight:800; font-size:1rem; margin:0 0 2px}
+.note-item p{font-size:.92rem; color:var(--ink-2); margin:0}
+.demo-note{font-size:.85rem; color:var(--ink-2); margin-top:10px}
+.login-row{display:flex; flex-direction:column; gap:4px; margin-bottom:10px}
+.login-row label{font-family:var(--f-display); font-weight:700; font-size:.85rem}
+.login-row input{border:1px solid var(--rule); border-radius:8px; padding:9px 11px; font:inherit; font-size:.95rem; background:var(--paper); color:var(--ink); min-height:42px}
+.demo-btn{font-family:var(--f-display); font-weight:700; font-size:.95rem; background:var(--l2); color:#fff; border:0; border-radius:8px; padding:9px 16px; min-height:42px; cursor:pointer}
+.demo-empty{color:var(--ink-2); font-size:.92rem; text-align:center; padding:24px 0}
+
+/* attacker toolkit / hunt */
+.hunt-target{display:flex; flex-direction:column; gap:6px}
+.mission-card .found{display:flex; align-items:center; gap:8px; font-size:.95rem; padding:6px 0}
+.mission-card .found .mk{flex:none; width:24px; height:24px; border-radius:50%; display:grid; place-items:center; font-family:var(--f-display); font-weight:800; font-size:.75rem; background:color-mix(in srgb, var(--ink) 9%, transparent); color:var(--ink-2)}
+.mission-card .found.done .mk{background:var(--good-bg); color:var(--good)}
+.mission-card .found.done span{color:var(--ink-2)}
+.toolbar{display:flex; flex-direction:column; gap:8px}
+.tool{width:100%; justify-content:flex-start; text-align:left; gap:12px}
+.tool .ti{flex:none; width:30px; height:30px; display:grid; place-items:center}
+.tool small{display:block; font-size:.85rem; color:var(--ink-2); font-weight:400; font-family:var(--f-body)}
+.tool[aria-pressed="true"]{background:var(--ink); color:var(--paper); border-color:var(--ink)}
+.tool[aria-pressed="true"] small{color:color-mix(in srgb,var(--paper) 78%, transparent)}
+.tool[aria-pressed="true"] .ti path,.tool[aria-pressed="true"] .ti circle,.tool[aria-pressed="true"] .ti rect{stroke:var(--paper)}
+/* view source panel */
+.source{background:var(--term); color:var(--term-ink); border-radius:12px; padding:14px 16px; font-family:var(--f-mono); font-size:.86rem; line-height:1.6; overflow-x:auto; white-space:pre; margin-top:10px}
+.source .c{color:var(--term-dim)} .source .k{color:#C4A7FF} .source .s{color:#8BF0A8} .source .t{color:#7CC4FF}
+.source .leak{background:rgba(255,138,120,.24); border-radius:3px; padding:1px 2px; cursor:pointer}
+.source .leak.spot{outline:2px solid #FF9A8A; outline-offset:1px}
+.finding{margin-top:12px}
+/* fix explainer */
+.fixgrid{display:grid; grid-template-columns:minmax(0,1fr) minmax(0,1fr); gap:14px; margin-top:12px}
+.fixcol{border-radius:12px; padding:12px 14px; font-size:.95rem}
+.fixcol.bad-bg{background:var(--bad-bg)} .fixcol.good-bg{background:var(--good-bg)}
+.fixcol h4{font-family:var(--f-display); font-weight:800; font-size:.95rem; margin:0 0 6px; display:flex; align-items:center; gap:6px}
+.fixcol.bad-bg h4{color:var(--bad)} .fixcol.good-bg h4{color:var(--good)}
+.fixcol code{background:color-mix(in srgb, var(--ink) 8%, transparent); font-size:.82rem}
+
+/* SQL injection console */
+.sqli{margin-top:10px}
+.sqli .lbl{font-family:var(--f-display); font-weight:700; font-size:.9rem; margin-bottom:4px}
+.query{background:var(--term); color:var(--term-ink); border-radius:10px; padding:12px 14px; font-family:var(--f-mono); font-size:.86rem; line-height:1.7; white-space:pre-wrap; word-break:break-word; overflow-wrap:anywhere}
+.query .s{color:#8BF0A8} .query .k{color:#C4A7FF} .query .inp{background:rgba(255,197,61,.26); border-radius:3px; color:#FFE08A}
+.query .inj{background:rgba(255,138,120,.32); border-radius:3px; color:#FFC2B6}
+.query .dim{color:var(--term-dim)}
+
+/* ---------- part 2 ---------- */
+.p2-block{margin-top:48px}
+.p2-block > h3{margin-bottom:6px}
+.aa{display:grid; grid-template-columns:minmax(0,1fr) minmax(0,1fr); gap:16px; margin-top:6px}
+.aa .card{border-radius:16px; padding:16px 18px}
+.aa h4{font-family:var(--f-display); font-weight:800; font-size:1.15rem; margin:0 0 4px}
+.aa .sub{font-size:.95rem; color:var(--ink-2); margin-bottom:10px}
+.aa ul{margin:0; padding-left:1.1em; font-size:.95rem; display:flex; flex-direction:column; gap:4px}
+/* password hashing */
+.hash-row{display:flex; flex-direction:column; gap:8px; margin-top:12px}
+.hash-in{display:flex; gap:10px; flex-wrap:wrap; align-items:center}
+.hash-in input{flex:1 1 200px; min-width:0; border:1px solid var(--hair); border-radius:10px; padding:10px 12px; font:inherit; font-size:.95rem; background:var(--glass-strong); color:var(--ink); min-height:44px; font-family:var(--f-mono)}
+.store{display:grid; grid-template-columns:minmax(0,1fr) minmax(0,1fr); gap:12px; margin-top:6px}
+.store .col{border-radius:12px; padding:12px 14px}
+.store .col h4{font-family:var(--f-display); font-weight:800; font-size:.95rem; margin:0 0 8px; display:flex; align-items:center; gap:8px}
+.store .row2{font-family:var(--f-mono); font-size:.84rem; display:flex; gap:8px; padding:4px 0; align-items:baseline; overflow-wrap:anywhere}
+.store .row2 .u{color:var(--ink-2); flex:none}
+.store.plain{background:var(--bad-bg)} .store.plain h4{color:var(--bad)}
+.store.hashed{background:var(--good-bg)} .store.hashed h4{color:var(--good)}
+.crack{margin-top:10px; font-size:.95rem; min-height:1.6em}
+.least{display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:10px; margin-top:12px}
+.scope{border-radius:12px; padding:12px 14px; text-align:left; font:inherit; cursor:pointer; background:var(--glass-strong); border:1px solid var(--hair); min-height:96px; transition:background .2s}
+.scope[aria-pressed="true"]{background:var(--ink); color:var(--paper); border-color:var(--ink)}
+.scope b{display:block; font-family:var(--f-display); font-weight:800; font-size:1rem; margin-bottom:4px}
+.scope small{font-size:.85rem; color:var(--ink-2)}
+.scope[aria-pressed="true"] small{color:color-mix(in srgb,var(--paper) 78%, transparent)}
+.checklist{display:flex; flex-direction:column; gap:8px; margin-top:12px}
+.check{display:flex; gap:12px; align-items:flex-start; background:var(--glass-strong); border-radius:12px; padding:12px 14px}
+.check .ic{flex:none; width:28px; height:28px; border-radius:8px; display:grid; place-items:center}
+.check b{font-family:var(--f-display); font-weight:800; font-size:1rem}
+.check p{font-size:.92rem; color:var(--ink-2); margin:2px 0 0}
+.check .lnk{color:var(--l2); text-decoration:none; font-weight:700}
+.check .lnk:hover{text-decoration:underline}
+
+/* ---------- part 3 code lab ---------- */
+.vuln-list{display:flex; flex-direction:column; gap:8px}
+.vuln{display:flex; gap:10px; align-items:flex-start; font-size:.95rem}
+.vuln .n{flex:none; width:24px; height:24px; border-radius:50%; display:grid; place-items:center; font-family:var(--f-display); font-weight:800; font-size:.78rem; background:var(--bad-bg); color:var(--bad)}
+.vuln.fixed .n{background:var(--good-bg); color:var(--good)}
+.vuln.fixed span{color:var(--ink-2); text-decoration:line-through; text-decoration-thickness:1.5px}
+
+@media (max-width:900px){
+  .pg-col > *{align-self:stretch}
+  .fixgrid,.aa,.store{grid-template-columns:minmax(0,1fr)}
+}
+@media (max-width:640px){
+  .least{grid-template-columns:minmax(0,1fr)}
+}
+</style>
+</head>
+<body>
+<main id="top">
+  <section class="wrap hero">
+    <div>
+      <div class="kicker">Core curriculum · Course 207 · Security essentials</div>
+      <h1>Working code and safe code are not the same thing.</h1>
+      <p class="lede">An AI can build an app that runs perfectly in the demo and still leaves the front door open. You'll play the attacker on a pretend app, find the holes AI-written code often leaves, and learn the fixes so you can ask for them by name.</p>
+      <ul class="facts">
+        <li>About 15 minutes</li>
+        <li>5 parts</li>
+        <li>Fix-the-code lab</li>
+        <li>Defensive, on a fake app only</li>
+      </ul>
+      <div class="row hero-cta"><a class="btn primary" href="#p1">Start the lesson</a></div>
+    </div>
+    <figure style="margin:0">
+      <div class="hero-visual glass">
+        <svg id="heroArt" role="img" aria-label="An animated diagram: a padlock guarding an app. Weak spots light up one by one, a leaked key, an editable ID in the address bar, an unchecked login, then each is closed and the lock clicks shut."></svg>
+        <div class="legend"><span><i style="background:var(--l1)"></i>a hole</span><span><i style="background:var(--l3)"></i>fixed</span></div>
+      </div>
+      <div class="hero-caption glass" aria-hidden="true"><span>!</span><span id="heroCap">API key found in page source</span></div>
+    </figure>
+  </section>
+
+  <div class="wrap">
+  <!-- PART 1 -->
+  <section class="part" id="p1">
+    <span class="bullet glass" data-p="p1">1</span>
+    <div class="part-head">
+      <div class="kicker">Part 1 of 5</div>
+      <h2>Play the attacker</h2>
+      <p>The fastest way to see a hole is to poke at it. Here's Jott, a tiny notes app an AI built over a weekend. It works. Now try to break into it. Every hole you find gets explained, then fixed.</p>
+    </div>
+
+    <div class="chat" aria-label="Example conversation">
+      <div class="msg me"><span class="who">You</span>Is the notes app safe to launch?</div>
+      <div class="msg ai"><span class="who">AI assistant</span>Yes! Login works, notes save, and it looks great. Ready to ship.</div>
+      <div class="msg me"><span class="who">You</span>"Looks great" and "safe" aren't the same thing. Let me try to break in first.</div>
+    </div>
+
+    <div class="task glass" data-part="p1">
+      <h3>Your task: find three holes</h3>
+      <ol>
+        <li data-t="key"><span>Read the page source and find a secret that shouldn't be there.</span></li>
+        <li data-t="idor"><span>Change the note number in the address bar to read a stranger's private note.</span></li>
+        <li data-t="sqli"><span>Log in as the owner without knowing the password.</span></li>
+      </ol>
+    </div>
+
+    <div class="pg">
+      <div class="pg-col">
+        <div class="o1 ctl glass mission-card">
+          <h3 class="ctl-title">Attacker's toolkit</h3>
+          <p class="ctl-sub" style="margin-top:0">Pick a tool, then act on the app. These are the first three things a real attacker tries.</p>
+          <div class="toolbar" id="toolbar"></div>
+          <div style="margin-top:14px" id="foundList"></div>
+        </div>
+        <div class="o4 finding note" id="finding" aria-live="polite">Pick a tool on the left to begin. Nothing here is real, so poke freely.</div>
+        <details class="deeper glass o6">
+          <summary>Under the hood: this is what "pen testing" means <small>optional</small></summary>
+          <div>
+            <p>Companies pay <b>penetration testers</b> to attack their own apps like this, with permission, before real attackers do. You just did the first three checks by hand.</p>
+            <p>Doing this to an app you don't own is illegal. Everything here is a safe simulation built into this page.</p>
+          </div>
+        </details>
+      </div>
+      <div class="pg-col">
+        <div class="o2 demo" id="demo">
+          <div class="demo-bar"><i></i><i></i><i></i>
+            <div class="demo-url"><svg class="lk" viewBox="0 0 24 24" aria-hidden="true"><rect x="5" y="11" width="14" height="9" rx="2" fill="none" stroke="currentColor" stroke-width="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3" fill="none" stroke="currentColor" stroke-width="2"/></svg>
+              <form id="urlForm"><input id="urlInput" value="jott.example/notes/7" spellcheck="false" autocomplete="off" aria-label="Address bar"></form>
+            </div>
+          </div>
+          <div class="demo-view" id="demoView"></div>
+        </div>
+        <div class="o3" id="toolPanel"></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- PART 2 -->
+  <section class="part" id="p2">
+    <span class="bullet glass" data-p="p2">2</span>
+    <div class="part-head">
+      <div class="kicker">Part 2 of 5</div>
+      <h2>The ideas behind the holes</h2>
+      <p>Three of these come up in almost every app. Get them straight and you'll spot most of what AI-written code gets wrong.</p>
+    </div>
+
+    <div class="task glass" data-part="p2">
+      <h3>Your task</h3>
+      <ol>
+        <li data-t="authz"><span>Sort five requests into "who are you?" and "are you allowed?"</span></li>
+        <li data-t="hash"><span>Store a password safely, then watch a stolen database get cracked.</span></li>
+        <li data-t="least"><span>Give a new feature the narrowest key that still works.</span></li>
+      </ol>
+    </div>
+
+    <div class="stack">
+      <h3>Authentication vs authorization</h3>
+      <p class="muted" style="margin-top:-6px"><b>Authentication</b> asks "who are you?" (logging in). <b>Authorization</b> asks "are you allowed to do this?" (permission checks). The note you read in part 1 failed the second one: you were logged in as yourself, but nothing checked that note 7 was yours. Sort each request.</p>
+      <div class="ctl glass"><h3 class="ctl-title" style="font-size:1.05rem">Requests to sort</h3><p class="ctl-sub" style="margin-top:-6px">Tap one, then drop it in the right box below.</p><div class="row" id="aaPool"></div></div>
+      <div class="aa" style="margin-top:14px">
+        <div class="card glass"><h4>Authentication</h4><div class="sub">Who are you?</div><div id="binAuthn" class="binbox"></div></div>
+        <div class="card glass"><h4>Authorization</h4><div class="sub">Are you allowed?</div><div id="binAuthz" class="binbox"></div></div>
+      </div>
+      <div class="note" id="aaNote" aria-live="polite">Tap a request above, then tap the box it belongs in.</div>
+    </div>
+
+    <div class="stack p2-block">
+      <h3>Why plain-text passwords are a disaster</h3>
+      <p class="muted" style="margin-top:-6px">Databases get stolen. The question is what the thief gets. Save a password each way, then leak the database.</p>
+      <div class="ctl glass">
+        <div class="hash-row">
+          <label class="lbl" for="pw" style="font-family:var(--f-display); font-weight:700">A new user signs up with this password</label>
+          <div class="hash-in">
+            <input id="pw" value="hunter2" spellcheck="false" autocomplete="off">
+            <button class="btn" id="pwSave">Save the user</button>
+          </div>
+        </div>
+        <div class="store">
+          <div class="col plain"><h4>Stored as plain text</h4><div id="storePlain"><div class="demo-empty" style="padding:8px 0">No users yet.</div></div></div>
+          <div class="col hashed"><h4>Stored as a salted hash</h4><div id="storeHash"><div class="demo-empty" style="padding:8px 0">No users yet.</div></div></div>
+        </div>
+        <div class="row" style="margin-top:12px"><button class="btn danger" id="leakBtn" disabled>A thief steals the database</button></div>
+        <div class="crack note" id="crackNote" hidden></div>
+      </div>
+      <details class="deeper glass">
+        <summary>Under the hood: hashing, salting and "slow" hashes <small>optional</small></summary>
+        <div>
+          <p>A <b>hash</b> is a one-way scramble: easy to compute forwards, practically impossible to reverse. To check a login, you hash what the user typed and compare it to the stored hash. You never need the real password back.</p>
+          <p>A <b>salt</b> is a random value mixed in per user, so two people with the same password get different hashes, and attackers can't precompute a giant lookup table. Password hashes (bcrypt, argon2, scrypt) are deliberately <b>slow</b>, which barely matters for one login but makes mass guessing painfully expensive.</p>
+        </div>
+      </details>
+    </div>
+
+    <div class="stack p2-block">
+      <h3>Least privilege: hand out the narrowest key</h3>
+      <p class="muted" style="margin-top:-6px">You're adding a feature that emails users a monthly summary of their notes. What access should its key have? Pick the smallest one that still works.</p>
+      <div class="least" id="leastBox"></div>
+      <div class="note" id="leastNote" aria-live="polite">Each key can do more than the one before it. Which is just enough?</div>
+    </div>
+
+    <div class="stack p2-block">
+      <h3>The rest of the checklist</h3>
+      <p class="muted" style="margin-top:-6px">Six more habits that keep AI-written code out of trouble. You'll meet most of them again in other courses.</p>
+      <div class="checklist" id="checklist"></div>
+    </div>
+  </section>
+
+  <!-- PART 3 -->
+  <section class="part" id="p3">
+    <span class="bullet glass" data-p="p3">3</span>
+    <div class="part-head">
+      <div class="kicker">Part 3 of 5</div>
+      <h2>Try it: fix the vulnerable code</h2>
+      <p>Here's the actual code behind Jott's "open a note" feature, the way the AI first wrote it. It has four of the holes you just met. Fix them one at a time. The checks run when you press Run.</p>
+    </div>
+
+    <div class="lab">
+      <div class="a-mission ctl glass">
+        <h3 class="ctl-title">Your mission</h3>
+        <p class="ctl-sub" style="margin-top:0">Turn this endpoint from "works in the demo" into "safe to ship". Four fixes.</p>
+        <ol class="mission" id="mission"></ol>
+      </div>
+      <div class="a-work" id="lab"></div>
+      <div class="a-side ctl glass">
+        <h3 class="ctl-title">Holes to close</h3>
+        <div class="vuln-list" id="vulnList"></div>
+        <p class="small muted" style="margin-top:12px">This is a stripped-down web server written in JavaScript. You don't need to write it from scratch: change the lines that are wrong.</p>
+      </div>
+      <div class="a-extra ctl glass">
+        <h3 class="ctl-title">The safe patterns</h3>
+        <div class="anat" style="display:flex; flex-direction:column; gap:10px; font-size:.95rem">
+          <div><b style="font-family:var(--f-display)">Secret from the environment</b><br><code>process.env.DB_KEY</code>, never pasted in the code.</div>
+          <div><b style="font-family:var(--f-display)">Parameterized query</b><br>Pass values separately: <code>query(sql, [id])</code>. The database treats them as data, never as commands.</div>
+          <div><b style="font-family:var(--f-display)">Ownership check</b><br><code>if (note.owner !== user.id) return deny()</code></div>
+          <div><b style="font-family:var(--f-display)">Least data</b><br>Return only the fields the page needs.</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- PART 4 -->
+  <section class="part" id="p4">
+    <span class="bullet glass" data-p="p4">4</span>
+    <div class="part-head">
+      <div class="kicker">Part 4 of 5</div>
+      <h2>Steer the AI</h2>
+      <p>These are real things AI coding tools say. Each one sounds reasonable and hides a security hole. Pick the reply you'd send.</p>
+    </div>
+    <p class="counter" id="steerCount"></p>
+    <div id="steer"></div>
+  </section>
+
+  <!-- PART 5 -->
+  <section class="part" id="p5">
+    <span class="bullet glass" data-p="p5">5</span>
+    <div class="part-head">
+      <div class="kicker">Part 5 of 5</div>
+      <h2>Check your understanding</h2>
+      <p>Five quick questions. Each answer explains itself.</p>
+    </div>
+    <div id="quiz"></div>
+    <div id="doneCard" aria-live="polite"></div>
+  </section>
+  </div>
+
+  <section class="after" id="cheat">
+    <div class="wrap stack">
+      <h2>Cheat sheet</h2>
+      <p class="muted">The holes AI-written code leaves most often, how to spot them, and what to ask for.</p>
+      <div class="table-wrap glass">
+        <table>
+          <thead><tr><th>The hole</th><th>What it looks like</th><th>Ask the AI for</th></tr></thead>
+          <tbody>
+            <tr><td>Leaked secret</td><td>An API key or password sitting in frontend code or in git.</td><td>"Move it to a server environment variable and rotate the exposed one."</td></tr>
+            <tr><td>Missing authorization</td><td>You can change an ID in the URL and see someone else's data.</td><td>"Check that the logged-in user owns this record before returning it."</td></tr>
+            <tr><td>SQL injection</td><td>User input glued straight into a database query.</td><td>"Use a parameterized query so input can never be run as a command."</td></tr>
+            <tr><td>Plain-text passwords</td><td>Passwords stored as-is, or logged.</td><td>"Hash passwords with bcrypt or argon2, and never log them."</td></tr>
+            <tr><td>Too much access</td><td>One all-powerful key or admin login used everywhere.</td><td>"Give this the narrowest permissions that still work."</td></tr>
+            <tr><td>Sensitive data in logs</td><td>Full card numbers, tokens or passwords printed to logs.</td><td>"Redact secrets and PII from logs."</td></tr>
+            <tr><td>CORS set to *</td><td>The API accepts requests from any website.</td><td>"Allow only our own domains, not *."</td></tr>
+            <tr><td>Old dependencies</td><td>Packages with known vulnerabilities. See course 204.</td><td>"Run an audit and update the flagged packages."</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="note info"><strong>The one habit that matters most.</strong> Treat every input from outside, from users, other apps or the internet, as untrusted until you've checked it. Most holes in this lesson are the same mistake: trusting something that arrived from outside.</div>
+    </div>
+  </section>
+</main>
+<script src="../assets/cs-school.js"></script>
+<script>
+(() => {
+const { $, $$, esc, reduce } = CS;
+
+CS.lesson({
+  id: '207',
+  parts: [
+    { id: 'p1', title: 'Play the attacker' },
+    { id: 'p2', title: 'The ideas behind the holes' },
+    { id: 'p3', title: 'Try it' },
+    { id: 'p4', title: 'Steer the AI' },
+    { id: 'p5', title: 'Check' }
+  ]
+});
+
+/* ---------------- hero: a lock with holes that get patched ---------------- */
+(function hero() {
+  const svg = $('#heroArt');
+  svg.setAttribute('viewBox', '0 0 560 300');
+  const HOLES = [
+    { x: 150, y: 118, cap: 'API key found in page source' },
+    { x: 410, y: 132, cap: 'Note ID editable in the address bar' },
+    { x: 150, y: 214, cap: "Login accepts ' OR '1'='1" },
+    { x: 410, y: 210, cap: 'Passwords stored in plain text' }
+  ];
+  const dots = HOLES.map((h, i) => `<g class="hHole" data-i="${i}"><circle cx="${h.x}" cy="${h.y}" r="9" style="fill:var(--l1)"/><circle class="ping" cx="${h.x}" cy="${h.y}" r="9" style="fill:var(--l1)" opacity=".4"/></g>`).join('');
+  const lines = HOLES.map(h => `<path d="M${h.x} ${h.y}Q280 ${h.y < 165 ? 90 : 240} 280 165" fill="none" style="stroke:var(--ink-2)" stroke-width="1.4" stroke-dasharray="2 6" opacity=".4"/>`).join('');
+  svg.innerHTML = `${lines}
+    <g class="lock" id="hLock" transform="translate(280 165)">
+      <path class="shackle" d="M-26 -6V-26a26 26 0 0 1 52 0V-6" fill="none" style="stroke:var(--ink)" stroke-width="9" stroke-linecap="round"/>
+      <rect x="-40" y="-8" width="80" height="70" rx="14" style="fill:var(--glass-strong);stroke:var(--ink)" stroke-width="3"/>
+      <circle cx="0" cy="20" r="8" style="fill:var(--ink)"/><rect x="-3.5" y="24" width="7" height="18" rx="3.5" style="fill:var(--ink)"/>
+    </g>
+    ${dots}
+    <text class="t-lbl" x="280" y="266" text-anchor="middle" style="fill:var(--ink)" id="hLbl">4 holes open</text>`;
+  const holeEls = $$('.hHole', svg), lock = $('#hLock'), lbl = $('#hLbl'), cap = $('#heroCap');
+  let fixed = 0;
+  const paint = () => { lbl.textContent = fixed >= 4 ? 'Locked. All holes closed.' : `${4 - fixed} hole${4 - fixed === 1 ? '' : 's'} open`; lock.classList.toggle('open', fixed < 4 && fixed % 2 === 1 ? false : fixed < 4); lock.classList.toggle('open', fixed < 4); };
+  holeEls.forEach(h => h.style.transition = 'opacity .5s');
+  paint();
+  if (reduce) { cap.textContent = HOLES[0].cap; return; }
+  let i = 0;
+  (function loop() {
+    if (fixed >= 4) { setTimeout(() => { fixed = 0; holeEls.forEach(h => { h.style.opacity = 1; h.querySelector('circle:first-child').style.fill = 'var(--l1)'; }); i = 0; paint(); loop(); }, 2600); return; }
+    const h = holeEls[i];
+    cap.textContent = HOLES[i].cap;
+    h.querySelector('.ping').animate([{ r: 9, opacity: .5 }, { r: 26, opacity: 0 }], { duration: 1200 });
+    setTimeout(() => {
+      h.style.opacity = .35; h.querySelector('circle:first-child').style.fill = 'var(--l3)';
+      fixed++; i++; paint();
+      setTimeout(loop, 700);
+    }, 1400);
+  })();
+})();
+
+/* ---------------- part 1: the attacker toolkit ---------------- */
+const OWNER = { id: 42, name: 'Priya' };
+const NOTES = {
+  7: { id: 7, owner: 999, title: "Sam's diary", body: 'Note 7 belongs to another user, Sam. It is private.', private: true },
+  8: { id: 8, owner: OWNER.id, title: 'Groceries', body: 'Oat milk, tomatoes, a birthday card for Dad.' },
+  12: { id: 12, owner: 7, title: "Board meeting notes", body: 'Confidential: the acquisition closes on the 14th.', private: true }
+};
+const APIKEY = 'sk_live_4f21c8a930bd7e6';
+const TOOLS = [
+  { id: 'source', name: 'View page source', sub: 'Read the code the site sent your browser', icon: '<path d="M11 8L6 15L11 22M23 8L28 15L23 22" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/>' },
+  { id: 'url', name: 'Edit the address bar', sub: 'Change the note number in the URL', icon: '<rect x="5" y="10" width="24" height="10" rx="5" fill="none" stroke="currentColor" stroke-width="2.2"/><path d="M12 15h9" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/>' },
+  { id: 'inject', name: 'Try a login trick', sub: "Type something clever into the login form", icon: '<path d="M8 20l6-14 6 14M10 15h8" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/><circle cx="24" cy="22" r="2" fill="currentColor"/>' }
+];
+let tool = null;
+$('#toolbar').innerHTML = TOOLS.map(t => `<button class="btn tool" data-tool="${t.id}" aria-pressed="false"><span class="ti"><svg viewBox="0 0 34 30" aria-hidden="true">${t.icon}</svg></span><span><b style="font-family:var(--f-display)">${t.name}</b><small>${t.sub}</small></span></button>`).join('');
+const foundState = { key: false, idor: false, sqli: false };
+function renderFound() {
+  $('#foundList').innerHTML = `<div class="ctl-sub" style="margin:0 0 6px; font-weight:700; font-family:var(--f-display)">Holes found</div>`
+    + [['key', 'Leaked secret key'], ['idor', "A stranger's private note"], ['sqli', 'Login bypassed']].map(([k, t]) => `<div class="found ${foundState[k] ? 'done' : ''}"><span class="mk">${foundState[k] ? '✓' : ''}</span><span>${t}</span></div>`).join('');
+}
+renderFound();
+
+function renderNote(id) {
+  const n = NOTES[id];
+  const v = $('#demoView');
+  if (!n) { v.innerHTML = `<div class="demo-app-name">Jott<span class="who">signed in as ${OWNER.name}</span></div><div class="demo-empty">No note number ${esc(String(id))}.</div>`; return; }
+  const mine = n.owner === OWNER.id;
+  v.innerHTML = `<div class="demo-app-name">Jott<span class="who">signed in as ${OWNER.name}</span></div>
+    <div class="note-item"><h4>${esc(n.title)}${n.private && !mine ? ' 🔒' : ''}</h4><p>${esc(n.body)}</p></div>
+    <div class="demo-note">${mine ? 'This note is yours.' : `This note belongs to someone else (user ${n.owner}). You should not be able to see it.`}</div>`;
+}
+function setTool(id) {
+  tool = id;
+  $$('.tool').forEach(b => b.setAttribute('aria-pressed', b.dataset.tool === id));
+  const p = $('#toolPanel');
+  if (id === 'source') {
+    p.innerHTML = `<div class="ctl glass"><h3 class="ctl-title" style="font-size:1.05rem">Page source: notes.js</h3><p class="ctl-sub" style="margin-top:0">This is what the browser downloaded. Anyone can open it. Find the line that shouldn't be here and click it.</p>
+      <div class="source" id="src"><span class="c">// Jott notes app: front-end</span>
+<span class="k">const</span> app = createApp();
+<span class="k">const</span> supabaseUrl = <span class="s">"https://jott.example"</span>;
+<span class="c">// TODO: move to backend before launch</span>
+<span class="k">const</span> ADMIN_DB_KEY = <span class="leak" data-leak="1">"${APIKEY}"</span>;
+app.get(<span class="s">"/notes/:id"</span>, loadNote);
+<span class="k">function</span> render(note) { screen.show(note.title, note.body); }</div>
+      <div class="finding note" id="srcNote" hidden></div></div>`;
+    $('#src').addEventListener('click', e => { const l = e.target.closest('[data-leak]'); if (l) foundKey(l); });
+  } else if (id === 'url') {
+    p.innerHTML = `<div class="ctl glass"><h3 class="ctl-title" style="font-size:1.05rem">The address bar is yours to edit</h3><p class="ctl-sub" style="margin-top:0">You're viewing your own note 8. Type a different number into the address bar above and press Enter. Try 7 or 12.</p>
+      <div class="row" id="urlHints"><button class="btn" data-go="7">Go to /notes/7</button><button class="btn" data-go="12">Go to /notes/12</button><button class="btn" data-go="8">Back to my note (8)</button></div>
+      <div class="finding note" id="urlNote" hidden></div></div>`;
+    $('#urlInput').value = 'jott.example/notes/8'; renderNote(8);
+    $('#urlHints').addEventListener('click', e => { const b = e.target.closest('[data-go]'); if (b) { $('#urlInput').value = 'jott.example/notes/' + b.dataset.go; visitUrl(); } });
+  } else if (id === 'inject') {
+    p.innerHTML = `<div class="ctl glass"><h3 class="ctl-title" style="font-size:1.05rem">The login form</h3><p class="ctl-sub" style="margin-top:0">You don't know Priya's password. Try typing this into the password box, then Log in: <code>' OR '1'='1</code></p>
+      <div class="login-row"><label for="liUser">Email</label><input id="liUser" value="priya@jott.example" spellcheck="false"></div>
+      <div class="login-row"><label for="liPass">Password</label><input id="liPass" value="" placeholder="the password you don't know" spellcheck="false"></div>
+      <div class="row"><button class="demo-btn" id="liBtn">Log in</button><button class="btn" id="liTrick" type="button">Fill in the trick for me</button></div>
+      <div class="sqli" id="sqliBox" hidden><div class="lbl">The query your login runs</div><div class="query" id="sqliQuery"></div></div>
+      <div class="finding note" id="liNote" hidden></div></div>`;
+    $('#liBtn').addEventListener('click', tryLogin);
+    $('#liTrick').addEventListener('click', () => { $('#liPass').value = "' OR '1'='1"; tryLogin(); });
+    renderView('login');
+  }
+  CS.say($('#finding'), TOOLS.find(t => t.id === id).sub + '.', '');
+}
+function renderView(mode) {
+  const v = $('#demoView');
+  if (mode === 'login') {
+    v.innerHTML = `<div class="demo-app-name">Jott<span class="who">signed out</span></div>
+      <div class="demo-empty">Log in to see your notes.<br>Use the form on the left.</div>`;
+    $('#urlInput').value = 'jott.example/login';
+  }
+}
+function foundKey(el) {
+  el.classList.add('spot');
+  if (!foundState.key) { foundState.key = true; renderFound(); CS.tick('p1', 'key'); }
+  CS.say($('#srcNote'), `<strong>Found it: a live API key in code the browser downloaded.</strong> <code>ADMIN_DB_KEY</code> unlocks the whole database, and it's sitting in a file anyone can read by pressing "view source". The "TODO: move to backend" comment shows the AI meant to fix it and forgot. This key must be treated as leaked: rotate it, and keep secrets on the server only.`, 'bad');
+  CS.say($('#finding'), `<strong>Hole 1 of 3 found.</strong> A secret in frontend code is public. We'll fix this in the code lab in part 3.`, 'bad');
+}
+function visitUrl() {
+  const raw = $('#urlInput').value.trim();
+  const m = /notes\/(\d+)/.exec(raw);
+  if (!m) { renderNote('?'); return; }
+  const id = +m[1];
+  renderNote(id);
+  const n = NOTES[id];
+  if (n && n.owner !== OWNER.id) {
+    if (!foundState.idor) { foundState.idor = true; renderFound(); CS.tick('p1', 'idor'); }
+    CS.say($('#urlNote'), `<strong>You're reading someone else's private note.</strong> The app checked that you're logged in, but never checked that note ${id} belongs to <em>you</em>. Because notes are numbered 1, 2, 3…, an attacker just tries every number. This is called a <b>missing authorization check</b>, or IDOR (insecure direct object reference). The fix: before returning a note, confirm the logged-in user owns it.`, 'bad');
+    CS.say($('#finding'), `<strong>Hole 2 of 3 found.</strong> Being logged in is not the same as being allowed. Every record needs an ownership check.`, 'bad');
+  } else if (n) {
+    CS.say($('#urlNote'), `That's your own note, so seeing it is fine. Try a number you don't own, like <b>7</b> or <b>12</b>.`, '');
+  } else {
+    CS.say($('#urlNote'), `No note with that number. Try <b>7</b> or <b>12</b>.`, '');
+  }
+}
+function tryLogin() {
+  const user = esc($('#liUser').value.trim());
+  const pass = $('#liPass').value;
+  const box = $('#sqliBox'); box.hidden = false;
+  const isTrick = /'\s*or\s*'?1'?\s*=\s*'?1/i.test(pass) || pass.includes("' OR '1'='1");
+  const passHTML = isTrick
+    ? `<span class="inp">'</span><span class="inj"> OR '1'='1</span>`
+    : `<span class="inp">${esc(pass) || '…'}</span>`;
+  $('#sqliQuery').innerHTML = `<span class="k">SELECT</span> * <span class="k">FROM</span> users
+<span class="k">WHERE</span> email = <span class="s">'${user}'</span>
+<span class="k">AND</span> password = <span class="s">'</span>${passHTML}<span class="s">'</span>;`;
+  if (isTrick) {
+    $('#sqliQuery').innerHTML += `\n<span class="dim">→ becomes:</span>\n<span class="k">WHERE</span> email = <span class="s">'${user}'</span> <span class="k">AND</span> password = <span class="s">''</span> <span class="inj">OR '1'='1'</span>\n<span class="dim">   '1'='1' is always true → returns the first user → logged in as ${OWNER.name}, no password needed.</span>`;
+    const v = $('#demoView');
+    v.innerHTML = `<div class="demo-app-name">Jott<span class="who">signed in as ${OWNER.name} (as admin!)</span></div>
+      <div class="note-item"><h4>Groceries</h4><p>Oat milk, tomatoes, a birthday card for Dad.</p></div>
+      <div class="demo-note">You're in, without the password. The login glued your text straight into a database command.</div>`;
+    $('#urlInput').value = 'jott.example/notes';
+    if (!foundState.sqli) { foundState.sqli = true; renderFound(); CS.tick('p1', 'sqli'); }
+    CS.say($('#liNote'), `<strong>Logged in with no password. This is SQL injection.</strong> Your text wasn't treated as a password, it was pasted straight into the database command. <code>' OR '1'='1</code> closes the quote and adds a condition that's always true, so the check passes. The fix is a <b>parameterized query</b>, which keeps input as data that can never become part of the command. You'll write one in part 3.`, 'bad');
+    CS.say($('#finding'), `<strong>All three holes found.</strong> Nice work. Now let's turn each one into a fix you can name.`, 'good');
+  } else {
+    $('#demoView').innerHTML = `<div class="demo-app-name">Jott<span class="who">signed out</span></div><div class="demo-empty">Wrong password. (The real one is a secret.)<br>Try the trick in the hint.</div>`;
+    CS.say($('#liNote'), `A normal wrong password is rejected, as it should be. Now try the exact text <code>' OR '1'='1</code> in the password box.`, '');
+  }
+}
+$('#toolbar').addEventListener('click', e => { const b = e.target.closest('[data-tool]'); if (b) setTool(b.dataset.tool); });
+$('#urlForm').addEventListener('submit', e => { e.preventDefault(); if (tool === 'url') visitUrl(); else { setTool('url'); setTimeout(visitUrl, 0); } });
+$('#demoView').innerHTML = `<div class="demo-app-name">Jott<span class="who">signed in as ${OWNER.name}</span></div><div class="note-item"><h4>Groceries</h4><p>Oat milk, tomatoes, a birthday card for Dad.</p></div><div class="demo-note">Your notes app. Pick a tool on the left and start poking.</div>`;
+
+/* ---------------- part 2a: authn vs authz sorting ---------------- */
+const AA = [
+  { t: 'Type your email and password to log in', side: 'authn' },
+  { t: 'Prove you own this account with a code from your phone', side: 'authn' },
+  { t: 'Check that this note belongs to you before showing it', side: 'authz' },
+  { t: 'Only let admins open the "delete all users" page', side: 'authz' },
+  { t: 'Sign in with your Google account', side: 'authn' },
+  { t: "Stop a free user from using a paid-only feature", side: 'authz' }
+];
+const aaPlaced = {};
+function chipFor(i) { return `<button class="btn" data-aa="${i}" style="text-align:left; justify-content:flex-start">${esc(AA[i].t)}</button>`; }
+function renderAA() {
+  const pool = AA.map((_, i) => i).filter(i => !aaPlaced[i]);
+  $('#aaPool').innerHTML = pool.length ? pool.map(chipFor).join('') : '<span class="muted">All sorted.</span>';
+  ['authn', 'authz'].forEach(s => {
+    const box = $('#bin' + (s === 'authn' ? 'Authn' : 'Authz'));
+    const items = AA.map((a, i) => [a, i]).filter(([a, i]) => aaPlaced[i] === s);
+    box.innerHTML = items.length ? items.map(([a, i]) => `<button class="btn" data-aa="${i}" style="text-align:left; justify-content:flex-start; width:100%; margin-bottom:6px; background:${a.side === s ? 'var(--good-bg)' : 'var(--bad-bg)'}">${a.side === s ? '✓' : '✗'} ${esc(a.t)}</button>`).join('') : '<span class="muted small">Tap a request below.</span>';
+  });
+}
+let aaPick = null;
+$('#aaPool').addEventListener('click', e => {
+  const b = e.target.closest('[data-aa]'); if (!b) return;
+  aaPick = +b.dataset.aa;
+  CS.say($('#aaNote'), `Now tap <b>Authentication</b> ("who are you?") or <b>Authorization</b> ("are you allowed?") to drop it there.`, 'info');
+});
+[['#binAuthn', 'authn'], ['#binAuthz', 'authz']].forEach(([sel, side]) => {
+  $(sel).parentElement.addEventListener('click', e => {
+    if (e.target.closest('[data-aa]')) { const i = +e.target.closest('[data-aa]').dataset.aa; if (aaPlaced[i]) { delete aaPlaced[i]; renderAA(); return; } }
+    if (aaPick === null) return;
+    const i = aaPick; aaPlaced[i] = side; aaPick = null;
+    const ok = AA[i].side === side;
+    CS.say($('#aaNote'), ok ? `<strong>Right.</strong> ${side === 'authn' ? 'That proves who you are.' : 'That checks whether you\'re allowed.'}` : `<strong>Other side.</strong> "${esc(AA[i].t)}" is really <b>${AA[i].side === 'authn' ? 'authentication' : 'authorization'}</b>. ${AA[i].side === 'authn' ? 'It proves who you are.' : "It decides what you're allowed to do once you're in."}`, ok ? 'good' : 'bad');
+    renderAA();
+    if (AA.every((a, k) => aaPlaced[k] === a.side)) { CS.say($('#aaNote'), `<strong>All sorted correctly.</strong> Logins prove identity; the checks that decide what you can touch are authorization. AI code usually nails the login and forgets the second kind.`, 'good'); CS.tick('p2', 'authz'); }
+  });
+});
+renderAA();
+
+/* ---------------- part 2b: password hashing ---------------- */
+const users = [];
+function fakeHash(pw) {
+  const salt = CS.hex(8);
+  let h = 0; const src = salt + pw + 'jott';
+  for (let i = 0; i < src.length; i++) h = (h * 31 + src.charCodeAt(i)) >>> 0;
+  let out = ''; for (let i = 0; i < 5; i++) { h = (h * 1103515245 + 12345) >>> 0; out += h.toString(16).padStart(8, '0'); }
+  return '$2b$12$' + salt + out.slice(0, 31);
+}
+function renderStore() {
+  const plain = $('#storePlain'), hash = $('#storeHash');
+  if (!users.length) { plain.innerHTML = hash.innerHTML = '<div class="demo-empty" style="padding:8px 0">No users yet.</div>'; return; }
+  plain.innerHTML = users.map(u => `<div class="row2"><span class="u">${esc(u.email)}</span><span>${esc(u.pw)}</span></div>`).join('');
+  hash.innerHTML = users.map(u => `<div class="row2"><span class="u">${esc(u.email)}</span><span>${esc(u.hash)}</span></div>`).join('');
+}
+let userN = 0;
+const EMAILS = ['priya@jott.example', 'sam@jott.example', 'alex@jott.example', 'jo@jott.example'];
+$('#pwSave').addEventListener('click', () => {
+  const pw = $('#pw').value.trim() || 'password';
+  users.push({ email: EMAILS[userN % EMAILS.length], pw, hash: fakeHash(pw) });
+  userN++;
+  renderStore();
+  $('#leakBtn').disabled = false;
+  $('#pw').value = ['sunshine', 'password1', 'letmein', 'qwerty'][userN % 4];
+  CS.say($('#crackNote') && $('#crackNote'), '', ''); $('#crackNote').hidden = true;
+  if (users.length === 1) CS.toast('User saved. Add a couple more, then leak the database.');
+});
+$('#leakBtn').addEventListener('click', () => {
+  const note = $('#crackNote'); note.hidden = false;
+  CS.say(note, `<strong>The thief now has both columns.</strong> The plain-text side hands them every password instantly: <b>${users.map(u => esc(u.pw)).join(', ')}</b>. Many people reuse passwords, so those also open the victims' email and bank. The hashed side is useless to them: each hash is a one-way scramble with a random salt, so there's nothing to read and no shortcut to guess. Same breach, completely different outcome. This is why you never store, and never log, a password as-is.`, 'bad');
+  CS.tick('p2', 'hash');
+});
+renderStore();
+
+/* ---------------- part 2c: least privilege ---------------- */
+const SCOPES = [
+  { id: 'read', b: 'Read users\' notes', small: 'GET notes only. Can\'t change or delete anything.', ok: true },
+  { id: 'rw', b: 'Read and write everything', small: 'Full access to all notes and accounts.', ok: false },
+  { id: 'admin', b: 'Full admin', small: 'Everything, including deleting users and billing.', ok: false }
+];
+$('#leastBox').innerHTML = SCOPES.map(s => `<button class="scope" data-scope="${s.id}" aria-pressed="false"><b>${s.b}</b><small>${s.small}</small></button>`).join('');
+$('#leastBox').addEventListener('click', e => {
+  const b = e.target.closest('[data-scope]'); if (!b) return;
+  $$('.scope').forEach(x => x.setAttribute('aria-pressed', x === b));
+  const s = SCOPES.find(x => x.id === b.dataset.scope);
+  if (s.ok) { CS.say($('#leastNote'), `<strong>Just right.</strong> A monthly summary only needs to <em>read</em> notes. If this key ever leaks, an attacker can read, but can't delete notes, change passwords or touch billing. That's <b>least privilege</b>: give each part of the system the narrowest access that still does the job.`, 'good'); CS.tick('p2', 'least'); }
+  else CS.say($('#leastNote'), `<strong>Too much.</strong> "${s.b}" lets a summary feature ${s.id === 'admin' ? 'delete users and change billing' : 'rewrite and delete every note'}. The feature never needs that. If the key leaks, the damage is huge. Pick the smallest scope that still works.`, 'bad');
+});
+
+/* ---------------- part 2d: checklist ---------------- */
+const CHECK = [
+  { t: 'Use HTTPS everywhere', p: 'HTTPS encrypts traffic so nobody on the network can read passwords or data in transit. Hosts turn it on for free; make sure it\'s not off.' },
+  { t: 'Validate every input', p: 'Check that data from users is the right type, length and shape before you use it. Never trust that the browser already checked.' },
+  { t: 'Keep dependencies patched', p: 'Old packages carry known holes. Run an audit and update the flagged ones.', link: '204-libraries-and-dependencies.html', linkText: 'Course 204' },
+  { t: 'Keep secrets out of git', p: 'A committed key stays in history even after you delete it. Use a .gitignore and environment variables.', link: '203-git.html', linkText: 'Course 203' },
+  { t: "Don't log sensitive data", p: 'Full card numbers, passwords and tokens in logs are a leak waiting to happen. Redact them.' },
+  { t: 'Lock down CORS', p: 'CORS decides which websites may call your API. Allow your own domains, not "*", which means "anyone".' }
+];
+const shield = '<svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path d="M12 3l7 3v5c0 4-3 7-7 8-4-1-7-4-7-8V6z" fill="none" stroke="var(--good)" stroke-width="2" stroke-linejoin="round"/><path d="M9 12l2 2 4-4" fill="none" stroke="var(--good)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+$('#checklist').innerHTML = CHECK.map(c => `<div class="check"><span class="ic" style="background:var(--good-bg)">${shield}</span><div><b>${c.t}</b><p>${c.p}${c.link ? ` <a class="lnk" href="${c.link}">${c.linkText} →</a>` : ''}</p></div></div>`).join('');
+
+/* ---------------- part 3: fix-the-code lab ---------------- */
+const STARTER = `// GET /notes/:id  (open one note)
+// The AI wrote this. It works, but it has four holes.
+
+const DB_KEY = "sk_live_4f21c8a930bd7e6";  // (1) secret in code
+
+function getNote(req, user) {
+  const id = req.params.id;
+
+  // (2) input glued straight into the query
+  const sql = "SELECT * FROM notes WHERE id = '" + id + "'";
+  const note = db.run(sql, DB_KEY);
+
+  // (3) no check that this note belongs to the user
+
+  // (4) sends the whole row back, including private fields
+  return note;
+}`;
+
+// evaluate the learner's code against the four fixes with lightweight text analysis
+function analyze(code) {
+  const c = code.replace(/\/\/[^\n]*/g, '').replace(/\s+/g, ' ');
+  const lower = c.toLowerCase();
+  const f = {};
+  // 1: secret moved to env, and no live key literal left
+  f.secret = /process\.env\.\w+/.test(c) && !/["']sk_live_4f21c8a930bd7e6["']/.test(code) && !/["']sk_live/.test(c);
+  // 2: parameterized query, no string concat of id into sql; uses placeholder + array
+  const concatId = /["'`][^"'`]*(select|from|where)[^"'`]*["'`]\s*\+/i.test(code) || /\+\s*id\b/.test(c) || /\$\{\s*id\s*\}/.test(code) && /`[^`]*\$\{\s*id\s*\}/i.test(code);
+  const paramized = /\?|\$1|:id/.test(c) && /\[\s*id\s*\]|\[\s*req\.params/.test(c) || /run\([^)]*,\s*\[/.test(c);
+  f.param = paramized && !/["'][^"']*where[^"']*["']\s*\+/i.test(code) && !/\+\s*id\b/.test(c);
+  // 3: ownership check
+  f.owner = /note\.owner|note\.user|\.owner\b|owner_id|userid|user\.id/i.test(c) && /(!==|!=|===|==|if)\s*/.test(c) && /(return|throw|deny|403|forbidden|null)/i.test(lower) && /owner|user/i.test(c);
+  // stricter: needs a comparison between note owner and user id
+  f.owner = /(note\.(owner|owner_id|user_id|userid))\s*(!==|!=|===|==)\s*user\.id|user\.id\s*(!==|!=|===|==)\s*note\.(owner|owner_id|user_id|userid)/i.test(c);
+  // 4: least data, returns selected fields, not the whole row
+  f.least = /return\s*\{[^}]*(title|body|id)[^}]*\}/i.test(c) || /\{\s*id:.*title:.*\}/is.test(c) || /pick\(|select fields|note\.title/i.test(c) && /return\s*\{/.test(c);
+  return f;
+}
+function runSec(code) {
+  const f = analyze(code);
+  const rows = [
+    ['secret', 'Secret key hard-coded', f.secret, 'Reads the key from process.env instead of a literal.'],
+    ['param', 'SQL injection', f.param, 'Uses a parameterized query: a ? placeholder with [id] passed separately.'],
+    ['owner', 'Missing ownership check', f.owner, "Compares note.owner to user.id and refuses if they differ."],
+    ['least', 'Returns private fields', f.least, 'Returns only the fields the page needs.']
+  ];
+  const html = `<div style="font-family:var(--f-body)">` + rows.map(([k, label, ok, why]) => `<div style="display:flex; gap:10px; align-items:baseline; padding:3px 0"><span style="flex:none; color:${ok ? '#8BF0A8' : '#FF9A8A'}; font-weight:700">${ok ? '✓' : '✗'}</span><span>${label}: <b style="color:${ok ? '#8BF0A8' : '#FF9A8A'}">${ok ? 'fixed' : 'still open'}</b></span></div>`).join('') + `</div>`;
+  return { f, logs: [], html, error: null };
+}
+CS.codeLab($('#lab'), {
+  part: 'p3', mission: $('#mission'), language: 'JavaScript', starter: STARTER,
+  run: runSec,
+  steps: [
+    { t: 'Get the secret out of the code', how: 'Read DB_KEY from process.env instead of pasting it. Then rotate the old one for real.', hint: 'Change the line to <code>const DB_KEY = process.env.DB_KEY;</code> and remove the pasted key.',
+      check: r => r.f.secret, nudge: r => 'The key is still written into the code. Use <code>process.env.DB_KEY</code> so it lives in the server\'s environment, not the source.' },
+    { t: 'Stop the SQL injection', how: 'Use a parameterized query: a ? placeholder, with the id passed as a separate value.', hint: 'Replace the string with:<br><code>const sql = "SELECT * FROM notes WHERE id = ?";</code><br><code>const note = db.run(sql, [id]);</code>',
+      check: r => r.f.param, nudge: r => 'Gluing <code>id</code> into the string with + lets an attacker inject commands. Use <code>"… WHERE id = ?"</code> and pass <code>[id]</code> separately.' },
+    { t: 'Add an ownership check', how: 'After loading the note, refuse it if it doesn\'t belong to the logged-in user.', hint: 'Add before the return:<br><code>if (note.owner !== user.id) return null;</code>',
+      check: r => r.f.owner, nudge: r => "Being logged in isn't enough. Add <code>if (note.owner !== user.id) return null;</code> so users only see their own notes." },
+    { t: 'Return only what the page needs', how: 'Send back just the fields the note view shows, not the whole database row.', hint: 'Return a small object:<br><code>return { id: note.id, title: note.title, body: note.body };</code>',
+      check: r => r.f.least, nudge: r => 'The whole row can carry private fields. Return <code>{ id: note.id, title: note.title, body: note.body }</code>.' }
+  ],
+  explainError: () => '',
+  doneTutor: '<b>All four closed.</b> The feature does exactly what it did before, but a leaked key, an injected login, a peek at someone else\'s note and an oversharing response are all gone. This is the everyday work of steering an AI safely.'
+});
+// keep the side "holes to close" panel in sync with the lab
+const vulnLabels = [['secret', 'Secret key in the code'], ['param', 'SQL injection in the query'], ['owner', 'No ownership check'], ['least', 'Returns private fields']];
+function paintVulns(f) { $('#vulnList').innerHTML = vulnLabels.map(([k, t], i) => `<div class="vuln ${f && f[k] ? 'fixed' : ''}"><span class="n">${f && f[k] ? '✓' : i + 1}</span><span>${t}</span></div>`).join(''); }
+paintVulns(null);
+$('#lab [data-a="run"]').addEventListener('click', () => setTimeout(() => paintVulns(analyze($('#lab textarea').value)), 0));
+
+/* ---------------- part 4: steer the AI ---------------- */
+CS.steer($('#steer'), [
+  { ai: "Tests keep failing on the auth. To unblock us, I'll disable the login checks for now and we can turn them back on before launch.",
+    opts: [["Sounds fine, just remember to turn it back on.", 0, "\"Temporary\" security holes have a way of shipping. And while it's off, anyone can reach everything."],
+           ["Don't disable auth. Fix the failing test, or add a proper test user, so the checks stay on the whole time.", 1, "Right. Turning security off to make progress is how holes reach production. Keep the checks on and fix the actual cause."],
+           ["Disable it only in the code, not the database.", 0, "The login check is the thing protecting the database. Removing it exposes everything behind it."]] },
+  { ai: "For debugging the payment bug, I added a log line that prints the full card number and CVV on every charge so we can see what's happening.",
+    opts: [["Good idea, we need the data to debug.", 0, "Card numbers and CVV in logs are a serious breach risk, and storing a CVV at all breaks payment rules."],
+           ["Log only the last 4 digits and a reference ID, never the full number or CVV.", 1, "Yes. You can debug with a masked number and an ID. Full card data must never sit in logs."],
+           ["Keep it, but delete the logs after launch.", 0, "Logs get copied, shipped to other tools and backed up. By deletion time the data has spread."]] },
+  { ai: "The API was blocking requests from our test site, so I set the CORS policy to allow origins '*'. Now everything works.",
+    opts: [["Perfect, no more CORS errors.", 0, "'*' means any website on the internet can call your API with your users' sessions. That's the hole, not the fix."],
+           ["Set the allowed origins to our own domains, and add the test site to that list.", 1, "Exactly. CORS should list the sites you trust. '*' trusts everyone, which is almost never what you want."],
+           ["Turn CORS off completely to be safe.", 0, "You can't turn it off to be safe; that's the same as '*'. Name the specific domains you allow."]] },
+  { ai: "There's no login on the admin dashboard yet, but it's fine because the URL is a random string nobody would guess.",
+    opts: [["Add a real login and permission check to the admin dashboard before anyone can reach it.", 1, "Right. A secret URL is not access control. URLs leak through browser history, logs, referrers and shared links. Protect it with real auth."],
+           ["Agreed, the random URL is basically a password.", 0, "It isn't. Unlike a password, the URL travels in plain sight in requests, history and logs, and can't be rotated per user."],
+           ["Make the URL even longer to be extra safe.", 0, "Length doesn't help once the URL leaks even once. The page needs an actual login and role check."]] }
+], { part: 'p4', counter: $('#steerCount') });
+
+/* ---------------- part 5: quiz ---------------- */
+CS.quiz($('#quiz'), [
+  { q: 'You can change the ID in a URL from /orders/1042 to /orders/1043 and see someone else\'s order. What\'s missing?', a: [['Encryption', 0], ['An authorization check that you own the order', 1], ['A faster database', 0]], why: 'You were authenticated (logged in) but nothing checked you were allowed to see that specific order. Every record needs an ownership check.' },
+  { q: 'Why is storing passwords as plain text dangerous even if your database is private?', a: [['It makes logins slow', 0], ['If the database is ever stolen or leaked, every password is instantly readable and reusable', 1], ['Plain text uses more space', 0]], why: 'Databases do get breached. Salted hashes mean a thief gets nothing usable. Plain text hands them every password.' },
+  { q: 'An AI pastes your API key directly into a React component so the browser can call the service. What should you do?', a: [['Nothing, React code is compiled', 0], ['Move the call to the server with the key in an environment variable, and rotate the exposed key', 1], ['Rename the key variable', 0]], why: 'Anything sent to the browser is public. The server should hold the key and make the call, and the leaked key must be treated as compromised.' },
+  { q: 'What does a parameterized query protect against?', a: [['Slow databases', 0], ['SQL injection, by keeping user input as data instead of part of the command', 1], ['Expired passwords', 0]], why: 'Passing values separately from the SQL means input like \' OR \'1\'=\'1 is treated as a literal string, never as commands.' },
+  { q: 'A feature only needs to read users\' notes to email a summary. What access should its key have?', a: [['Full admin, to be safe', 0], ['Read and write everything', 0], ['Read notes only', 1]], why: 'Least privilege: give each part the narrowest access that still works, so a leaked key does the least damage.' }
+], { part: 'p5', doneCard: $('#doneCard'), doneTitle: 'You can spot the holes now.', doneText: 'You can find leaked secrets, missing permission checks, injection and weak password storage, and ask the AI for the right fix by name.' });
+})();
+</script>
+</body>
+</html>

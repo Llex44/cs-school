@@ -1,0 +1,1010 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Testing &amp; debugging · CS School</title>
+<meta name="description" content="Course 208: read an error, write a test, and ask the AI for the right fix.">
+<link rel="icon" href="../assets/favicon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="../assets/cs-school.css">
+<style>
+/* lesson-specific styles: bakery shop preview, console, code viewer, fix picker, test runner, test shape */
+/* hero test runner */
+.h-run{transform-box:fill-box; transform-origin:center; animation:spin 1s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+.h-pop{transform-box:fill-box; transform-origin:center; animation:pop .35s cubic-bezier(.3,1.7,.5,1)}
+
+/* shop preview (a mock website, so it keeps its own warm colors in both themes) */
+.browser{border:1px solid var(--hair); border-radius:16px; overflow:hidden; background:#FFF9F0; box-shadow:var(--float)}
+.browser-bar{display:flex; align-items:center; gap:6px; padding:8px 12px; background:var(--panel); border-bottom:1px solid var(--hair)}
+.browser-bar i{width:11px; height:11px; border-radius:50%; background:var(--rule); display:block}
+.url{margin-left:8px; flex:1; font-family:var(--f-mono); font-size:.85rem; color:var(--ink-2); overflow:hidden; white-space:nowrap; text-overflow:ellipsis}
+.shop{color:#3B2A1A; padding:18px 18px 20px; position:relative}
+.shop-head{display:flex; align-items:center; gap:10px; margin-bottom:6px}
+.shop-head h4{font-family:var(--f-display); font-weight:900; font-size:1.45rem; color:#7A3E12; margin:0; line-height:1.1}
+.shop-head span{font-size:.95rem; color:#7A5A3A}
+.prod{display:flex; align-items:center; gap:12px; padding:8px 0}
+.prod + .prod{border-top:1px dashed #E8D6BF}
+.prod svg{width:46px; height:46px; flex:none}
+.prod .nm{flex:1; font-weight:700; line-height:1.25}
+.prod .pr{display:block; font-family:var(--f-mono); font-weight:400; font-size:.9rem; color:#7A5A3A}
+.shop button{font-family:var(--f-display); font-weight:800; font-size:.95rem; cursor:pointer; border:0; border-radius:99px; min-height:44px; padding:8px 16px; transition:transform .1s, background .15s}
+.shop button:active{transform:translateY(1px)}
+.shop .add{background:#F3E1C8; color:#5A2E0C}
+.shop .add:hover{background:#EDD3AF}
+.shop .add.tap{animation:tap .35s}
+@keyframes tap{40%{transform:scale(.92); background:#E2BF8E}}
+.cart{margin-top:12px; background:#FFF0DB; border-radius:14px; padding:12px 14px}
+.cart-lines{font-size:.95rem; color:#6B4A2A; min-height:1.5em}
+.cart-lines div{display:flex; justify-content:space-between; gap:10px; animation:rise .25s}
+.cart-total{display:flex; justify-content:space-between; align-items:baseline; margin-top:6px; font-family:var(--f-display); font-weight:900; font-size:1.3rem}
+.cart-total .amt{font-family:var(--f-mono); font-weight:600; transition:color .2s}
+.cart-total .amt.weird{color:#C0261C; animation:shake .4s}
+.shop-actions{display:flex; gap:8px; margin-top:10px}
+.shop .checkout{flex:1; background:#7A3E12; color:#FFF}
+.shop .checkout:hover{background:#5E2E0B}
+.shop .checkout.tap{animation:tap2 .35s}
+@keyframes tap2{40%{transform:scale(.96)}}
+.shop .empty{background:transparent; color:#7A5A3A}
+.shop-msg{margin-top:10px; font-size:.95rem; color:#8A3A10; min-height:1.5em}
+.pay{margin-top:12px; background:#FFFFFF; border-radius:14px; padding:14px; box-shadow:0 6px 20px -8px rgba(90,46,12,.35); animation:rise .35s}
+.pay b{font-family:var(--f-display); font-weight:900; font-size:1.2rem; display:block}
+.pay .field{margin-top:8px; background:#F6EEE3; border-radius:8px; padding:8px 10px; font-family:var(--f-mono); font-size:.9rem; color:#7A5A3A}
+.pay .field.bad{background:#FDE3DF; color:#9A2A10}
+
+/* console and code viewer (dark panels, like browser developer tools) */
+.devpanel{background:var(--term); color:var(--term-ink); border-radius:16px; overflow:hidden; box-shadow:var(--float); min-width:0; width:100%; border:1px solid var(--glass-edge)}
+.dev-bar{display:flex; justify-content:space-between; align-items:center; gap:10px; padding:9px 14px; background:var(--term-2); color:var(--term-dim); font-family:var(--f-display); font-weight:700; font-size:.95rem}
+.dev-bar b{color:#FFFFFF; font-weight:800}
+.dev-bar .count{font-family:var(--f-mono); font-weight:400; font-size:.85rem}
+.dev-bar .count.has{color:#FF9A8A}
+.con-out{height:250px; overflow-y:auto; padding:10px 12px; font-family:var(--f-mono); font-size:14.5px; line-height:1.55}
+.con-out .info{color:#AEB7C2; padding:2px 4px; animation:rise .25s}
+.con-out .info .str{color:#8BF0A8}
+.con-out .sep{color:#7C8894; padding:6px 4px 2px; font-family:var(--f-body); font-size:.9rem}
+.con-out .placeholder{color:#7C8894; font-family:var(--f-body); font-size:1rem; padding:6px 4px}
+.errblock{background:rgba(255,99,105,.13); border-radius:10px; padding:8px 8px 6px; margin:6px 0; animation:rise .3s}
+.errblock .msg{color:#FFB4AE; padding:0 4px 4px; font-weight:600}
+.frame{display:block; width:100%; text-align:left; background:none; border:0; color:#FFD4CE; font:inherit; font-size:14px; padding:6px 8px 6px 22px; border-radius:8px; cursor:pointer; min-height:40px; word-break:break-word}
+.frame:hover{background:rgba(255,255,255,.08)}
+.frame.sel{background:rgba(255,197,61,.22); color:#FFEBC0}
+.frame .loc{white-space:nowrap; text-decoration:underline; text-decoration-color:rgba(255,255,255,.4); text-underline-offset:3px; margin-left:.5ch}
+.src{font-family:var(--f-mono); font-size:14.5px; line-height:1.75; padding:10px 0; overflow-x:auto}
+.src .ln{display:flex; white-space:pre; padding-right:16px; min-width:max-content}
+.src .no{flex:none; width:3.2em; text-align:right; padding-right:14px; color:#6B7582; user-select:none}
+.src .ln.hl{background:rgba(255,197,61,.2)} .src .ln.hl .no{color:#FFC53D}
+.src .ln.soft{background:rgba(124,196,255,.12)} .src .ln.soft .no{color:#9CCBFF}
+.src .ln.del{background:rgba(255,99,105,.18)} .src .ln.del .no{color:#FF9A8A}
+.src .ln.add{background:rgba(92,224,176,.16)} .src .ln.add .no{color:#5CE0B0}
+.src .k{color:#C4A7FF} .src .s{color:#8BF0A8} .src .n{color:#FFC53D} .src .f{color:#7CC4FF} .src .c{color:#8A95A3}
+.watch{border-top:1px solid #2B313B; padding:10px 14px 12px; display:flex; flex-wrap:wrap; gap:8px; align-items:center; font-size:.95rem}
+.watch .lbl{color:var(--term-dim); font-family:var(--f-display); font-weight:700}
+.val{font-family:var(--f-mono); font-size:.9rem; background:#222933; color:#ECEFF3; border-radius:8px; padding:3px 10px; overflow-wrap:anywhere; min-width:0}
+.val em{font-style:normal; color:#FFC53D}
+.val small{color:var(--term-dim); font-size:.85rem}
+.viewer-empty{padding:28px 18px; color:#9AA4B0; font-size:1rem}
+.step-in{margin:0 14px 14px; background:transparent; color:#ECEFF3; border:1px solid #56606D; box-shadow:none}
+.step-in:hover{background:#262C36}
+
+/* fix picker */
+.fixes{display:flex; flex-direction:column; gap:10px}
+.fixopt{display:flex; flex-direction:column; gap:4px; width:100%; text-align:left; font:inherit; color:var(--ink); background:var(--glass-strong); border:1px solid var(--hair); border-radius:14px; padding:12px 14px; cursor:pointer; min-height:44px; transition:background .15s}
+.fixopt:hover:not(:disabled){background:var(--paper)}
+.fixopt:disabled{opacity:.5; cursor:not-allowed}
+.fixopt b{font-family:var(--f-display); font-weight:800}
+.fixopt code{align-self:flex-start; font-size:.9rem; white-space:pre-wrap}
+.fixopt[aria-pressed="true"]{background:var(--ink); color:var(--paper)}
+.fixopt[aria-pressed="true"] code{background:rgba(255,255,255,.16); color:var(--paper)}
+.fixopt.verified{background:var(--good-bg); color:var(--ink)}
+.fixopt.verified code{background:var(--panel-2); color:var(--ink)}
+.fixopt.failed{background:var(--bad-bg); color:var(--ink)}
+.fixopt.failed code{background:var(--panel-2); color:var(--ink)}
+.verify-row{margin-top:12px}
+
+/* anatomy of an error */
+.errsample{font-family:var(--f-mono); font-size:.95rem; background:var(--term); color:var(--term-ink); border-radius:14px; padding:16px 18px; overflow-x:auto; white-space:pre; line-height:1.8}
+.errsample .t{color:#FF9A8A; font-weight:600} .errsample .m{color:#FFD4CE} .errsample .top{background:rgba(255,197,61,.2); border-radius:4px; color:#FFEBC0} .errsample .d{color:var(--term-dim)}
+.errsample .tag{display:inline-grid; place-items:center; width:1.5em; height:1.5em; border-radius:50%; background:#FFC53D; color:#121417; font-family:var(--f-display); font-weight:800; font-size:.8rem; margin-left:.8ch; vertical-align:1px}
+.anatomy{margin:0; display:grid; grid-template-columns:1fr 1fr; gap:16px 24px}
+.anatomy > div{border-radius:16px; padding:14px 16px}
+.anatomy dt{font-family:var(--f-display); font-weight:800; font-size:1.1rem; display:flex; align-items:center; gap:10px}
+.anatomy dt .tag{flex:none; display:grid; place-items:center; width:26px; height:26px; border-radius:50%; background:var(--tip-bg); color:var(--tip); font-size:.85rem}
+.anatomy dd{margin:4px 0 0; font-size:1rem; color:var(--ink-2)}
+.loop{margin:0; display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:16px}
+.loop > div{border-radius:18px; padding:16px}
+.loop dt{font-family:var(--f-display); font-weight:900; font-size:1.2rem; display:flex; align-items:center; gap:10px}
+.loop dt i{flex:none; width:12px; height:12px; border-radius:50%; background:var(--c)}
+.loop dd{margin:6px 0 0; font-size:1rem; color:var(--ink-2)}
+.loop .say{display:block; margin-top:8px; font-size:.95rem; color:var(--ink)}
+
+/* test runner */
+.chg-list{display:flex; flex-direction:column; gap:10px}
+.chg{display:flex; gap:12px; align-items:flex-start; width:100%; text-align:left; font:inherit; color:var(--ink); background:var(--glass-strong); border:1px solid var(--hair); border-radius:14px; padding:12px 14px; cursor:pointer; min-height:44px; transition:background .15s}
+.chg:hover:not(:disabled){background:var(--paper)}
+.chg:disabled{cursor:not-allowed; opacity:.6}
+.chg .sw{flex:none; width:42px; height:24px; border-radius:12px; background:color-mix(in srgb, var(--ink) 18%, transparent); position:relative; margin-top:2px; transition:background .2s}
+.chg .sw::after{content:""; position:absolute; top:3px; left:3px; width:18px; height:18px; border-radius:50%; background:var(--paper); box-shadow:0 1px 3px rgba(0,0,0,.3); transition:transform .2s}
+.chg[aria-pressed="true"] .sw{background:var(--l1)}
+.chg[aria-pressed="true"] .sw::after{transform:translateX(18px)}
+.chg b{display:block; font-family:var(--f-display); font-weight:800; line-height:1.3}
+.chg small{display:block; color:var(--ink-2); font-size:.95rem; line-height:1.4; margin-top:2px}
+.runner-head{display:flex; justify-content:space-between; align-items:flex-start; gap:12px; flex-wrap:wrap}
+.runner-head .ctl-title{margin-bottom:4px}
+.tgroup{margin-top:14px}
+.tgroup h4{font-family:var(--f-display); font-weight:800; font-size:1.02rem; display:flex; align-items:center; gap:8px; margin:0}
+.tgroup h4 i{width:10px; height:10px; border-radius:50%; background:var(--c)}
+.tgroup .gsub{font-size:.95rem; color:var(--ink-2); margin:0 0 4px 18px}
+.trow{display:flex; align-items:center; gap:10px; padding:5px 0 5px 2px; font-size:1rem}
+.trow .dot{flex:none; width:14px; height:14px; border-radius:50%; background:color-mix(in srgb, var(--ink) 18%, transparent); transition:background .2s}
+.trow.running .dot{background:var(--l4); animation:pulse2 .6s infinite alternate}
+@keyframes pulse2{to{transform:scale(.6)}}
+.trow.pass .dot{background:var(--l3)}
+.trow.fail .dot{background:var(--l1)}
+.trow.new{animation:flash 1.2s}
+.trow .tn{flex:1; min-width:0}
+.trow.fail .tn{color:var(--bad); font-weight:700}
+.trow .ms{font-family:var(--f-mono); font-size:.9rem; color:var(--ink-2); white-space:nowrap}
+.tfail{margin:0 0 6px 26px; font-family:var(--f-mono); font-size:.9rem; background:var(--bad-bg); color:var(--bad); border-radius:8px; padding:6px 10px; animation:rise .25s}
+.stale .trow,.stale .tfail{opacity:.45}
+.tsum{margin-top:14px; display:flex; flex-direction:column; gap:8px}
+.tbar{display:flex; height:10px; border-radius:5px; overflow:hidden; background:color-mix(in srgb, var(--ink) 10%, transparent)}
+.tbar i{display:block; height:100%; transition:width .3s}
+.tsum p{font-family:var(--f-display); font-weight:800; font-size:1.05rem}
+.receipt-list{display:flex; flex-direction:column}
+.rrow{display:flex; justify-content:space-between; gap:12px; align-items:baseline; padding:8px 0; font-size:1rem}
+.rrow + .rrow{border-top:1px solid var(--hair)}
+.rrow .amt{font-family:var(--f-mono); font-weight:600; white-space:nowrap; text-align:right}
+.rrow .amt small{display:block; font-family:var(--f-body); font-weight:400; font-size:.9rem; color:var(--bad)}
+.rrow.off .amt{color:var(--bad)}
+.promise{background:var(--tip-bg); border-radius:12px; padding:8px 12px; font-size:.95rem; margin-bottom:6px}
+.promise b{font-family:var(--f-display); color:var(--tip)}
+.addtest .opts{margin-top:4px}
+.addtest .opt:disabled{opacity:.55}
+
+/* test shape */
+.shape{display:grid; grid-template-columns:minmax(0,1fr) minmax(0,1.1fr); gap:28px; align-items:center}
+.shape-art{border-radius:20px; padding:18px}
+.shape-art svg{display:block; width:100%; height:auto}
+.sdot{transform-box:fill-box; transform-origin:center}
+.shape.seen .sdot{animation:pop .45s cubic-bezier(.3,1.7,.5,1) backwards}
+
+/* code lab: keep line numbers in step with the 16px editor text, show all output, and let the side panel sit beside the tall editor */
+#lab .cl-lines{font-size:16px}
+#lab .cl-out{max-height:none}
+@media (min-width:901px){ #p3 .lab{grid-template-areas:"mission work" "side work" "extra work"; grid-template-rows:auto auto 1fr} }
+/* code lab side */
+.sign{border-radius:16px; background:#FFF0DB; color:#4A2A0E; padding:16px 18px; text-align:center; box-shadow:var(--float)}
+.sign b{display:block; font-family:var(--f-display); font-weight:900; font-size:1.25rem; color:#7A3E12; line-height:1.2}
+.sign span{display:block; margin-top:4px; font-size:1rem}
+.readtest{font-size:1rem; display:flex; flex-direction:column; gap:10px}
+.readtest .code{font-size:.9rem; padding:12px 14px}
+
+@media (max-width:900px){ .anatomy,.shape{grid-template-columns:minmax(0,1fr)} .loop{grid-template-columns:repeat(2,minmax(0,1fr))} }
+@media (max-width:640px){ .loop{grid-template-columns:minmax(0,1fr)} .con-out{height:230px} .src{font-size:13.5px} .errsample{font-size:.85rem} }
+</style>
+</head>
+<body>
+<main id="top">
+  <section class="wrap hero">
+    <div>
+      <div class="kicker">Core curriculum · Course 208 · Testing &amp; debugging</div>
+      <h1>An error message is a map to the bug.</h1>
+      <p class="lede">Every app breaks. The people who fix things fast aren't smarter, they read the clues. You'll learn to read an error, hunt a bug down step by step, and use tests so your AI can't quietly break what already worked.</p>
+      <ul class="facts">
+        <li>About 15 minutes</li>
+        <li>5 parts</li>
+        <li>Code lab</li>
+        <li>No coding experience needed</li>
+      </ul>
+      <div class="row hero-cta"><a class="btn primary" href="#p1">Start the lesson</a></div>
+    </div>
+    <figure style="margin:0">
+      <div class="hero-visual glass">
+        <svg id="heroArt" role="img" aria-label="An animated test run: tests for a bakery's cart run one by one. Three turn red because prices were added as text, then after a fix every test turns green."></svg>
+        <div class="legend">
+          <span><i style="background:var(--l3)"></i>passed</span>
+          <span><i style="background:var(--l1)"></i>failed</span>
+          <span><i style="background:var(--l4)"></i>running</span>
+        </div>
+      </div>
+      <div class="hero-caption glass" aria-hidden="true"><span>$</span><span id="heroCap">npm test</span></div>
+    </figure>
+  </section>
+
+  <div class="wrap">
+  <!-- PART 1 -->
+  <section class="part" id="p1">
+    <span class="bullet glass" data-p="p1">1</span>
+    <div class="part-head">
+      <div class="kicker">Part 1 of 5</div>
+      <h2>Bug hunt: read the error</h2>
+      <p>A <b>bug</b> is code doing something you didn't mean. Finding one is detective work: make it happen, find where, fix the cause, then check. The best clue is usually an <b>error message</b> the app already printed for you.</p>
+    </div>
+
+    <div class="chat" aria-label="Example conversation">
+      <div class="msg ai"><span class="who">AI assistant</span>I fixed the checkout! It should work now.</div>
+      <div class="msg me"><span class="who">You</span>Customers still say nothing happens when they press Check out.</div>
+      <div class="msg ai"><span class="who">AI assistant</span>Can you paste the exact error from the browser console, and the steps that make it happen? Without those, I'm guessing.</div>
+    </div>
+
+    <div class="task glass" data-part="p1">
+      <h3>Your task</h3>
+      <ol>
+        <li data-t="repro"><span>Reproduce the bug: add a croissant and a sourdough loaf, then look at the total.</span></li>
+        <li data-t="crash"><span>Press Check out and watch the error log.</span></li>
+        <li data-t="where"><span>In the error, click the line where the code crashed.</span></li>
+        <li data-t="cause"><span>Follow the trail back to where the bad value was made.</span></li>
+        <li data-t="fix"><span>Pick a fix, then verify it by repeating the same steps.</span></li>
+      </ol>
+    </div>
+
+    <div class="pg">
+      <div class="pg-col">
+        <div class="o1 browser">
+          <div class="browser-bar"><i></i><i></i><i></i><span class="url">beasbakery.com</span></div>
+          <div class="shop" id="shop"></div>
+        </div>
+        <div class="o2 note" id="tip1" aria-live="polite">Use the shop's buttons like a customer would. Watch the total, and the error log.</div>
+        <details class="deeper glass o6">
+          <summary>Under the hood: why "3.50" + "7.00" made "03.507.00" <small>optional</small></summary>
+          <div>
+            <p>In JavaScript, <code>+</code> means two different things. Between numbers it adds: <code>3.5 + 7</code> is <code>10.5</code>. If either side is text (a <b>string</b>), it glues them together: <code>"3.5" + "7"</code> is <code>"3.57"</code>.</p>
+            <p>Data that arrives from a server, a form or a web address is often text, even when it looks like a number. That's why <code>Number(item.price)</code> fixes it: it turns the text <code>"3.50"</code> into the number <code>3.5</code> before adding.</p>
+            <p>To see the console on a real site: in Chrome or Edge, right-click the page, choose Inspect, then the Console tab. Errors on the server side live in your hosting logs instead (course 209).</p>
+          </div>
+        </details>
+      </div>
+      <div class="pg-col">
+        <div class="o3 devpanel">
+          <div class="dev-bar"><span><b>Console</b> · error log</span><span class="count" id="errCount">0 errors</span></div>
+          <div class="con-out" id="con" aria-live="polite"></div>
+        </div>
+        <div class="o4 devpanel" id="viewer"></div>
+        <div class="o5 ctl glass">
+          <h3 class="ctl-title">Choose a fix</h3>
+          <p class="ctl-sub" id="fixSub">Find the cause first. Then the AI offers three fixes.</p>
+          <div class="fixes" id="fixes"></div>
+          <div class="verify-row"><button class="btn primary" id="verifyBtn" disabled>Verify: repeat the same steps</button></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="stack" style="margin-top:56px">
+      <h3>How to read an error</h3>
+      <p class="muted">Errors look scary, but they're always built the same way. Here's the one you just met.</p>
+      <div class="errsample" role="img" aria-label="The error: Uncaught TypeError: total.toFixed is not a function, followed by three lines of stack trace."><span class="t">Uncaught TypeError</span><span class="tag">1</span>: <span class="m">total.toFixed is not a function</span><span class="tag">2</span>
+<span class="top">    at formatPrice (cart.js:11)</span><span class="tag">3</span>
+<span class="d">    at showCheckout (checkout.js:6)</span><span class="tag">4</span>
+<span class="d">    at checkoutButton.onclick (shop.js:21)</span></div>
+      <dl class="anatomy">
+        <div class="glass"><dt><span class="tag">1</span>The type</dt><dd><b>TypeError</b> means a value was the wrong kind, like text where a number was needed. Other common ones: <b>ReferenceError</b> (a name that doesn't exist, often a typo) and <b>SyntaxError</b> (code that isn't valid, like a missing bracket).</dd></div>
+        <div class="glass"><dt><span class="tag">2</span>The message</dt><dd>What went wrong, in the computer's words. "total.toFixed is not a function" means: total doesn't have a toFixed, so total isn't the number we expected.</dd></div>
+        <div class="glass"><dt><span class="tag">3</span>Where it crashed</dt><dd>The top line of the <b>stack trace</b>: the function, the file and the line number. <code>cart.js:11</code> means file cart.js, line 11. Start reading here.</dd></div>
+        <div class="glass"><dt><span class="tag">4</span>How it got there</dt><dd>Each line below is the function that called the one above it, all the way back to the click. The real cause is often further down this trail than the crash.</dd></div>
+      </dl>
+    </div>
+
+    <div class="stack" style="margin-top:48px">
+      <h3>The debugging loop</h3>
+      <p class="muted">You just did all four steps. Ask the AI to work the same way, one step at a time.</p>
+      <dl class="loop">
+        <div class="glass" style="--c:var(--l2)"><dt><i></i>Reproduce</dt><dd>Find exact steps that make the bug happen every time.<span class="say">Tell the AI: "Add a croissant and a loaf, press Check out."</span></dd></div>
+        <div class="glass" style="--c:var(--l5)"><dt><i></i>Isolate</dt><dd>Narrow it down: which line, which function, which value.<span class="say">Tell the AI: "total is text at cart.js line 11."</span></dd></div>
+        <div class="glass" style="--c:var(--l4)"><dt><i></i>Fix</dt><dd>Change the cause, not the symptom. The smallest change that works.<span class="say">Tell the AI: "Convert prices to numbers where they're added."</span></dd></div>
+        <div class="glass" style="--c:var(--l3)"><dt><i></i>Verify</dt><dd>Repeat the exact steps. Then keep a test so it can't come back.<span class="say">Tell the AI: "Show me it working with the same steps."</span></dd></div>
+      </dl>
+    </div>
+  </section>
+
+  <!-- PART 2 -->
+  <section class="part" id="p2">
+    <span class="bullet glass" data-p="p2">2</span>
+    <div class="part-head">
+      <div class="kicker">Part 2 of 5</div>
+      <h2>Tests: code that checks code</h2>
+      <p>A <b>test</b> is a tiny program that runs your code with a known input and checks the answer. A computer can run hundreds of them in seconds, every time anything changes. That's how you notice when an AI "improvement" quietly breaks something that used to work.</p>
+    </div>
+
+    <div class="task glass" data-part="p2">
+      <h3>Your task</h3>
+      <ol>
+        <li data-t="run"><span>Run the tests on Bea's shop.</span></li>
+        <li data-t="red"><span>Turn on one of the AI's changes and run the tests again.</span></li>
+        <li data-t="sneaky"><span>Find the AI change that breaks a promise to customers while every test stays green.</span></li>
+        <li data-t="add"><span>Add the test that would have caught it, and run the tests.</span></li>
+      </ol>
+    </div>
+
+    <div class="pg">
+      <div class="pg-col">
+        <div class="o1 ctl glass">
+          <h3 class="ctl-title">The AI's changes</h3>
+          <p class="ctl-sub">The AI proposed four "improvements". Switch them on and off. Try one at a time.</p>
+          <div class="chg-list" id="changes"></div>
+        </div>
+        <div class="o3 ctl glass">
+          <h3 class="ctl-title">What customers see</h3>
+          <div class="promise"><b>Bea's promise:</b> 10% off with code BREAD10. Free delivery on orders of $25 or more.</div>
+          <div class="receipt-list" id="receipt"></div>
+        </div>
+      </div>
+      <div class="pg-col">
+        <div class="o2 ctl glass" id="runnerCard">
+          <div class="runner-head">
+            <div><h3 class="ctl-title">Test runner</h3><p class="ctl-sub" style="margin:0" id="runnerSub">7 tests for Bea's cart, checkout and site.</p></div>
+            <button class="btn primary" id="runBtn">Run tests</button>
+          </div>
+          <div id="runner"></div>
+          <div class="tsum" id="tsum" aria-live="polite"></div>
+        </div>
+        <div class="o4 note" id="tip2" aria-live="polite">Press <b>Run tests</b> to see Bea's tests check her code.</div>
+        <div class="o5 ctl glass addtest" id="addCard">
+          <h3 class="ctl-title">Write a new test</h3>
+          <p class="ctl-sub" id="addSub">Once you've found the sneaky change, pick the test that would catch it.</p>
+          <div class="opts" id="addOpts"></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="stack" style="margin-top:56px">
+      <h3>Three kinds of tests</h3>
+      <div class="shape" id="shape">
+        <div class="shape-art glass"><svg id="shapeArt" viewBox="0 0 430 230" role="img" aria-label="The shape of a healthy test suite: many small unit tests at the bottom, fewer integration tests in the middle, and a couple of end-to-end tests at the top."></svg></div>
+        <div class="stack" style="gap:14px">
+          <p><b>Unit tests</b> check one small piece, like the delivery function, by itself. They run in milliseconds and point straight at the broken line. Most of your tests should be these.</p>
+          <p><b>Integration tests</b> check that pieces work together, like coupon plus delivery at checkout, or the code plus the database.</p>
+          <p><b>End-to-end tests</b> drive a real browser like a robot customer: open the site, click Add, click Check out. They catch wiring problems nothing else can, but they're slow and fragile, so keep a few for the most important journeys.</p>
+        </div>
+      </div>
+      <div class="note"><strong>Green doesn't mean correct.</strong> Passing tests only prove that the things someone thought to check still work. When the AI says "all tests pass", ask: "Do the tests cover what I just changed?"</div>
+      <details class="deeper glass">
+        <summary>Under the hood: what a test file looks like <small>optional</small></summary>
+        <div>
+          <p>Most languages have a test tool: Jest or Vitest for JavaScript, pytest for Python, Playwright or Cypress for end-to-end tests. They all read much the same:</p>
+          <div class="code"><span class="f">test</span>(<span class="s">'exactly $25 gets free delivery'</span>, () =&gt; {
+  <span class="f">expect</span>(<span class="f">delivery</span>(<span class="n">25</span>)).<span class="f">toBe</span>(<span class="n">0</span>);
+});</div>
+          <p>A name that says what should be true, some code to run, and an <b>expectation</b>. A test you add after fixing a bug is called a <b>regression test</b>: it makes sure the same bug can't sneak back in later.</p>
+          <p>Tests usually run automatically on every pull request. This is called <b>continuous integration</b> (CI). When an AI tool says "CI is red", a test failed on its branch.</p>
+        </div>
+      </details>
+    </div>
+  </section>
+
+  <!-- PART 3 -->
+  <section class="part" id="p3">
+    <span class="bullet glass" data-p="p3">3</span>
+    <div class="part-head">
+      <div class="kicker">Part 3 of 5</div>
+      <h2>Try it: fix the test, then the code</h2>
+      <p>Real tests are just a few lines of code. Here's the delivery function the AI wrote, with its tests. Edit the code, press Run, and read the results. Nothing here can break.</p>
+    </div>
+
+    <div class="lab">
+      <div class="a-mission ctl glass">
+        <h3 class="ctl-title">Your mission</h3>
+        <p class="ctl-sub" style="margin-top:0">The AI wrote Bea's delivery rule and three tests. All three pass. One of them is wrong.</p>
+        <ol class="mission" id="mission"></ol>
+      </div>
+      <div class="a-work" id="lab"></div>
+      <div class="a-side stack" style="gap:18px">
+        <div class="sign" role="note"><b>Free delivery on orders of $25 or more</b><span>Bea's Bakery, since 1998</span></div>
+        <div class="ctl glass">
+          <h3 class="ctl-title">How to read a test</h3>
+          <div class="readtest">
+            <div class="code"><span class="f">test</span>(<span class="s">'big orders ship free'</span>, () =&gt; {
+  <span class="f">expect</span>(<span class="f">delivery</span>(<span class="n">40</span>)).<span class="f">toBe</span>(<span class="n">0</span>);
+});</div>
+            <p>Read it out loud: "Test that big orders ship free. Expect delivery of 40 to be 0."</p>
+            <p><code>expect(…)</code> is what the code actually gives. <code>toBe(…)</code> is what it should give. The right answer comes from the promise, never from what the code happens to do.</p>
+          </div>
+        </div>
+      </div>
+      <div class="a-extra">
+        <details class="deeper glass">
+          <summary>Under the hood: why the edge matters <small>optional</small></summary>
+          <div>
+            <p><code>&gt;</code> means "greater than". <code>&gt;=</code> means "greater than or equal to". They agree on every amount except exactly 25. Bugs love these edges, so good tests check right on the line and just either side of it.</p>
+            <p>Ask your AI for "boundary tests" or "edge cases" and it will add tests like $24.99, $25.00 and $25.01.</p>
+          </div>
+        </details>
+      </div>
+    </div>
+  </section>
+
+  <!-- PART 4 -->
+  <section class="part" id="p4">
+    <span class="bullet glass" data-p="p4">4</span>
+    <div class="part-head">
+      <div class="kicker">Part 4 of 5</div>
+      <h2>Steer the AI</h2>
+      <p>AI tools are eager to make red things go away. Sometimes that means hiding the problem instead of fixing it. Pick the reply you'd send.</p>
+    </div>
+    <p class="counter" id="steerCount"></p>
+    <div id="steer"></div>
+  </section>
+
+  <!-- PART 5 -->
+  <section class="part" id="p5">
+    <span class="bullet glass" data-p="p5">5</span>
+    <div class="part-head">
+      <div class="kicker">Part 5 of 5</div>
+      <h2>Check your understanding</h2>
+      <p>Five quick questions. Each answer explains itself.</p>
+    </div>
+    <div id="quiz"></div>
+    <div id="doneCard" aria-live="polite"></div>
+  </section>
+  </div>
+
+  <section class="after" id="cheat">
+    <div class="wrap stack">
+      <h2>Cheat sheet</h2>
+      <p class="muted">The words you'll hear when something breaks, and what to listen for.</p>
+      <div class="table-wrap glass">
+        <table>
+          <thead><tr><th>Term</th><th>In plain words</th><th>When the AI says…</th></tr></thead>
+          <tbody>
+            <tr><td>Error message</td><td>The computer telling you what went wrong and where.</td><td>"Can you paste the full error?" Always paste all of it, stack trace included.</td></tr>
+            <tr><td>Stack trace</td><td>The chain of functions that led to the crash. Top line is where it broke.</td><td>"It fails in formatPrice at cart.js:11." That's the top line.</td></tr>
+            <tr><td>Reproduce</td><td>Exact steps that make the bug happen every time.</td><td>"I can't reproduce it." Give steps, browser, and what you expected.</td></tr>
+            <tr><td>Unit test</td><td>Checks one small function by itself. Fast.</td><td>"Added unit tests for the price math."</td></tr>
+            <tr><td>Integration test</td><td>Checks that pieces work together.</td><td>"Tested checkout with the real database."</td></tr>
+            <tr><td>End-to-end test</td><td>A robot clicks through the real site like a customer.</td><td>"The Playwright test for ordering passes."</td></tr>
+            <tr><td>Regression test</td><td>A test added after a fix so the bug can't return.</td><td>"I added a test for the $25 case." A great sign.</td></tr>
+            <tr><td><code>try / catch</code></td><td>Code that catches an error so the app doesn't crash.</td><td>"I wrapped it in try/catch." Ask: is the error handled, or just hidden?</td></tr>
+            <tr><td>"All tests pass"</td><td>Everything the tests check works.</td><td>Ask: did any test change or disappear? Does a test cover the new code?</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+</main>
+<script src="../assets/cs-school.js"></script>
+<script>
+(() => {
+const { $, $$, esc, reduce } = CS;
+const money = n => '$' + n.toFixed(2);
+const wait = ms => new Promise(r => setTimeout(r, reduce ? 0 : ms));
+
+CS.lesson({
+  id: '208',
+  parts: [
+    { id: 'p1', title: 'Bug hunt' },
+    { id: 'p2', title: 'Tests' },
+    { id: 'p3', title: 'Try it' },
+    { id: 'p4', title: 'Steer the AI' },
+    { id: 'p5', title: 'Check' }
+  ]
+});
+
+/* ---------------- hero: an animated test run ---------------- */
+(function hero() {
+  const svg = $('#heroArt'), cap = $('#heroCap');
+  const GROUPS = [
+    ['cart.test.js', [['adds up prices', 1, '3 ms'], ['BREAD10 takes 10% off', 0, '2 ms'], ['free delivery from $25', 0, '2 ms']]],
+    ['checkout.test.js', [['shows the right total', 1, '41 ms'], ['coupon, then delivery', 0, '38 ms']]],
+    ['order.spec.js · end-to-end', [['a customer can order', 1, '1.9 s']]]
+  ];
+  const rows = []; GROUPS.forEach(([, ts], g) => ts.forEach(t => rows.push({ g, name: t[0], bad: t[1], ms: t[2] })));
+  const st = { status: rows.map(() => 'idle'), fixed: false, callout: false, summary: '' };
+  const COL = { idle: 'color-mix(in srgb, var(--ink) 20%, transparent)', run: 'var(--l4)', pass: 'var(--l3)', fail: 'var(--l1)' };
+  function draw() {
+    const narrow = (svg.clientWidth || 520) < 430;
+    const W = narrow ? 340 : 520, RH = 31, GH = 28;
+    let y = 8, out = '', ri = 0;
+    GROUPS.forEach(([file, ts]) => {
+      y += GH;
+      out += `<text x="4" y="${y - 9}" style="fill:var(--ink-2);font-family:var(--f-mono);font-size:13px">${esc(file)}</text>`;
+      ts.forEach(() => {
+        const r = rows[ri], s = st.status[ri], cy = y + RH / 2;
+        if (s === 'run') out += `<circle class="h-run" cx="18" cy="${cy}" r="7" style="fill:none;stroke:var(--l4)" stroke-width="3" stroke-dasharray="26 18" stroke-linecap="round"/>`;
+        else out += `<circle class="${s === 'pass' || s === 'fail' ? 'h-pop' : ''}" cx="18" cy="${cy}" r="7" style="fill:${COL[s]}"/>`;
+        out += `<text x="36" y="${cy + 5}" style="fill:${s === 'fail' ? 'var(--l1)' : 'var(--ink)'};font-family:var(--f-body);font-size:15px;font-weight:${s === 'fail' ? 700 : 400}">${esc(r.name)}</text>`;
+        if (ri === 0 && st.callout) {
+          const txt = narrow ? 'got "03.507.00"' : 'expected 10.50, got "03.507.00"';
+          const w = txt.length * 7.6 + 22, x = W - w - 2;
+          out += `<g class="h-pop"><rect x="${x}" y="${cy - 13}" width="${w}" height="26" rx="13" style="fill:var(--bad-bg)"/><text x="${x + 11}" y="${cy + 4.5}" style="fill:var(--bad);font-family:var(--f-mono);font-size:12.5px">${esc(txt)}</text></g>`;
+        } else if (s === 'pass' || s === 'fail') out += `<text x="${W - 4}" y="${cy + 5}" text-anchor="end" style="fill:var(--ink-2);font-family:var(--f-mono);font-size:12.5px">${r.ms}</text>`;
+        y += RH; ri++;
+      });
+      y += 6;
+    });
+    y += 14;
+    const pass = st.status.filter(s => s === 'pass').length, fail = st.status.filter(s => s === 'fail').length;
+    const total = rows.length, bw = W - 8;
+    out += `<rect x="4" y="${y}" width="${bw}" height="10" rx="5" style="fill:color-mix(in srgb, var(--ink) 10%, transparent)"/>`;
+    if (pass) out += `<rect x="4" y="${y}" width="${bw * pass / total}" height="10" rx="5" style="fill:var(--l3)"/>`;
+    if (fail) out += `<rect x="${4 + bw * pass / total}" y="${y}" width="${bw * fail / total}" height="10" rx="5" style="fill:var(--l1)"/>`;
+    out += `<text x="4" y="${y + 36}" style="fill:var(--ink);font-family:var(--f-display);font-weight:800;font-size:17px">${esc(st.summary || 'Ready to run')}</text>`;
+    svg.setAttribute('viewBox', `0 0 ${W} ${y + 46}`);
+    svg.innerHTML = out;
+  }
+  const failsNow = r => r.bad && !st.fixed;
+  function finalState(fixed) {
+    st.fixed = fixed; st.status = rows.map(r => failsNow(r) ? 'fail' : 'pass'); st.callout = !fixed;
+    st.summary = fixed ? '7 passed' : '4 passed · 3 failed';
+  }
+  addEventListener('resize', draw);
+  if (reduce) { finalState(false); draw(); return; }
+  async function loop() {
+    for (;;) {
+      st.fixed = false; st.status = rows.map(() => 'idle'); st.callout = false; st.summary = ''; cap.textContent = 'npm test'; draw();
+      await wait(900);
+      for (let pass = 0; pass < 2; pass++) {
+        for (let i = 0; i < rows.length; i++) {
+          st.status[i] = 'run'; draw();
+          await wait(rows[i].g === 2 ? 1100 : rows[i].g === 1 ? 520 : 300);
+          st.status[i] = failsNow(rows[i]) ? 'fail' : 'pass';
+          if (i === 0 && failsNow(rows[i])) st.callout = true;
+          draw();
+        }
+        st.summary = st.fixed ? '7 passed' : '4 passed · 3 failed'; draw();
+        if (pass === 0) {
+          await wait(2600);
+          cap.textContent = 'fix: turn prices into numbers'; await wait(1500);
+          cap.textContent = 'npm test'; st.fixed = true; st.callout = false; st.status = rows.map(() => 'idle'); st.summary = ''; draw();
+          await wait(700);
+        }
+      }
+      await wait(3400);
+    }
+  }
+  finalState(false); draw();
+  setTimeout(loop, 1600);
+})();
+
+/* ---------------- Part 1: bug hunt ---------------- */
+const ICON = {
+  croissant: `<svg viewBox="0 0 48 48" aria-hidden="true"><path d="M6 30c2-10 10-17 18-17s16 7 18 17c-3 3-7 3-9 1-2 2-6 4-9 4s-7-2-9-4c-2 2-6 2-9-1z" fill="#E9A955" stroke="#8A4E14" stroke-width="2" stroke-linejoin="round"/><path d="M17 16l3 16M31 16l-3 16M24 13v21" stroke="#8A4E14" stroke-width="1.6" stroke-linecap="round" opacity=".7"/></svg>`,
+  loaf: `<svg viewBox="0 0 48 48" aria-hidden="true"><path d="M6 30c0-9 8-15 18-15s18 6 18 15v4c0 2-1 3-3 3H9c-2 0-3-1-3-3z" fill="#C9853E" stroke="#6E3A0E" stroke-width="2" stroke-linejoin="round"/><path d="M15 22l4 5M22 20l4 5M29 20l4 5" stroke="#F4D9A8" stroke-width="2.2" stroke-linecap="round"/></svg>`,
+  bun: `<svg viewBox="0 0 48 48" aria-hidden="true"><circle cx="24" cy="25" r="16" fill="#E1A45E" stroke="#7A4212" stroke-width="2"/><path d="M24 25c0-2 3-2 3 0 0 4-6 4-6 0 0-6 10-6 10 0 0 8-14 8-14 0" fill="none" stroke="#7A4212" stroke-width="2" stroke-linecap="round"/><path d="M12 18c3-3 6-4 9-4" stroke="#FFF3DE" stroke-width="2.4" stroke-linecap="round"/></svg>`
+};
+const PRODUCTS = { croissant: { name: 'Butter croissant', price: '3.50' }, loaf: { name: 'Sourdough loaf', price: '7.00' }, bun: { name: 'Cinnamon bun', price: '4.00' } };
+let cart = [], fix = null, payLabel = null, shopMsg = '', errors = 0, lastCrash = null, frameSel = null, busy = false;
+const verified = {};
+
+function cartTotal(items) { let total = 0; for (const id of items) total += fix === 'number' ? Number(PRODUCTS[id].price) : PRODUCTS[id].price; return total; }
+function renderShop(tapped) {
+  const total = cartTotal(cart);
+  const weird = typeof total === 'string';
+  const counts = {}; cart.forEach(id => counts[id] = (counts[id] || 0) + 1);
+  $('#shop').innerHTML = `<div class="shop-head"><h4>Bea's Bakery</h4><span>Order for delivery</span></div>
+    ${Object.entries(PRODUCTS).map(([id, p]) => `<div class="prod">${ICON[id]}<span class="nm">${p.name}<span class="pr">$${p.price}</span></span><button class="add${tapped === id ? ' tap' : ''}" data-add="${id}" ${busy ? 'disabled' : ''}>Add</button></div>`).join('')}
+    <div class="cart" aria-live="polite">
+      <div class="cart-lines">${cart.length ? Object.entries(counts).map(([id, n]) => `<div><span>${n} × ${PRODUCTS[id].name}</span></div>`).join('') : 'Your basket is empty.'}</div>
+      <div class="cart-total"><span>Total</span><span class="amt${weird && cart.length ? ' weird' : ''}">${cart.length ? (weird ? '$' + esc(total) : money(total)) : '$0.00'}</span></div>
+    </div>
+    <div class="shop-actions"><button class="checkout${tapped === 'checkout' ? ' tap' : ''}" id="checkoutBtn" ${busy ? 'disabled' : ''}>Check out</button><button class="empty" id="emptyBtn" ${busy ? 'disabled' : ''}>Empty basket</button></div>
+    ${payLabel ? `<div class="pay"><b>Pay ${esc(payLabel)}</b><div class="field${/\d\.\d+\.\d/.test(payLabel) ? ' bad' : ''}">Card number · · · ·  · · · ·</div></div>` : `<div class="shop-msg">${shopMsg}</div>`}`;
+}
+function tip1(html, kind = '') { const t = $('#tip1'); t.className = 'o2 note ' + kind; t.innerHTML = html; }
+function con(html, cls = 'info') {
+  const out = $('#con'); const ph = $('.placeholder', out); if (ph) ph.remove();
+  const d = document.createElement('div'); d.className = cls; d.innerHTML = html; out.appendChild(d); out.scrollTop = out.scrollHeight; return d;
+}
+function paintErrCount() { const c = $('#errCount'); c.textContent = `${errors} error${errors === 1 ? '' : 's'}`; c.classList.toggle('has', errors > 0); }
+function addItem(id) {
+  cart.push(id); payLabel = null; shopMsg = '';
+  con(`[cart] added ${esc(PRODUCTS[id].name)} · price: <span class="str">"${PRODUCTS[id].price}"</span>`);
+  renderShop(id);
+}
+function checkout() {
+  payLabel = null; shopMsg = '';
+  if (!cart.length) { shopMsg = 'Add something to your basket first.'; renderShop(); return 'empty'; }
+  const total = cartTotal(cart);
+  con('[checkout] opening payment form…');
+  if (fix === 'catch') { shopMsg = 'Nothing happened. The payment form never opened.'; renderShop('checkout'); return 'swallowed'; }
+  if (typeof total === 'string' && fix !== 'format') {
+    errors++; paintErrCount();
+    lastCrash = { items: [...cart], total };
+    const blk = con(`<div class="msg">✖ Uncaught TypeError: total.toFixed is not a function</div>
+      <button class="frame" data-frame="0">at formatPrice<span class="loc">(cart.js:11)</span></button>
+      <button class="frame" data-frame="1">at showCheckout<span class="loc">(checkout.js:6)</span></button>
+      <button class="frame" data-frame="2">at checkoutButton.onclick<span class="loc">(shop.js:21)</span></button>`, 'errblock');
+    blk.setAttribute('role', 'group'); blk.setAttribute('aria-label', 'Error with stack trace. Each line is a button.');
+    shopMsg = 'Nothing happened. The payment form never opened.';
+    renderShop('checkout');
+    return 'crash';
+  }
+  payLabel = fix === 'format' ? '$' + total : money(total);
+  renderShop('checkout');
+  return fix === 'format' ? 'wrongpay' : 'ok';
+}
+$('#shop').addEventListener('click', e => {
+  if (busy) return;
+  const add = e.target.closest('[data-add]');
+  if (add) {
+    addItem(add.dataset.add);
+    const total = cartTotal(cart);
+    if (typeof total === 'string') {
+      if (cart.length === 1) tip1(`<strong>$${esc(total)}?</strong> One item shows <b>$${esc(total)}</b>. Almost right, which is exactly how bugs hide. Add a different item and watch the total.`);
+      else if (!CS.ticked('p1', 'repro')) { CS.tick('p1', 'repro'); tip1(`<strong>Reproduced.</strong> The total says <b>$${esc(total)}</b>. The prices were glued together instead of added. Now press <b>Check out</b> like a customer would.`, 'bad'); }
+    } else if (fix === 'number' && cart.length > 1) tip1(`<strong>Adding up properly.</strong> ${money(total)} for ${cart.length} items.`, 'good');
+    return;
+  }
+  if (e.target.closest('#emptyBtn')) { cart = []; payLabel = null; shopMsg = ''; renderShop(); return; }
+  if (e.target.closest('#checkoutBtn')) {
+    const r = checkout();
+    if (r === 'crash' && !CS.ticked('p1', 'crash')) {
+      CS.tick('p1', 'crash');
+      tip1(`<strong>Nothing visible happened.</strong> That's what customers saw. But the console caught an error. Read it: the top line under the message is where the code crashed. Click it.`, 'bad');
+    } else if (r === 'crash') tip1('<strong>Same crash, every time.</strong> A bug you can make happen on purpose is half solved. Click a line of the error to open the code there.');
+    else if (r === 'ok') tip1(`<strong>Checkout works.</strong> The payment form opened with the right total.`, 'good');
+  }
+});
+
+const FILES = {
+  'cart.js': { start: 1, lines: [
+    `<span class="c">// cart.js: adds up the basket</span>`,
+    `<span class="k">function</span> <span class="f">cartTotal</span>(items) {`,
+    `  <span class="k">let</span> total = <span class="n">0</span>;`,
+    `  <span class="k">for</span> (<span class="k">const</span> item <span class="k">of</span> items) {`,
+    `    total += item.price;`,
+    `  }`,
+    `  <span class="k">return</span> total;`,
+    `}`,
+    ``,
+    `<span class="k">function</span> <span class="f">formatPrice</span>(total) {`,
+    `  <span class="k">return</span> <span class="s">'$'</span> + total.<span class="f">toFixed</span>(<span class="n">2</span>);`,
+    `}`] },
+  'checkout.js': { start: 1, lines: [
+    `<span class="c">// checkout.js: opens the payment form</span>`,
+    `<span class="k">import</span> { cartTotal, formatPrice } <span class="k">from</span> <span class="s">'./cart.js'</span>;`,
+    ``,
+    `<span class="k">function</span> <span class="f">showCheckout</span>(cart) {`,
+    `  <span class="k">const</span> total = <span class="f">cartTotal</span>(cart.items);`,
+    `  <span class="k">const</span> label = <span class="f">formatPrice</span>(total);`,
+    `  <span class="f">openPaymentForm</span>(label);`,
+    `}`] },
+  'shop.js': { start: 16, lines: [
+    `<span class="c">// products arrive from the server like this:</span>`,
+    `<span class="c">// { name: 'Sourdough loaf', price: '7.00' }</span>`,
+    `<span class="k">const</span> products = <span class="k">await</span> <span class="f">loadProducts</span>();`,
+    ``,
+    `checkoutButton.<span class="f">onclick</span> = () =&gt; {`,
+    `  <span class="f">showCheckout</span>(cart);`,
+    `};`] }
+};
+const FIXES = {
+  catch: { t: 'Catch the error so the page can\'t crash', code: 'try { showCheckout(cart) } catch (e) {}', file: 'shop.js', at: 21, del: `  <span class="f">showCheckout</span>(cart);`, add: `  <span class="k">try</span> { <span class="f">showCheckout</span>(cart); } <span class="k">catch</span> (e) {}` },
+  format: { t: 'Stop calling toFixed in formatPrice', code: "return '$' + total;", file: 'cart.js', at: 11, del: FILES['cart.js'].lines[10], add: `  <span class="k">return</span> <span class="s">'$'</span> + total;` },
+  number: { t: 'Turn each price into a number before adding', code: 'total += Number(item.price);', file: 'cart.js', at: 5, del: FILES['cart.js'].lines[4], add: `    total += <span class="f">Number</span>(item.price);` }
+};
+function srcHTML(file, { hl = [], soft = [], diff = null } = {}) {
+  const f = FILES[file]; let html = '';
+  f.lines.forEach((l, i) => {
+    const n = f.start + i;
+    if (diff && diff.at === n) {
+      html += `<div class="ln del"><span class="no">−${n}</span><span class="tx">${diff.del}</span></div><div class="ln add"><span class="no">+${n}</span><span class="tx">${diff.add}</span></div>`;
+      return;
+    }
+    html += `<div class="ln${hl.includes(n) ? ' hl' : soft.includes(n) ? ' soft' : ''}"><span class="no">${n}</span><span class="tx">${l || ' '}</span></div>`;
+  });
+  return `<div class="src">${html}</div>`;
+}
+const val = (name, v, kind) => `<span class="val">${name} = <em>${esc(v)}</em> <small>${kind}</small></span>`;
+function viewer(html) { $('#viewer').innerHTML = html; }
+function viewerEmpty() { viewer(`<div class="dev-bar"><span><b>Code</b></span><span class="count">no file open</span></div><div class="viewer-empty">When there's an error, click a line in it to open the code right there.</div>`); }
+function showFrame(i) {
+  if (!lastCrash) return;
+  frameSel = i;
+  $$('.frame').forEach(b => b.classList.toggle('sel', +b.dataset.frame === i));
+  const T = lastCrash.total;
+  if (i === 0) {
+    viewer(`<div class="dev-bar"><span><b>cart.js</b> · line 11</span><span class="count">where it crashed</span></div>${srcHTML('cart.js', { hl: [11] })}<div class="watch"><span class="lbl">Values here</span>${val('total', `"${T}"`, 'text, not a number')}</div>`);
+    CS.tick('p1', 'where');
+    tip1(`<strong>This is where it crashed.</strong> <code>toFixed(2)</code> rounds a <i>number</i> to two decimals. But <code>total</code> is the text "${esc(T)}", and text has no toFixed, so JavaScript stopped with a TypeError. This line didn't make the bad value, though. It was handed in. Click the <b>next line</b> of the error to see who called this.`, 'info');
+  } else if (i === 1) {
+    viewer(`<div class="dev-bar"><span><b>checkout.js</b> · line 6</span><span class="count">the caller</span></div>${srcHTML('checkout.js', { hl: [6], soft: [5] })}<div class="watch"><span class="lbl">Values here</span>${val('total', `"${T}"`, 'text')}</div><button class="btn step-in" id="stepIn">Step into cartTotal() on line 5</button>`);
+    tip1(`<strong>One step back.</strong> <code>showCheckout</code> passed <code>total</code> to formatPrice on line 6. Where did total come from? Line 5, from <code>cartTotal()</code>. Step into it.`, 'info');
+  } else {
+    viewer(`<div class="dev-bar"><span><b>shop.js</b> · line 21</span><span class="count">where it started</span></div>${srcHTML('shop.js', { hl: [21] })}<div class="watch"><span class="lbl">What happened</span><span class="val">the customer clicked <em>Check out</em></span></div>`);
+    tip1('<strong>The bottom of the stack is the start.</strong> The customer\'s click called showCheckout, which called formatPrice, which crashed. Read from the top down: the top line is where it broke.', 'info');
+  }
+}
+function showCause() {
+  const first = PRODUCTS[lastCrash.items[0]].price;
+  viewer(`<div class="dev-bar"><span><b>cart.js</b> · line 5</span><span class="count">the cause</span></div>${srcHTML('cart.js', { hl: [5] })}<div class="watch"><span class="lbl">Values here</span>${val('item.price', `"${first}"`, 'text')}${val('total', `0 + "${first}" → "0${first}"`, 'glued, not added')}</div>`);
+  if (!CS.ticked('p1', 'cause')) {
+    CS.tick('p1', 'cause');
+    renderFixes();
+  }
+  tip1(`<strong>Found the cause.</strong> Prices arrive from the server as text, like <code>"${first}"</code> (see the quote marks in the log). For text, <code>+</code> glues instead of adding, so 0 + "3.50" + "7.00" became "03.507.00". ${CS.ticked('p1', 'where') ? '' : ' Also click the top line of the error, where it crashed. '}Now pick a fix.`, 'good');
+}
+$('#con').addEventListener('click', e => { const f = e.target.closest('.frame'); if (f) showFrame(+f.dataset.frame); });
+$('#viewer').addEventListener('click', e => { if (e.target.closest('#stepIn')) showCause(); });
+function renderFixes() {
+  const ready = CS.ticked('p1', 'cause');
+  $('#fixSub').textContent = ready ? 'The AI offers three fixes. Pick one, then verify it.' : 'Find the cause first. Then the AI offers three fixes.';
+  $('#fixes').innerHTML = Object.entries(FIXES).map(([k, f]) => `<button class="fixopt${verified[k] === true ? ' verified' : verified[k] === false ? ' failed' : ''}" data-fix="${k}" aria-pressed="${fix === k}" ${ready && !busy ? '' : 'disabled'}><b>${f.t}</b><code>${esc(f.code)}</code></button>`).join('');
+  $('#verifyBtn').disabled = !ready || !fix || busy;
+}
+$('#fixes').addEventListener('click', e => {
+  const b = e.target.closest('[data-fix]'); if (!b || busy) return;
+  fix = b.dataset.fix; payLabel = null; shopMsg = '';
+  const F = FIXES[fix];
+  viewer(`<div class="dev-bar"><span><b>${F.file}</b> · the AI's change</span><span class="count">1 line changed</span></div>${srcHTML(F.file, { diff: F })}`);
+  tip1(`<strong>Fix applied.</strong> Don't trust it yet. Press <b>Verify</b> to repeat the exact steps that caused the bug.`);
+  renderFixes(); renderShop();
+});
+$('#verifyBtn').addEventListener('click', async () => {
+  if (busy || !fix) return;
+  busy = true; renderFixes();
+  cart = []; payLabel = null; shopMsg = ''; renderShop();
+  con('Re-test: the same steps as before', 'sep');
+  await wait(450); addItem('croissant');
+  await wait(450); addItem('loaf');
+  await wait(550);
+  busy = false;
+  const r = checkout();
+  if (fix === 'catch') {
+    verified.catch = false;
+    tip1('<strong>Hidden, not fixed.</strong> No error in the log, and no payment form either. The try/catch swallowed the error, so now the bug fails silently: customers still can\'t pay, and you\'ve lost your best clue. Try another fix.', 'bad');
+  } else if (fix === 'format') {
+    verified.format = false;
+    tip1(`<strong>The crash is gone, the bug isn't.</strong> Look at the shop: it asks the customer to pay <b>${esc(payLabel)}</b>. This fix treated the symptom (the crash) and left the cause (prices as text). Try another fix.`, 'bad');
+  } else if (r === 'ok') {
+    verified.number = true;
+    CS.tick('p1', 'fix');
+    tip1(`<strong>Verified.</strong> Same steps, and now the total is <b>${esc(payLabel)}</b> and the payment form opens. You fixed the cause, right where the bad value was made. Next time, a test can do this checking for you.`, 'good');
+  }
+  renderFixes();
+});
+con('Messages and errors from the page show up here.', 'placeholder');
+renderShop(); viewerEmpty(); renderFixes(); paintErrCount();
+
+/* ---------------- Part 2: test runner ---------------- */
+const CHANGES = [
+  { k: 'round', t: 'Round prices to whole dollars', d: '"Simpler math, fewer decimals."' },
+  { k: 'script', t: 'Move the checkout code to its own file', d: '"Tidier files. Everything still works."' },
+  { k: 'order', t: 'Apply the coupon after delivery', d: '"Saves a line of code."' },
+  { k: 'edge', t: 'Change delivery check from >= to >', d: '"A cleaner comparison."' }
+];
+const chg = { round: false, script: false, order: false, edge: false };
+const r2 = n => Math.round(n * 100) / 100;
+const priceOf = id => { const p = { croissant: 3.5, loaf: 7, bun: 4 }[id]; return chg.round ? Math.round(p) : p; };
+const sum = ids => r2(ids.reduce((s, id) => s + priceOf(id), 0));
+const coupon = (amt, code) => code === 'BREAD10' ? r2(amt * 0.9) : amt;
+const delivery = amt => (chg.edge ? amt > 25 : amt >= 25) ? 0 : 4.99;
+function checkoutTotal(ids, code) {
+  const sub = sum(ids);
+  if (chg.order) return r2(coupon(sub + delivery(sub), code));
+  return r2(coupon(sub, code) + delivery(sub));
+}
+const eq = (a, b) => Math.abs(a - b) < 0.001;
+const expectEq = (got, want, fmt = v => String(v)) => eq(got, want) ? null : `Expected ${fmt(want)}, received ${fmt(got)}`;
+let added = false;
+const TESTS = [
+  { g: 'unit', n: 'cartTotal adds up prices', ms: 3, f: () => expectEq(sum(['croissant', 'loaf']), 10.5, v => v.toFixed(2)) },
+  { g: 'unit', n: 'BREAD10 takes 10% off', ms: 2, f: () => expectEq(coupon(20, 'BREAD10'), 18) },
+  { g: 'unit', n: 'small orders pay $4.99 delivery', ms: 2, f: () => expectEq(delivery(10), 4.99) },
+  { g: 'unit', n: 'big orders get free delivery', ms: 2, f: () => expectEq(delivery(40), 0) },
+  { g: 'unit', n: 'exactly $25 gets free delivery', ms: 2, f: () => expectEq(delivery(25), 0), extra: true },
+  { g: 'int', n: 'checkout: coupon first, then delivery', ms: 41, f: () => expectEq(checkoutTotal(['loaf', 'loaf', 'loaf'], 'BREAD10'), 23.89, v => v.toFixed(2)) },
+  { g: 'int', n: 'checkout saves the order to the database', ms: 52, f: () => null },
+  { g: 'e2e', n: 'a customer can order a croissant', ms: 2380, f: () => chg.script ? 'Timed out after 5 s waiting for the payment form to appear' : expectEq(checkoutTotal(['croissant']), 8.49, v => `"Pay $${v.toFixed(2)}"`) }
+];
+const GROUPS = [['unit', 'Unit tests', 'One function at a time', 'var(--l3)'], ['int', 'Integration tests', 'Pieces working together', 'var(--l2)'], ['e2e', 'End-to-end test', 'A robot customer clicks through the real site', 'var(--l5)']];
+const res = {}; let running = false, stale = false, lastRun = null, freshTest = false;
+const activeTests = () => TESTS.filter(t => !t.extra || added);
+function renderRunner() {
+  const box = $('#runner');
+  box.classList.toggle('stale', stale);
+  box.innerHTML = GROUPS.map(([g, title, sub, c]) => `<div class="tgroup"><h4 style="--c:${c}"><i></i>${title}</h4><p class="gsub">${sub}</p>
+    ${activeTests().filter(t => t.g === g).map(t => { const r = res[t.n]; const cls = !r ? '' : r.state; return `<div class="trow ${cls}${t.extra && freshTest ? ' new' : ''}"><span class="dot"></span><span class="tn">${esc(t.n)}</span><span class="ms">${r && r.state !== 'running' ? (t.ms >= 1000 ? (t.ms / 1000).toFixed(1) + ' s' : t.ms + ' ms') : ''}</span></div>${r && r.state === 'fail' ? `<div class="tfail">${esc(r.msg)}</div>` : ''}`; }).join('')}</div>`).join('');
+  freshTest = false;
+  $('#runnerSub').textContent = `${activeTests().length} tests for Bea's cart, checkout and site.`;
+  const done = activeTests().filter(t => res[t.n] && res[t.n].state !== 'running');
+  const pass = done.filter(t => res[t.n].state === 'pass').length, fail = done.length - pass, n = activeTests().length;
+  const time = done.reduce((s, t) => s + t.ms, 0);
+  $('#tsum').innerHTML = done.length ? `<div class="tbar"><i style="width:${pass / n * 100}%;background:var(--l3)"></i><i style="width:${fail / n * 100}%;background:var(--l1)"></i></div><p>${pass} passed${fail ? `, <span style="color:var(--bad)">${fail} failed</span>` : ''}${running ? '' : ` · ${(time / 1000).toFixed(1)} s`}${stale ? ' <span class="muted" style="font-weight:700">· code changed, run again</span>' : ''}</p>` : '';
+}
+function renderChanges() {
+  $('#changes').innerHTML = CHANGES.map(c => `<button class="chg" data-chg="${c.k}" aria-pressed="${chg[c.k]}" ${running ? 'disabled' : ''}><span class="sw" aria-hidden="true"></span><span><b>${esc(c.t)}</b><small>${esc(c.d)}</small></span></button>`).join('');
+}
+function renderReceipt() {
+  const rows = [
+    ['1 croissant', ['croissant'], null, 8.49],
+    ['3 loaves + 1 bun ($25 of bread)', ['loaf', 'loaf', 'loaf', 'bun'], null, 25],
+    ['3 loaves with code BREAD10', ['loaf', 'loaf', 'loaf'], 'BREAD10', 23.89]
+  ];
+  $('#receipt').innerHTML = rows.map(([label, ids, code, want]) => {
+    if (chg.script) return `<div class="rrow off"><span>${label}</span><span class="amt">nothing happens<small>Check out button is dead</small></span></div>`;
+    const got = checkoutTotal(ids, code); const ok = eq(got, want);
+    return `<div class="rrow${ok ? '' : ' off'}"><span>${label}</span><span class="amt">pays ${money(got)}${ok ? '' : `<small>should be ${money(want)}</small>`}</span></div>`;
+  }).join('');
+}
+function tip2(html, kind = '') { const t = $('#tip2'); t.className = 'o4 note ' + kind; t.innerHTML = html; }
+function renderAdd() {
+  const ready = CS.ticked('p2', 'sneaky');
+  $('#addSub').textContent = added ? 'Added to the unit tests. It will run every time from now on.' : ready ? 'Which new test would catch the sneaky change?' : "Once you've found the sneaky change, pick the test that would catch it.";
+  const OPTS = [['a', 'Delivery on a $10 order costs $4.99'], ['b', 'Delivery on a $100 order is free'], ['c', 'Delivery on exactly $25.00 is free']];
+  $('#addOpts').innerHTML = OPTS.map(([k, t]) => `<button class="opt${added && k === 'c' ? ' right' : ''}" data-addt="${k}" ${!ready || added || running ? 'disabled' : ''}>${t}</button>`).join('');
+}
+$('#addOpts').addEventListener('click', e => {
+  const b = e.target.closest('[data-addt]'); if (!b || b.disabled) return;
+  const k = b.dataset.addt;
+  if (k === 'a') { b.classList.add('wrong'); b.disabled = true; tip2('<strong>Already covered.</strong> "Small orders pay $4.99" checks that. A $10 order is nowhere near the $25 line, so it passes with or without the bug.', 'bad'); return; }
+  if (k === 'b') { b.classList.add('wrong'); b.disabled = true; tip2('<strong>That one passes even with the bug.</strong> $100 is far above $25, so > and >= agree. Bugs hide at the edge, so test right on the line.', 'bad'); return; }
+  added = true; freshTest = true; stale = true;
+  renderAdd(); renderRunner();
+  tip2('<strong>Test added.</strong> Now press <b>Run tests</b> and see if it catches the change.', 'info');
+});
+$('#changes').addEventListener('click', e => {
+  const b = e.target.closest('[data-chg]'); if (!b || running) return;
+  chg[b.dataset.chg] = !chg[b.dataset.chg];
+  if (lastRun) stale = true;
+  renderChanges(); renderReceipt(); renderRunner();
+  const c = CHANGES.find(x => x.k === b.dataset.chg);
+  tip2(chg[c.k] ? `<strong>The AI's change is in.</strong> "${esc(c.t)}". Check what customers see, then <b>run the tests</b>.` : `<strong>Change undone.</strong> Run the tests again to confirm everything's back.`, 'info');
+});
+$('#runBtn').addEventListener('click', async () => {
+  if (running) return;
+  running = true; stale = false; $('#runBtn').disabled = true; renderChanges(); renderAdd();
+  Object.keys(res).forEach(k => delete res[k]);
+  for (const t of activeTests()) {
+    res[t.n] = { state: 'running' }; renderRunner();
+    await wait(t.g === 'e2e' ? 1100 : t.g === 'int' ? 380 : 140);
+    const msg = t.f();
+    res[t.n] = msg ? { state: 'fail', msg } : { state: 'pass' };
+    renderRunner();
+  }
+  running = false; $('#runBtn').disabled = false; lastRun = { ...chg };
+  renderChanges(); renderAdd(); renderRunner();
+  afterRun();
+});
+function afterRun() {
+  const fails = activeTests().filter(t => res[t.n].state === 'fail');
+  const on = Object.keys(chg).filter(k => chg[k]);
+  CS.tick('p2', 'run');
+  if (fails.length) CS.tick('p2', 'red');
+  if (added && chg.edge && fails.some(t => t.extra)) {
+    CS.tick('p2', 'add');
+    tip2('<strong>Caught.</strong> The new test fails: "Expected 0, received 4.99". It sits right on the edge, where > and >= disagree. It will guard Bea\'s promise on every future change. Turn the AI\'s change off and run again to see all green.', 'good');
+    return;
+  }
+  if (!on.length) { tip2(fails.length ? '<strong>Something is still red.</strong>' : `<strong>All ${activeTests().length} tests pass.</strong> This is your baseline: everything the tests check works. ${CS.ticked('p2', 'red') ? '' : 'Now switch on one of the AI\'s changes and run them again.'}`, fails.length ? 'bad' : 'good'); return; }
+  if (on.length > 1) { tip2(`<strong>${fails.length} test${fails.length === 1 ? '' : 's'} failed with ${on.length} changes on.</strong> With several changes at once, it's hard to tell which one broke what. Try one at a time.`, fails.length ? 'bad' : ''); return; }
+  const k = on[0];
+  if (k === 'round') tip2('<strong>Caught by a unit test and the end-to-end test.</strong> Rounding $3.50 up to $4 broke one small function, so the fast unit test points straight at it. The robot customer noticed too: it was asked to pay $8.99, not $8.49.', 'bad');
+  if (k === 'script') tip2('<strong>Only the end-to-end test caught this.</strong> Every function still works on its own, so the unit tests pass. But the real page never loads the moved checkout code, so a customer\'s click does nothing. Only a test that clicks the real page can see that.', 'bad');
+  if (k === 'order') tip2('<strong>Only the integration test caught this.</strong> The coupon and delivery functions are each fine alone. The bug is in how they\'re combined: taking 10% off the delivery fee too. Integration tests check the joins.', 'bad');
+  if (k === 'edge') {
+    if (added) { tip2('<strong>Your new test caught it.</strong>', 'good'); return; }
+    CS.tick('p2', 'sneaky');
+    renderAdd();
+    tip2('<strong>Every test is green, and the shop is broken.</strong> Look at what customers see: a $25 order pays $29.99. Bea promises free delivery from $25. No test checks exactly $25, so nothing noticed. Now write the test that would.', 'bad');
+  }
+}
+renderChanges(); renderRunner(); renderReceipt(); renderAdd();
+
+// the test pyramid, drawn with dots (labels beside the dots on wide screens, under them on phones)
+(function shape() {
+  const svg = $('#shapeArt');
+  const rows = [[2, 'var(--l5)', 'End-to-end', 'a few · seconds each'], [5, 'var(--l2)', 'Integration', 'some · tenths of a second'], [11, 'var(--l3)', 'Unit', 'many · milliseconds']];
+  function draw() {
+    const narrow = (svg.clientWidth || 430) < 400;
+    let out = '', k = 0;
+    const W = narrow ? 300 : 430, gap = narrow ? 24 : 19, cx = narrow ? 150 : 112, rowH = narrow ? 96 : 66;
+    rows.forEach(([n, c, name, sub], r) => {
+      const y = (narrow ? 28 : 50) + r * rowH;
+      for (let i = 0; i < n; i++) { const x = cx - (n - 1) * gap / 2 + i * gap; out += `<circle class="sdot" style="fill:${c};animation-delay:${(k++) * 40}ms" cx="${x}" cy="${y}" r="${narrow ? 8.5 : 7.5}"/>`; }
+      if (narrow) out += `<text x="${cx}" y="${y + 34}" text-anchor="middle" style="fill:var(--ink);font-family:var(--f-display);font-weight:800;font-size:17px">${name}</text><text x="${cx}" y="${y + 55}" text-anchor="middle" style="fill:var(--ink-2);font-family:var(--f-body);font-size:15px">${sub}</text>`;
+      else out += `<text x="232" y="${y - 3}" style="fill:var(--ink);font-family:var(--f-display);font-weight:800;font-size:17px">${name}</text><text x="232" y="${y + 17}" style="fill:var(--ink-2);font-family:var(--f-body);font-size:14px">${sub}</text>`;
+    });
+    svg.setAttribute('viewBox', `0 0 ${W} ${narrow ? 290 : 230}`);
+    svg.innerHTML = out;
+  }
+  draw(); addEventListener('resize', draw);
+  const io = new IntersectionObserver(es => { if (es.some(e => e.isIntersecting)) { $('#shape').classList.add('seen'); io.disconnect(); } }, { threshold: .4 });
+  io.observe(svg);
+})();
+
+/* ---------------- Part 3: code lab with a tiny test harness ---------------- */
+const STARTER = `// The AI wrote Bea's delivery rule
+function delivery(total) {
+  if (total > 25) {
+    return 0;
+  }
+  return 4.99;
+}
+
+// The AI's tests
+test('small orders pay $4.99', () => {
+  expect(delivery(10)).toBe(4.99);
+});
+
+test('big orders ship free', () => {
+  expect(delivery(40)).toBe(0);
+});
+
+test('an order of exactly $25', () => {
+  expect(delivery(25)).toBe(4.99);
+});
+`;
+const fmtV = v => typeof v === 'string' ? `"${v}"` : v === undefined ? 'undefined' : JSON.stringify(v);
+function runTests(code) {
+  const results = [], logs = [];
+  const test = (name, fn) => {
+    if (typeof fn !== 'function') { results.push({ name: String(name), ok: false, msg: 'test() needs a name and a function, like test(\'name\', () => { … })' }); return; }
+    try { fn(); results.push({ name: String(name), ok: true }); } catch (e) { results.push({ name: String(name), ok: false, msg: e && e.message ? e.message : String(e) }); }
+  };
+  test.skip = name => results.push({ name: String(name), skipped: true });
+  const expect = actual => {
+    const same = exp => Object.is(actual, exp) || (typeof actual === 'number' && typeof exp === 'number' && Math.abs(actual - exp) < 1e-9);
+    return {
+      toBe: exp => { if (!same(exp)) throw new Error(`Expected ${fmtV(exp)}, received ${fmtV(actual)}`); },
+      toEqual: exp => { if (JSON.stringify(actual) !== JSON.stringify(exp)) throw new Error(`Expected ${fmtV(exp)}, received ${fmtV(actual)}`); }
+    };
+  };
+  const console = { log: (...a) => logs.push(a.map(x => typeof x === 'string' ? x : fmtV(x)).join(' ')) };
+  let error = null;
+  const guarded = code.replace(/\b(for|while)\s*\(([^)]*)\)\s*\{/g, m => m + ' if (++__g > 100000) throw new Error("Stopped: this loop ran more than 100,000 times. Is it infinite?");');
+  try { new Function('test', 'expect', 'console', '"use strict"; let __g = 0;\n' + guarded)(test, expect, console); } catch (e) { error = e.name + ': ' + e.message; }
+  const pass = results.filter(r => r.ok).length, fail = results.filter(r => !r.ok && !r.skipped).length, skip = results.filter(r => r.skipped).length;
+  let html = results.map(r => r.skipped ? `<div class="y">○ ${esc(r.name)} <span class="dim">(skipped)</span></div>` : r.ok ? `<div class="g">✓ ${esc(r.name)}</div>` : `<div class="r">✗ ${esc(r.name)}<br><span class="dim">   </span>${esc(r.msg)}</div>`).join('');
+  if (results.length) html += `<div class="dim" style="margin-top:6px">Tests: ${fail ? `<span class="r">${fail} failed</span>, ` : ''}${pass} passed${skip ? `, <span class="y">${skip} skipped</span>` : ''}, ${results.length} total</div>`;
+  else if (!error) html += '<div class="dim">No tests ran. Tests start with test(\'name\', () => { … }).</div>';
+  return { code, logs, html, error, results, pass, fail, skip };
+}
+const has25zero = c => /expect\(\s*delivery\(\s*25(?:\.0+)?\s*\)\s*\)\s*\.toBe\(\s*0(?:\.0+)?\s*\)/.test(c);
+const allGreen = r => !r.error && r.results.length > 0 && r.fail === 0 && r.skip === 0;
+CS.codeLab($('#lab'), {
+  part: 'p3', mission: $('#mission'), language: 'JavaScript', starter: STARTER,
+  run: runTests,
+  steps: [
+    { t: 'Run the tests', how: 'Press Run and read the results.', hint: 'Press the <b>Run</b> button under the editor.', check: r => !r.error && r.results.length > 0 },
+    { t: 'Make the test tell the truth', how: 'The third test expects $4.99 for a $25 order, but Bea promises free delivery from $25. Change its expected value to 0, then run.',
+      hint: 'On the line <code>expect(delivery(25)).toBe(4.99);</code> change <code>4.99</code> to <code>0</code>, then press Run. It should turn red.',
+      check: r => !r.error && has25zero(r.code),
+      nudge: r => r.fail ? 'A test fails now, but the $25 test still says 4.99. That test is the one describing the bug. Make it expect <code>0</code>.' : 'Everything is green, which means the tests agree with the bug. Change the $25 test to expect <code>0</code>.' },
+    { t: 'Fix the function', how: 'Change the comparison so an order of exactly $25 ships free. Run until every test is green.',
+      hint: 'In <code>delivery</code>, change <code>total &gt; 25</code> to <code>total &gt;= 25</code>. The symbol <code>&gt;=</code> means "greater than or equal to".',
+      check: r => allGreen(r) && has25zero(r.code) && r.results.length >= 3,
+      nudge: r => r.skip ? 'A skipped test hides a problem. Remove <code>.skip</code> so it runs.' : r.results.length < 3 ? 'A test disappeared. Deleting a test makes the red go away, not the bug. Press <b>Reset code</b> if you need to start over.' : !has25zero(r.code) ? 'Keep the $25 test expecting <code>0</code>. The promise decides the answer, not the code.' : 'Red is good news here: the test caught the bug. Now change the <code>&gt;</code> in the delivery function.' },
+    { t: 'Add a test of your own', how: 'Write a fourth test for an order just under the line, like $24.99. It should still pay $4.99.',
+      hint: 'Copy a test and change it, like:<br><code>test(\'$24.99 still pays delivery\', () =&gt; {<br>&nbsp;&nbsp;expect(delivery(24.99)).toBe(4.99);<br>});</code>',
+      check: r => allGreen(r) && r.results.length >= 4 && has25zero(r.code),
+      nudge: r => r.results.length < 4 ? 'Add a fourth test below the others: copy one, then change its name, the amount and the expected price.' : 'One of the tests is red. Check the expected value: under $25, delivery costs 4.99.' }
+  ],
+  explainError: err => {
+    if (/SyntaxError/.test(err)) return 'The code can\'t be read. Look for a missing bracket, quote or parenthesis near your last edit. Every <code>test(</code> needs a matching <code>});</code>.';
+    if (/ReferenceError/.test(err)) { const m = err.match(/ReferenceError: (\w+) is not defined/); return m ? `<code>${esc(m[1])}</code> doesn't exist. Check the spelling: names must match exactly.` : 'A name is misspelled or used before it exists.'; }
+    return 'Read the error\'s first words: the type tells you what kind of problem it is.';
+  },
+  doneTutor: '<b>Mission complete!</b> You fixed a test that agreed with a bug, fixed the code, and added an edge-case test. That\'s exactly the order to ask an AI for: test first, then fix.'
+});
+
+/* ---------------- Part 4: steer the AI ---------------- */
+CS.steer($('#steer'), [
+  { ai: "The test 'exactly $25 gets free delivery' was failing, so I changed its expected value from 0 to 4.99. All tests pass now!",
+    opts: [["Great, green is green.", 0, "The test was right and the code was wrong. Changing the expected value made the test agree with the bug, and now it protects nothing."],
+           ["Change the test back. It matches Bea's promise. Fix the delivery function so exactly $25 ships free.", 1, "Exactly. The expected value comes from what the product promises, never from what the code happens to do."],
+           ["Just delete that test, it's causing trouble.", 0, "Deleting a failing test hides the bug. The customer paying $4.99 is still there."]] },
+  { ai: "I wrapped the checkout in a try/catch, so the error doesn't show up in the console anymore. Fixed!",
+    opts: [["Don't hide it. Find why total is text instead of a number and fix that. If you do catch an error, log it and show the customer a message.", 1, "Right. A catch that does nothing turns a loud bug into a silent one. Fix the cause, and handle real errors visibly."],
+           ["Perfect, no more red errors.", 0, "No red, but customers still can't pay, and now nobody will see why. Silent failures are harder to find than crashes."],
+           ["Add try/catch around every function, to be safe.", 0, "That would hide every future bug too. Catch errors only where you can do something useful about them."]] },
+  { ai: "It works on my machine. All my tests pass locally, so the checkout bug must be something on your end.",
+    opts: [["You're probably right, I'll clear my cache.", 0, "Maybe, but you'd be guessing. Differences between machines are real bugs too: other data, other browsers, other settings."],
+           ["Here are the exact steps, my browser, and the full error with its stack trace. Please reproduce it with a failing test first, then fix it.", 1, "That's the strongest reply. Exact steps plus the full error lets the AI see what you see, and a failing test proves the bug is real before anyone changes code."],
+           ["Then rewrite the whole checkout so it works everywhere.", 0, "A rewrite throws away working code and may bring new bugs. Find this bug first."]] },
+  { ai: "Something's wrong with checkout? No problem. I'll refactor the whole cart module to be more robust.",
+    opts: [["Sounds good, make it robust.", 0, "A big refactor without knowing the bug is a gamble. It might hide the bug, or add three more."],
+           ["Before changing anything: the error is 'TypeError: total.toFixed is not a function at formatPrice (cart.js:11)'. It happens when I add two items and press Check out. What's the smallest fix?", 1, "Perfect. You gave the full error, the location, and the steps. The AI can go straight to the cause and make a small, checkable change."],
+           ["Checkout is broken, please fix it fast.", 0, "The AI still has no clues. \"Broken\" could mean a hundred things. Paste the error and the steps."]] }
+], { part: 'p4', counter: $('#steerCount') });
+
+/* ---------------- Part 5: quiz ---------------- */
+CS.quiz($('#quiz'), [
+  { q: 'An error says "TypeError: total.toFixed is not a function" and the next lines are "at formatPrice (cart.js:11)", then "at showCheckout (checkout.js:6)". Where did it crash?', a: [['In formatPrice, file cart.js, line 11', 1], ['In showCheckout, file checkout.js, line 6', 0], ['Somewhere in the browser, you can\'t tell', 0]], why: 'The top line of the stack trace is where the code stopped. The lines below it are the functions that called it, which is where you look next for the cause.' },
+  { q: 'All 40 of your tests pass. What does that tell you?', a: [['The app has no bugs', 0], ['Everything the tests check works. Anything they don\'t check could still be broken.', 1], ['The AI did a good job', 0]], why: 'Tests only check what someone thought to check. The $25 delivery bug passed every test until a test sat right on the edge.' },
+  { q: 'Which kind of test would notice that the Check out button does nothing on the real page, even though every function works?', a: [['A unit test', 0], ['An integration test', 0], ['An end-to-end test', 1]], why: 'End-to-end tests drive a real browser like a customer, so they catch wiring problems, like code that never gets loaded, that smaller tests can\'t see.' },
+  { q: 'A customer reports a bug. What should happen first?', a: [['Ask the AI to rewrite the feature', 0], ['Find exact steps that make it happen every time', 1], ['Add try/catch so it stops crashing', 0]], why: 'Reproduce first. Once you can make the bug happen on purpose, you can find it, fix it, and prove the fix worked by repeating the same steps.' },
+  { q: 'The AI changed a failing test\'s expected value to match what the code returns. Now it passes. Is the bug fixed?', a: [['Yes, the test passes', 0], ['No, the test now agrees with the bug', 1], ['Only if the AI says so', 0]], why: 'The expected value must come from what the product should do. If the test bends to match the code, it can never catch that bug again.' }
+], { part: 'p5', doneCard: $('#doneCard'), doneTitle: 'You can hunt bugs now.', doneText: 'You can read an error and its stack trace, work the debugging loop, tell unit, integration and end-to-end tests apart, and spot when an AI hides a problem instead of fixing it.' });
+})();
+</script>
+</body>
+</html>

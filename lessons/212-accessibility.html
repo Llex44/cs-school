@@ -1,0 +1,1171 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Accessibility &amp; inclusive design · CS School</title>
+<meta name="description" content="Course 212: see your product through different eyes, hands and situations, and ask the AI for pages everyone can use.">
+<link rel="icon" href="../assets/favicon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="../assets/cs-school.css">
+<style>
+/* ---------- hero ---------- */
+#heroLens{overflow:visible}
+.legend span.on{color:var(--ink); font-weight:700}
+
+/* ---------- Pip's Plants mock (a real-looking website, so fixed colors are allowed) ---------- */
+.browser{border-radius:16px; overflow:hidden; background:#fff; box-shadow:var(--float); border:1px solid var(--hair)}
+.browser-bar{display:flex; align-items:center; gap:6px; padding:8px 12px; background:var(--panel); border-bottom:1px solid var(--hair)}
+.browser-bar i{width:11px; height:11px; border-radius:50%; background:var(--rule); display:block}
+.url{margin-left:8px; flex:1; font-family:var(--f-mono); font-size:.85rem; color:var(--ink-2); overflow:hidden; white-space:nowrap; text-overflow:ellipsis}
+.mock-wrap{position:relative; overflow:hidden; background:#fff}
+.mock{position:relative; background:#fff; color:#14201A; font-family:var(--f-body); font-size:15px; line-height:1.4; padding:14px 18px 18px; transition:filter .45s}
+.m-head{display:flex; align-items:center; gap:8px}
+.m-logo{display:flex; align-items:center; gap:8px; margin-right:auto; font-family:var(--f-display); font-weight:900; font-size:1.05rem; color:#1F4D36; letter-spacing:-.01em}
+.m-logo svg{width:26px; height:26px}
+.m-ico{width:32px; height:32px; border-radius:9px; background:#EEF4F0; display:grid; place-items:center}
+.m-ico svg{width:20px; height:20px}
+.m-h1{font-family:var(--f-display); font-weight:900; font-size:1.45rem; margin:14px 0 4px; letter-spacing:-.01em}
+.m-item{display:flex; align-items:center; gap:12px; padding:10px 0; border-bottom:1px solid #EDF0EE}
+.m-img{width:54px; height:54px; border-radius:12px; background:#EAF3EC; flex:none; overflow:hidden; display:grid; place-items:center; position:relative}
+.m-img svg{width:54px; height:54px}
+.m-info{flex:1; min-width:0; display:flex; flex-direction:column}
+.m-info b{font-weight:700; font-size:.98rem; line-height:1.25}
+.m-info span{font-size:.92rem; color:#4A534E}
+.m-qty{display:flex; align-items:center; gap:3px; flex:none}
+.m-qty .q{width:22px; height:22px; border-radius:6px; background:#E6EFE9; display:grid; place-items:center}
+.m-qty .q svg{width:14px; height:14px}
+.m-qty .n{min-width:20px; text-align:center; font-size:.92rem; font-weight:700}
+.m-dot{width:11px; height:11px; border-radius:50%; flex:none}
+.m-dot.in{background:#3B9A57} .m-dot.out{background:#D9483B}
+.m-legend{display:inline-flex; gap:14px; font-size:.85rem; color:#4A534E; margin-top:8px}
+.m-legend span{display:flex; align-items:center; gap:6px}
+.m-legend i{width:9px; height:9px; border-radius:50%}
+.m-note{font-size:.82rem; color:#BDBDBD; margin:10px 0 12px; max-width:none}
+.m-label{font-size:.9rem; font-weight:700; color:#2F3A34; margin-bottom:4px}
+.m-input{height:40px; border-radius:9px; box-shadow:inset 0 0 0 2px #D9483B; padding:0 12px; display:flex; align-items:center; font-size:.95rem; max-width:240px}
+.m-actions{display:flex; align-items:center; gap:12px; margin-top:14px}
+.m-checkout{flex:1; height:46px; border-radius:11px; background:#9FE0C0; color:#fff; font-family:var(--f-display); font-weight:800; font-size:1.02rem; display:grid; place-items:center}
+.m-chat{width:46px; height:46px; border-radius:50%; background:#1F4D36; display:grid; place-items:center; flex:none; box-shadow:0 6px 16px -6px rgba(0,0,0,.4)}
+.m-chat svg{width:22px; height:22px}
+.m-chatbox{position:absolute; right:18px; bottom:76px; width:min(230px, calc(100% - 36px)); background:#fff; border-radius:14px; box-shadow:0 12px 30px -8px rgba(0,0,0,.35), 0 0 0 1px rgba(0,0,0,.06); padding:12px; display:flex; flex-direction:column; gap:8px; animation:rise .3s}
+.m-chatbox b{font-family:var(--f-display); font-size:.95rem}
+.m-chatin{height:36px; border-radius:8px; background:#F2F4F3; padding:0 10px; display:flex; align-items:center; font-size:.85rem; color:#6B736E}
+.m-send{align-self:flex-end; padding:5px 14px; border-radius:8px; background:#1F4D36; color:#fff; font-weight:700; font-size:.85rem}
+/* slow connection */
+.mock.slow .m-img svg,.mock.slow .m-ico svg,.mock.slow .q svg,.mock.slow .m-chat svg,.mock.slow .m-logo svg{visibility:hidden}
+.mock.slow .m-img{background:#F4F4F4; box-shadow:inset 0 0 0 1px #DADADA}
+.mock.slow .m-img::after{content:""; position:absolute; left:8px; top:8px; width:14px; height:12px; border-radius:2px; box-shadow:inset 0 0 0 1.5px #B0B0B0}
+/* overlay layers */
+.ov{position:absolute; inset:0; pointer-events:none}
+.ov > *{position:absolute}
+.hot{pointer-events:auto; background:transparent; border:0; padding:0; margin:0; border-radius:9px; cursor:pointer}
+.hot:hover{background:rgba(62,99,221,.10); box-shadow:0 0 0 2px rgba(62,99,221,.55)}
+.hot:focus-visible{outline:3px solid #3E63DD; outline-offset:2px}
+.pin{width:24px; height:24px; margin:-12px 0 0 -12px; border-radius:50%; background:#D8343A; color:#fff; font:800 .78rem/1 var(--f-display); display:grid; place-items:center; box-shadow:0 0 0 2.5px #fff, 0 4px 10px rgba(0,0,0,.25); animation:pop .45s cubic-bezier(.3,1.7,.5,1)}
+.kring{border-radius:10px; outline:2.5px dashed #3E63DD; outline-offset:3px; background:rgba(62,99,221,.08); transition:all .25s cubic-bezier(.3,1.2,.5,1)}
+.kring.ghost{outline-color:transparent; background:transparent}
+.srring{border-radius:10px; outline:3px solid #121417; outline-offset:3px; transition:all .25s}
+.curtain{inset:0; background:#0B0D10; display:flex; align-items:center; justify-content:center; padding:24px; text-align:center}
+.curtain .bubble{font-family:var(--f-mono); font-size:1.05rem; color:#fff; background:rgba(255,255,255,.08); border-radius:14px; padding:14px 18px; max-width:90%; animation:rise .3s}
+.curtain .bubble small{display:block; font-family:var(--f-body); color:#9AA4B0; font-size:.9rem; margin-bottom:4px}
+.glare{inset:0; background:radial-gradient(120% 90% at 78% 8%, rgba(255,255,255,.96), rgba(255,255,255,.55) 45%, rgba(255,255,255,.22) 85%)}
+.thumbzone{border-radius:50%; background:rgba(216,52,58,.16); box-shadow:0 0 0 2px rgba(216,52,58,.55); display:grid; place-items:center}
+.thumbzone span{position:absolute; top:100%; margin-top:6px; white-space:nowrap; font:700 .8rem var(--f-display); color:#9B1C22; background:#fff; border-radius:99px; padding:2px 8px; box-shadow:0 2px 8px rgba(0,0,0,.15)}
+.loading{left:50%; top:10px; transform:translateX(-50%); font:700 .8rem var(--f-display); background:#121417; color:#fff; border-radius:99px; padding:4px 12px; white-space:nowrap}
+
+/* ---------- lens picker & controls ---------- */
+.lenses{display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:8px}
+.lens{font:inherit; text-align:left; display:flex; flex-direction:column; gap:2px; padding:10px 12px; min-height:62px; border-radius:12px; border:1px solid var(--hair); background:var(--glass-strong); color:var(--ink); cursor:pointer; transition:background .15s}
+.lens:hover{background:var(--paper)}
+.lens b{font-family:var(--f-display); font-weight:800; font-size:1rem; line-height:1.2; display:flex; align-items:center; gap:8px}
+.lens b i{width:9px; height:9px; border-radius:50%; background:var(--c); flex:none}
+.lens small{font-size:.9rem; color:var(--ink-2)}
+.lens[aria-pressed="true"]{background:var(--ink); color:var(--paper); border-color:var(--ink)}
+.lens[aria-pressed="true"] small{color:color-mix(in srgb, var(--paper) 78%, transparent)}
+.seg-control.wrap{display:grid; grid-template-columns:repeat(auto-fit,minmax(104px,1fr))}
+.seg-control.wrap button{padding:8px 10px}
+.keys{display:flex; flex-wrap:wrap; gap:8px}
+.key{font-family:var(--f-mono); font-weight:600; font-size:.95rem; box-shadow:0 2px 0 var(--hair), 0 1px 3px rgba(18,20,23,.08)}
+.toggle{display:inline-flex; align-items:center; gap:10px; font:inherit; font-size:1rem; background:none; border:0; color:var(--ink); cursor:pointer; padding:6px 0; min-height:44px; text-align:left}
+.toggle .sw{flex:none; width:40px; height:24px; border-radius:99px; background:color-mix(in srgb, var(--ink) 18%, transparent); position:relative; transition:background .2s}
+.toggle .sw::after{content:""; position:absolute; top:3px; left:3px; width:18px; height:18px; border-radius:50%; background:var(--paper); box-shadow:0 1px 3px rgba(0,0,0,.25); transition:transform .2s}
+.toggle[aria-pressed="true"] .sw{background:var(--l2)}
+.toggle[aria-pressed="true"] .sw::after{transform:translateX(16px)}
+.kstatus{font-size:1rem; margin-top:10px; min-height:1.6em; color:var(--ink-2)}
+.kstatus b{color:var(--ink)}
+.said-list{list-style:none; margin:10px 0 0; padding:0; display:flex; flex-direction:column; gap:4px; max-height:230px; overflow-y:auto; font-family:var(--f-mono); font-size:.92rem}
+.said-list li{padding:4px 10px; border-radius:8px; color:var(--ink-2)}
+.said-list li.cur{background:var(--glass-strong); color:var(--ink)}
+.said-list li.badsay{color:var(--bad)}
+.found{list-style:none; margin:0; padding:0; display:flex; flex-direction:column; gap:12px}
+.found li{display:flex; gap:12px; align-items:flex-start; animation:rise .35s}
+.found .pn{flex:none; width:26px; height:26px; border-radius:50%; background:#D8343A; color:#fff; font:800 .82rem/1 var(--f-display); display:grid; place-items:center; margin-top:2px}
+.found b{font-family:var(--f-display); font-weight:800; display:block; line-height:1.3}
+.found p{font-size:1rem; color:var(--ink-2)}
+.found .ln{font-family:var(--f-display); font-weight:700; font-size:.9rem; color:var(--ink-2)}
+.found-empty{color:var(--ink-2); font-size:1rem}
+.found-meter{display:flex; align-items:center; gap:12px; margin:-4px 0 14px}
+.found-meter .meter{flex:1}
+.found-meter span{font-family:var(--f-display); font-weight:700; font-size:.95rem; color:var(--ink-2); font-variant-numeric:tabular-nums; white-space:nowrap}
+
+/* ---------- part 2: stress tests ---------- */
+.phone{background:#15181C; border-radius:28px; padding:12px; max-width:300px; margin:4px auto 16px; box-shadow:0 0 0 1px var(--hair), 0 18px 40px -18px rgba(0,0,0,.5)}
+.screen{position:relative; background:#fff; border-radius:18px; overflow:hidden; color:#14201A; min-height:190px; padding:18px 16px; transition:filter .2s}
+.screen h4{font-family:var(--f-display); font-weight:900; font-size:1.15rem; margin:0 0 6px; color:#14201A}
+.screen .s-note{font-size:.95rem; line-height:1.4; transition:color .15s}
+.screen .s-total{display:flex; justify-content:space-between; margin-top:14px; font-weight:700; font-family:var(--f-display)}
+.screen .s-glare{position:absolute; inset:0; pointer-events:none; background:radial-gradient(130% 100% at 85% 0%, #fff, rgba(255,255,255,.6) 50%, rgba(255,255,255,.3)); opacity:0; transition:opacity .2s}
+.slider{display:grid; grid-template-columns:auto 1fr auto; gap:12px; align-items:center; font-family:var(--f-display); font-weight:700; font-size:1rem; margin-top:8px}
+.slider output{font-variant-numeric:tabular-nums; color:var(--ink-2); min-width:4.6em; text-align:right}
+.ratio{display:flex; align-items:center; justify-content:space-between; gap:12px; margin:14px 0 10px; padding:10px 14px; border-radius:12px; background:var(--bad-bg); transition:background .3s}
+.ratio.pass{background:var(--good-bg)}
+.ratio b{font-family:var(--f-display); font-weight:900; font-size:1.6rem; font-variant-numeric:tabular-nums}
+.ratio span{font-family:var(--f-display); font-weight:800; color:var(--bad)}
+.ratio.pass span{color:var(--good)}
+.tapzone{cursor:crosshair; user-select:none; -webkit-user-select:none; touch-action:manipulation}
+.t-row{display:flex; align-items:center; gap:10px; margin-top:6px}
+.t-row .t-name{flex:1; min-width:0; font-weight:700; font-size:.95rem}
+.stepper{display:flex; align-items:center}
+.stepper .sb{display:grid; place-items:center; border-radius:8px; background:#E6EFE9; transition:width .2s, height .2s}
+.stepper .sb svg{width:55%; height:55%; max-width:22px}
+.stepper .sb.bin{background:#FBE9E7}
+.stepper .sq{min-width:26px; text-align:center; font-weight:800; font-family:var(--f-display)}
+.finger{position:absolute; width:40px; height:40px; margin:-20px 0 0 -20px; border-radius:50%; background:rgba(216,52,58,.28); box-shadow:0 0 0 2px rgba(216,52,58,.7); pointer-events:none; animation:tap .5s ease-out}
+.aim{position:absolute; width:8px; height:8px; margin:-4px 0 0 -4px; border-radius:50%; background:#3E63DD; pointer-events:none}
+@keyframes tap{from{transform:scale(1.8); opacity:0}}
+.tap-stats{display:flex; gap:8px; flex-wrap:wrap; margin:10px 0}
+.spectrum{display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:14px; margin-top:16px}
+.spectrum > div{border-radius:16px; padding:14px 16px; background:var(--glass-strong); animation:rise .35s}
+.spectrum .k{font-family:var(--f-display); font-weight:800; font-size:.95rem; color:var(--ink-2); display:flex; align-items:center; gap:8px}
+.spectrum .k i{width:9px; height:9px; border-radius:50%; background:var(--c)}
+.spectrum p{font-size:1.02rem; margin-top:4px}
+.curb{display:grid; grid-template-columns:minmax(0,300px) minmax(0,1fr); gap:24px; align-items:center}
+.curb svg{width:100%; height:auto}
+
+/* ---------- part 3: lab ---------- */
+#lab textarea{min-height:500px}
+#lab .cl-lines{font-size:16px}
+.chk{display:flex; gap:10px; padding:3px 0; font-family:var(--f-body); font-size:1rem; white-space:normal}
+.chk .m{flex:none; width:1.2em; font-weight:700}
+.chk.ok .m{color:#8BF0A8} .chk.no .m{color:#FF9A8A}
+.chk.no{color:#ECEFF3} .chk.ok{color:#B9C3CE}
+.preview{border-radius:14px; overflow:hidden; box-shadow:var(--float); border:1px solid var(--hair); background:#fff}
+.preview iframe{display:block; width:100%; height:330px; border:0; background:#fff}
+.hears{list-style:none; margin:0; padding:0; display:flex; flex-direction:column; gap:4px; font-family:var(--f-mono); font-size:.92rem}
+.hears li{padding:5px 10px; border-radius:8px; background:var(--glass-strong)}
+.hears li.bad{background:var(--bad-bg); color:var(--bad)}
+.hears li.skip{color:var(--ink-2); font-style:italic; background:transparent}
+.kstops{list-style:none; margin:0; padding:0; display:flex; flex-wrap:wrap; gap:6px}
+.kstops li{font-size:.95rem; padding:3px 10px; border-radius:99px; background:var(--glass-strong); font-family:var(--f-display); font-weight:700}
+.kstops li.miss{background:var(--bad-bg); color:var(--bad)}
+
+@media (max-width:900px){ .spectrum,.curb{grid-template-columns:minmax(0,1fr)} .curb svg{max-width:260px} }
+@media (max-width:640px){
+  .lenses{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .mock{padding:12px 14px 16px}
+  .m-item{gap:9px}
+  .m-img,.m-img svg{width:46px; height:46px}
+}
+</style>
+</head>
+<body>
+<!-- color-vision filters used by the lenses (Machado, Oliveira & Fernandes 2009, full severity) -->
+<svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false">
+  <defs>
+    <filter id="cb-protan" color-interpolation-filters="linearRGB"><feColorMatrix type="matrix" values="0.152286 1.052583 -0.204868 0 0  0.114503 0.786281 0.099216 0 0  -0.003882 -0.048116 1.051998 0 0  0 0 0 1 0"/></filter>
+    <filter id="cb-deutan" color-interpolation-filters="linearRGB"><feColorMatrix type="matrix" values="0.367322 0.860646 -0.227968 0 0  0.280085 0.672501 0.047413 0 0  -0.011820 0.042940 0.968881 0 0  0 0 0 1 0"/></filter>
+    <filter id="cb-tritan" color-interpolation-filters="linearRGB"><feColorMatrix type="matrix" values="1.255528 -0.076749 -0.178779 0 0  -0.078411 0.930809 0.147602 0 0  0.004733 0.691367 0.303900 0 0  0 0 0 1 0"/></filter>
+    <filter id="cb-achroma" color-interpolation-filters="linearRGB"><feColorMatrix type="saturate" values="0"/></filter>
+    <filter id="hf-blur" x="-10%" y="-10%" width="120%" height="120%"><feGaussianBlur stdDeviation="2.4"/></filter>
+    <filter id="hf-sun"><feComponentTransfer><feFuncR type="linear" slope=".42" intercept=".58"/><feFuncG type="linear" slope=".42" intercept=".58"/><feFuncB type="linear" slope=".42" intercept=".58"/></feComponentTransfer></filter>
+  </defs>
+</svg>
+<main id="top">
+  <section class="wrap hero">
+    <div>
+      <div class="kicker">Core curriculum · Course 212 · Accessibility &amp; inclusive design</div>
+      <h1>If they can't use it, it's broken.</h1>
+      <p class="lede">About one in six people lives with a significant disability, and everyone has days of sun glare, a sprained wrist or a weak signal. You'll see one page through different eyes and hands, fix what locks people out, and learn to catch the shortcuts AI tools take.</p>
+      <ul class="facts">
+        <li>About 15 minutes</li>
+        <li>5 parts</li>
+        <li>Code lab</li>
+        <li>No coding experience needed</li>
+      </ul>
+      <div class="row hero-cta"><a class="btn primary" href="#p1">Start the lesson</a></div>
+    </div>
+    <figure style="margin:0">
+      <div class="hero-visual glass">
+        <svg id="heroLens" viewBox="0 0 560 340" role="img" aria-label="A plant shop's checkout page with a magnifying lens gliding over it. Inside the lens the page changes: blurred for low vision, with red and green turned alike for color blindness, washed out by sunlight, and as a screen reader hears it, where the buttons are just called 'button'."></svg>
+        <div class="legend" id="heroLegend"></div>
+      </div>
+      <div class="hero-caption glass" aria-hidden="true"><span>Lens</span><span id="heroCap">low vision</span></div>
+    </figure>
+  </section>
+
+  <div class="wrap">
+  <!-- PART 1 -->
+  <section class="part" id="p1">
+    <span class="bullet glass" data-p="p1">1</span>
+    <div class="part-head">
+      <div class="kicker">Part 1 of 5</div>
+      <h2>Same page, different people</h2>
+      <p><b>Accessibility</b> means people can use your product whatever their eyes, ears, hands or situation. The fastest way to understand it is to try the same page as someone else.</p>
+    </div>
+
+    <div class="chat" aria-label="Example conversation">
+      <div class="msg me"><span class="who">You</span>Build a basket page for my plant shop. Clean and minimal.</div>
+      <div class="msg ai"><span class="who">AI assistant</span>Done! Soft gray text, icon-only buttons, and I removed those blue outlines around buttons so it looks tidy.</div>
+      <div class="msg me"><span class="who">You</span>Two customers emailed. One can't reach Checkout with her keyboard. One says the text is too faint to read.</div>
+    </div>
+
+    <div class="task glass" data-part="p1">
+      <h3>Your task</h3>
+      <ol>
+        <li data-t="blur"><span>Look through the <b>Low vision</b> lens and click the text that disappears.</span></li>
+        <li data-t="color"><span>Switch to <b>Color blindness</b> and click the thing that stops making sense.</span></li>
+        <li data-t="keys"><span>Use <b>Keyboard only</b> and try to reach Checkout.</span></li>
+        <li data-t="sr"><span>Listen to the whole page with the <b>Screen reader</b>.</span></li>
+        <li data-t="life"><span>Try an everyday <b>Situation</b> and find what fails.</span></li>
+      </ol>
+    </div>
+
+    <div class="pg">
+      <div class="pg-col">
+        <div class="o1 ctl glass">
+          <h3 class="ctl-title">Whose eyes and hands?</h3>
+          <div class="lenses" id="lenses" role="group" aria-label="Lenses"></div>
+        </div>
+        <div class="o2 ctl glass" id="modeCtl"></div>
+        <div class="o3 note info" id="lensNote" aria-live="polite"></div>
+        <div class="o5 ctl glass">
+          <h3 class="ctl-title">Barriers found</h3>
+          <div class="found-meter"><div class="meter" aria-hidden="true"><i id="foundMeter" style="width:0"></i></div><span id="foundCount">0 of 12</span></div>
+          <ol class="found" id="found"></ol>
+          <p class="found-empty" id="foundEmpty">None yet. Pick a lens and look for trouble.</p>
+        </div>
+      </div>
+      <div class="pg-col">
+        <div class="o4 browser" id="pip">
+          <div class="browser-bar" aria-hidden="true"><i></i><i></i><i></i><span class="url">pips-plants.shop/basket</span></div>
+          <div class="mock-wrap" id="mockWrap">
+            <div class="mock" id="mock" aria-hidden="true" inert>
+              <div class="m-head">
+                <span class="m-logo" data-k="logo"><svg viewBox="0 0 26 26"><circle cx="13" cy="13" r="13" fill="#1F6F4A"/><path d="M7.5 18.5C7.5 12 11 8 19 7.5c.2 7.5-4 11.2-10 11.2M9 17.5l6-6" fill="none" stroke="#fff" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>Pip's Plants</span>
+                <span class="m-ico" data-k="menu"><svg viewBox="0 0 20 20"><path d="M4 6h12M4 10h12M4 14h12" stroke="#1F4D36" stroke-width="1.8" stroke-linecap="round"/></svg></span>
+                <span class="m-ico" data-k="bag"><svg viewBox="0 0 20 20"><path d="M5 7.5h10l-.8 9H5.8zM7.5 7.5V6a2.5 2.5 0 0 1 5 0v1.5" fill="none" stroke="#1F4D36" stroke-width="1.7" stroke-linejoin="round"/></svg></span>
+              </div>
+              <div class="m-h1"><span data-k="h1">Your basket</span></div>
+              <div class="m-item">
+                <span class="m-img" data-k="img1"><svg viewBox="0 0 56 56"><path d="M28 40C17 38 9 28 13 16c7 2 13 11 15 24z" fill="#2F8F5B"/><path d="M28 40c2-13 10-24 21-25 1 12-8 23-21 25z" fill="#3FA86A"/><path d="M28 40c-5-10-5-22 2-31 7 9 5 21-2 31z" fill="#267A4C"/><path d="M16 22l5 3M15.5 28l6 2M45 21l-5 4M45.5 27l-6 3M27 18l2 5" stroke="#EAF3EC" stroke-width="1.6" stroke-linecap="round"/><path d="M19 41h18l-3 12H22z" fill="#D9774B"/><rect x="17" y="38" width="22" height="5" rx="2" fill="#C4653D"/></svg></span>
+                <span class="m-info" data-k="info1"><b>Monstera Deliciosa</b><span>$28</span></span>
+                <span class="m-qty" data-k="qty1"><span class="q" data-k="minus1"><svg viewBox="0 0 14 14"><path d="M3 7h8" stroke="#1F4D36" stroke-width="1.8" stroke-linecap="round"/></svg></span><span class="n" id="q1">1</span><span class="q" data-k="plus1"><svg viewBox="0 0 14 14"><path d="M3 7h8M7 3v8" stroke="#1F4D36" stroke-width="1.8" stroke-linecap="round"/></svg></span></span>
+                <span class="m-dot in" data-k="dot1"></span>
+              </div>
+              <div class="m-item">
+                <span class="m-img" data-k="img2"><svg viewBox="0 0 56 56"><path d="M24 41c-3-10-3-22 1-33 3 11 3 23 1 33z" fill="#3E7D4F" stroke="#B9C85A" stroke-width="1"/><path d="M28 41c1-9 4-19 10-27 1 10-2 20-8 27z" fill="#4C8F5D" stroke="#B9C85A" stroke-width="1"/><path d="M26 41c-3-7-8-14-14-18 1 8 6 14 12 18z" fill="#35704A" stroke="#B9C85A" stroke-width="1"/><path d="M29 41c0-9 0-17-1-25-3 8-3 17-1 25z" fill="#2E6641"/><path d="M19 41h18l-3 12H22z" fill="#E7E1D6"/><rect x="17" y="38" width="22" height="5" rx="2" fill="#D3CBBE"/></svg></span>
+                <span class="m-info" data-k="info2"><b>Snake Plant</b><span>$19</span></span>
+                <span class="m-qty" data-k="qty2"><span class="q" data-k="minus2"><svg viewBox="0 0 14 14"><path d="M3 7h8" stroke="#1F4D36" stroke-width="1.8" stroke-linecap="round"/></svg></span><span class="n" id="q2">1</span><span class="q" data-k="plus2"><svg viewBox="0 0 14 14"><path d="M3 7h8M7 3v8" stroke="#1F4D36" stroke-width="1.8" stroke-linecap="round"/></svg></span></span>
+                <span class="m-dot out" data-k="dot2"></span>
+              </div>
+              <div class="m-legend" data-k="legend"><span><i style="background:#3B9A57"></i>In stock</span><span><i style="background:#D9483B"></i>Sold out</span></div>
+              <p class="m-note"><span data-k="note">Free delivery over $40. Order by 2pm for next-day delivery.</span></p>
+              <div class="m-label"><span data-k="label">Postcode</span></div>
+              <div class="m-input" data-k="input">9021</div>
+              <div class="m-actions">
+                <div class="m-checkout" data-k="checkout">Checkout</div>
+                <span class="m-chat" data-k="chat"><svg viewBox="0 0 22 22"><path d="M4 5.5h14v9H10l-4 3.5v-3.5H4z" fill="none" stroke="#fff" stroke-width="1.7" stroke-linejoin="round"/></svg></span>
+              </div>
+              <div class="m-chatbox" id="chatbox" hidden><b>Hi! Need a hand?</b><div class="m-chatin" data-k="chatIn">Type a message…</div><span class="m-send" data-k="chatSend">Send</span></div>
+            </div>
+            <div class="ov" id="ovFx"></div>
+            <div class="ov" id="ovCurtain"></div>
+            <div class="ov" id="ovRing"></div>
+            <div class="ov" id="ovPins"></div>
+            <div class="ov" id="ovHot"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="stack" style="margin-top:48px">
+      <h3>What just happened</h3>
+      <p>Every barrier you found is invisible to someone with sharp eyes, a mouse and fast Wi-Fi. That's also how an AI checks its own work: it looks at the code or a screenshot, not at a person trying to pay. So AI-built pages often look finished and still lock people out.</p>
+      <p>Screen readers don't see pixels at all. The browser turns your HTML into an <b>accessibility tree</b>: a list of things with a <b>role</b> (button, link, heading, image), a <b>name</b> (the words that describe it) and a <b>state</b> (checked, invalid, expanded). A styled <code>div</code> has no role. An icon has no name. That's why the page you heard was full of "button, button".</p>
+      <details class="deeper glass">
+        <summary>Under the hood: the accessibility tree <small>optional</small></summary>
+        <div>
+          <p>For <code>&lt;button aria-label="Open basket"&gt;</code> the browser builds a node like <code>role: button, name: "Open basket"</code>. Screen readers, voice control ("click Open basket") and switch devices all read that tree, not the screen.</p>
+          <p>Real HTML elements come with the right role and keyboard behavior for free: <code>&lt;button&gt;</code>, <code>&lt;a href&gt;</code>, <code>&lt;label&gt;</code>, <code>&lt;h1&gt;</code>, <code>&lt;input&gt;</code>. ARIA attributes like <code>aria-label</code> fill gaps, but the first rule of ARIA is: if a real element does the job, use it.</p>
+          <p>You can see the tree yourself: in Chrome, open DevTools, pick an element and open the <b>Accessibility</b> tab.</p>
+        </div>
+      </details>
+    </div>
+  </section>
+
+  <!-- PART 2 -->
+  <section class="part" id="p2">
+    <span class="bullet glass" data-p="p2">2</span>
+    <div class="part-head">
+      <div class="kicker">Part 2 of 5</div>
+      <h2>Fixes that help everyone</h2>
+      <p>Most accessibility fixes are small, and they make the product better for everybody. Strong contrast is for low vision, and also for you at noon. Big buttons are for tremors, and also for you with a coffee in one hand.</p>
+    </div>
+
+    <div class="task glass" data-part="p2">
+      <h3>Your task</h3>
+      <ol>
+        <li data-t="sun"><span>Turn up the sun, then darken the text until it passes 4.5 : 1.</span></li>
+        <li data-t="thumb"><span>Tap the tiny minus button a few times. Then make the buttons 44 px and get from 3 plants to 1.</span></li>
+        <li data-t="spec"><span>See who three different fixes help.</span></li>
+      </ol>
+    </div>
+
+    <div class="split">
+      <div class="ctl glass">
+        <h3 class="ctl-title">Readable in the sun?</h3>
+        <p class="ctl-sub">Contrast is how different the text is from its background, written as a ratio. Glare eats contrast first.</p>
+        <div class="phone"><div class="screen" id="sunScreen" aria-hidden="true">
+          <h4>Your basket</h4>
+          <p class="s-note" id="sunText">Free delivery over $40. Order by 2pm for next-day delivery.</p>
+          <div class="s-total"><span>Total</span><span>$47</span></div>
+          <div class="s-glare" id="sunGlare"></div>
+        </div></div>
+        <label class="slider"><span>Sunlight</span><input class="range" type="range" id="sunR" min="0" max="100" value="0"><output id="sunO">Indoors</output></label>
+        <label class="slider"><span>Text color</span><input class="range" type="range" id="inkR" min="0" max="100" value="12"><output id="inkO">#BBBBBB</output></label>
+        <div class="ratio" id="ratio" aria-live="polite"><b id="ratioN">1.9 : 1</b><span id="ratioV">Fails</span></div>
+        <div class="note info" id="sunNote">Body text needs at least <b>4.5 : 1</b> against its background. Large text (about 24 px, or 19 px bold) needs 3 : 1.</div>
+      </div>
+
+      <div class="ctl glass">
+        <h3 class="ctl-title">Tap with a shaky thumb</h3>
+        <p class="ctl-sub">You're walking the dog, phone in one hand. Remove two plants: get from 3 to 1. Click near the minus on the phone, or use the Tap button.</p>
+        <div class="phone"><div class="screen tapzone" id="tapScreen" aria-hidden="true">
+          <h4>Your basket</h4>
+          <div class="t-row"><span class="t-name">Monstera Deliciosa</span>
+            <span class="stepper" id="stepper">
+              <span class="sb bin" data-b="bin"><svg viewBox="0 0 20 20"><path d="M5 6.5h10M8 6.5V5h4v1.5M6.5 6.5l.7 9h5.6l.7-9" fill="none" stroke="#B8321F" stroke-width="1.6" stroke-linejoin="round" stroke-linecap="round"/></svg></span>
+              <span class="sb" data-b="minus"><svg viewBox="0 0 20 20"><path d="M5 10h10" stroke="#1F4D36" stroke-width="2" stroke-linecap="round"/></svg></span>
+              <span class="sq" id="tapQ">3</span>
+              <span class="sb" data-b="plus"><svg viewBox="0 0 20 20"><path d="M5 10h10M10 5v10" stroke="#1F4D36" stroke-width="2" stroke-linecap="round"/></svg></span>
+            </span>
+          </div>
+          <div class="s-total"><span>Total</span><span id="tapTotal">$84</span></div>
+        </div></div>
+        <label class="slider"><span>Button size</span><input class="range" type="range" id="sizeR" min="20" max="56" step="2" value="22"><output id="sizeO">22 px</output></label>
+        <div class="row" style="margin-top:12px"><button class="btn primary" id="tapBtn">Tap the minus</button><button class="btn" id="tapReset">Start again</button></div>
+        <div class="tap-stats" id="tapStats"></div>
+        <div class="note info" id="tapNote" aria-live="polite">Your thumb lands a little off every time. Watch where the red circle hits.</div>
+      </div>
+    </div>
+
+    <div class="stack" style="margin-top:32px">
+      <div class="ctl glass">
+        <h3 class="ctl-title">One fix, many people</h3>
+        <p class="ctl-sub">Designers call this the persona spectrum: a limit can be permanent, temporary, or just the situation you're in right now. Pick a fix.</p>
+        <div class="seg-control wrap" id="fixSeg" role="group" aria-label="Fixes"></div>
+        <div class="spectrum" id="spectrum" aria-live="polite"></div>
+      </div>
+    </div>
+
+    <div class="stack" style="margin-top:48px">
+      <h3>The curb-cut effect</h3>
+      <div class="curb">
+        <svg viewBox="0 0 300 150" role="img" aria-label="A sidewalk with a sloped curb cut down to the street. A wheelchair user, a stroller and a rolling suitcase all use the slope.">
+          <path d="M0 86H118L178 114H300V150H0z" style="fill:var(--ink)" opacity=".06"/>
+          <path d="M118 86V114H178" fill="none" style="stroke:var(--ink)" stroke-width="1.5" stroke-dasharray="3 5" opacity=".4"/>
+          <path d="M0 86H118L178 114H300" fill="none" style="stroke:var(--ink)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+          <g style="stroke:var(--l2)" fill="none" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"><circle cx="50" cy="26" r="6" style="fill:var(--l2)" stroke="none"/><path d="M50 36v22h16l6 18M50 45h12"/><path d="M40.5 61a15 15 0 1 0 22 16"/></g>
+          <g style="stroke:var(--l3)" fill="none" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M188 92a16 13 0 0 0 32 0z" style="fill:var(--l3)" fill-opacity=".22"/><path d="M188 92a16 16 0 0 1 16-16v16"/><path d="M220 92l10-14h5"/><circle cx="195" cy="109" r="4.5"/><circle cx="214" cy="109" r="4.5"/></g>
+          <g style="stroke:var(--l4)" fill="none" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><rect x="252" y="72" width="30" height="34" rx="6" style="fill:var(--l4)" fill-opacity=".2"/><path d="M261 72V56h12v16M261 84h12"/><circle cx="259" cy="110" r="3.2"/><circle cx="275" cy="110" r="3.2"/></g>
+        </svg>
+        <div class="stack" style="gap:10px">
+          <p>Sloped curb cuts were added to sidewalks for wheelchair users. Today they're used all day by strollers, suitcases, bikes and delivery carts. Captions, keyboard shortcuts, dark mode and voice control all started the same way.</p>
+          <p class="muted">So when an AI says accessibility is "for a small group of users", it's wrong twice: the group isn't small, and the fixes help everyone. For the visual side of contrast, spacing and type, see <a href="211-visual-design-basics.html">Course 211</a>.</p>
+        </div>
+      </div>
+      <details class="deeper glass">
+        <summary>Under the hood: WCAG and the contrast math <small>optional</small></summary>
+        <div>
+          <p><b>WCAG</b> (Web Content Accessibility Guidelines) is the standard most laws and companies point to. Level <b>AA</b> is the usual target. It sets rules like 4.5 : 1 contrast for body text, 3 : 1 for large text and for icons and input borders, and a minimum touch target of 24 by 24 pixels. Apple and Google recommend 44 to 48 for touch.</p>
+          <p>The ratio compares the <b>relative luminance</b> (perceived brightness) of two colors: (lighter + 0.05) ÷ (darker + 0.05). White on black is 21 : 1, the maximum. Identical colors are 1 : 1.</p>
+          <p>When you ask an AI for "accessible" design, ask for "WCAG 2.2 AA" by name. It's specific and testable.</p>
+        </div>
+      </details>
+    </div>
+  </section>
+
+  <!-- PART 3 -->
+  <section class="part" id="p3">
+    <span class="bullet glass" data-p="p3">3</span>
+    <div class="part-head">
+      <div class="kicker">Part 3 of 5</div>
+      <h2>Try it: fix the HTML</h2>
+      <p>Most barriers you found come from a few lines of HTML. You don't need to be a coder to fix them, just to know what to look for. Edit the code, watch the preview and the screen reader change, then press Run to check.</p>
+    </div>
+
+    <div class="lab">
+      <div class="a-mission ctl glass">
+        <h3 class="ctl-title">Your mission</h3>
+        <p class="ctl-sub" style="margin-top:0">The AI built this product box for Pip's Plants. It looks fine with a mouse. Make it work for a keyboard and a screen reader too.</p>
+        <ol class="mission" id="mission"></ol>
+      </div>
+      <div class="a-work" id="lab"></div>
+      <div class="a-side ctl glass">
+        <h3 class="ctl-title">Live preview</h3>
+        <p class="ctl-sub">Click inside it and press Tab to see where focus goes.</p>
+        <div class="preview"><div class="browser-bar" aria-hidden="true"><i></i><i></i><i></i><span class="url">pips-plants.shop/monstera</span></div><iframe id="preview" title="Live preview of your HTML" sandbox=""></iframe></div>
+      </div>
+      <div class="a-extra ctl glass">
+        <h3 class="ctl-title">What a screen reader hears</h3>
+        <ol class="hears" id="hears"></ol>
+        <h3 class="ctl-title" style="margin-top:18px">Where Tab stops</h3>
+        <ol class="kstops" id="kstops"></ol>
+      </div>
+    </div>
+  </section>
+
+  <!-- PART 4 -->
+  <section class="part" id="p4">
+    <span class="bullet glass" data-p="p4">4</span>
+    <div class="part-head">
+      <div class="kicker">Part 4 of 5</div>
+      <h2>Steer the AI</h2>
+      <p>AI tools rarely refuse accessibility. They just skip it unless you ask, or they fake it to pass a checker. Here are four things one might say. Pick the reply you'd send.</p>
+    </div>
+    <p class="counter" id="steerCount"></p>
+    <div id="steer"></div>
+  </section>
+
+  <!-- PART 5 -->
+  <section class="part" id="p5">
+    <span class="bullet glass" data-p="p5">5</span>
+    <div class="part-head">
+      <div class="kicker">Part 5 of 5</div>
+      <h2>Check your understanding</h2>
+      <p>Five quick questions. Each answer explains itself.</p>
+    </div>
+    <div id="quiz"></div>
+    <div id="doneCard" aria-live="polite"></div>
+  </section>
+  </div>
+
+  <section class="after" id="cheat">
+    <div class="wrap stack">
+      <h2>Cheat sheet</h2>
+      <p class="muted">Ten checks you can run yourself in five minutes, and the words to use with the AI.</p>
+      <div class="table-wrap glass">
+        <table>
+          <thead><tr><th>Check</th><th>Test it yourself</th><th>Ask the AI</th></tr></thead>
+          <tbody>
+            <tr><td>Real buttons and links</td><td>Tab to it and press Enter. Does it work?</td><td>"Use <code>&lt;button&gt;</code> for actions and <code>&lt;a href&gt;</code> for navigation. No clickable divs."</td></tr>
+            <tr><td>Visible focus</td><td>Put the mouse away and press Tab. Can you always see where you are?</td><td>"Keep a clear <code>:focus-visible</code> outline that matches the brand."</td></tr>
+            <tr><td>No keyboard traps</td><td>Tab through the whole page. Does Esc close popups?</td><td>"Popups close on Esc and return focus to the button that opened them."</td></tr>
+            <tr><td>Labels on every field</td><td>Click the label text. Does the box get focus?</td><td>"Every input gets a visible <code>&lt;label&gt;</code>. Placeholders are hints, not labels."</td></tr>
+            <tr><td>Names for icon buttons</td><td>Hover or inspect: does the button have words?</td><td>"Give icon-only buttons an <code>aria-label</code> that says what they do."</td></tr>
+            <tr><td>Useful alt text</td><td>Read the alt out loud. Would it help on the phone?</td><td>"Describe what each image shows. Use <code>alt=""</code> only for decoration."</td></tr>
+            <tr><td>Contrast</td><td>Use a contrast checker, or read it outdoors.</td><td>"All text meets WCAG 2.2 AA: 4.5 : 1, or 3 : 1 for large text."</td></tr>
+            <tr><td>Not color alone</td><td>Turn on grayscale. Is anything lost?</td><td>"Pair every color signal with text or an icon."</td></tr>
+            <tr><td>Touch targets</td><td>Use it with your thumb while walking.</td><td>"Make tap targets at least 44 by 44 pixels with space between."</td></tr>
+            <tr><td>Captions and motion</td><td>Watch with the sound off. Turn on reduced motion.</td><td>"Caption all video. Respect <code>prefers-reduced-motion</code>."</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+</main>
+<script src="../assets/cs-school.js"></script>
+<script>
+(() => {
+const { $, $$, esc, reduce } = CS;
+
+CS.lesson({
+  id: '212',
+  parts: [
+    { id: 'p1', title: 'Different eyes and hands' },
+    { id: 'p2', title: 'Fixes for everyone' },
+    { id: 'p3', title: 'Try it' },
+    { id: 'p4', title: 'Steer the AI' },
+    { id: 'p5', title: 'Check' }
+  ]
+});
+
+/* contrast math (WCAG relative luminance) */
+const lum = hex => { const c = hex.replace('#', ''); const v = [0, 2, 4].map(i => parseInt(c.substr(i, 2), 16) / 255).map(x => x <= 0.03928 ? x / 12.92 : Math.pow((x + 0.055) / 1.055, 2.4)); return 0.2126 * v[0] + 0.7152 * v[1] + 0.0722 * v[2]; };
+const ratio = (a, b) => { const [x, y] = [lum(a), lum(b)].sort((p, q) => q - p); return (x + 0.05) / (y + 0.05); };
+const gauss = () => { let u = 0, v = 0; while (!u) u = Math.random(); while (!v) v = Math.random(); return Math.sqrt(-2 * Math.log(u)) * Math.cos(2 * Math.PI * v); };
+
+/* ================= HERO: a lens gliding over the page ================= */
+(function hero() {
+  const svg = $('#heroLens');
+  const T = (x, y, s, w, fill, txt, anchor = 'start', fam = 'var(--f-body)') => `<text x="${x}" y="${y}" font-size="${s}" font-weight="${w}" fill="${fill}" text-anchor="${anchor}" style="font-family:${fam}">${txt}</text>`;
+  const plant = `<g><path d="M126 232C84 222 52 178 66 124c30 8 54 50 60 108z" fill="#2F8F5B"/><path d="M126 232c8-58 44-104 92-106 4 54-36 98-92 106z" fill="#3FA86A"/><path d="M126 232c-22-44-22-96 8-136 30 40 22 92-8 136z" fill="#267A4C"/>
+    <path d="M78 150l20 12M76 176l24 8M204 150l-22 16M206 176l-26 12M122 128l8 20M132 170l2 14" stroke="#EAF3EC" stroke-width="5" stroke-linecap="round"/>
+    <path d="M86 236h82l-12 62H98z" fill="#D9774B"/><rect x="78" y="224" width="98" height="18" rx="6" fill="#C4653D"/></g>`;
+  const card = `<rect x="14" y="10" width="532" height="320" rx="20" fill="#FFFFFF"/>
+    <circle cx="44" cy="42" r="13" fill="#1F6F4A"/><path d="M37 49c0-8 4-12 13-13 0 9-5 13-12 13" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round"/>
+    ${T(66, 48, 17, 900, '#1F4D36', "Pip's Plants", 'start', 'var(--f-display)')}
+    <rect x="462" y="28" width="28" height="28" rx="8" fill="#EEF4F0"/><path d="M469 37h14M469 42h14M469 47h14" stroke="#1F4D36" stroke-width="2" stroke-linecap="round"/>
+    <rect x="498" y="28" width="28" height="28" rx="8" fill="#EEF4F0"/><path d="M505 38h14l-1 12h-12zM508.5 38v-2a3.5 3.5 0 0 1 7 0v2" fill="none" stroke="#1F4D36" stroke-width="1.8" stroke-linejoin="round"/>
+    <rect x="44" y="78" width="176" height="236" rx="16" fill="#EAF3EC"/>${plant}
+    <circle cx="250" cy="96" r="7" fill="#3B9A57"/>${T(266, 102, 17, 700, '#14201A', 'Monstera Deliciosa')}${T(520, 102, 17, 700, '#14201A', '$28', 'end')}
+    <circle cx="250" cy="130" r="7" fill="#D9483B"/>${T(266, 136, 17, 700, '#14201A', 'Snake Plant')}${T(520, 136, 17, 700, '#14201A', '$19', 'end')}
+    ${T(244, 170, 13.5, 400, '#BDBDBD', 'Free delivery over $40. Order by 2pm.')}
+    ${T(244, 198, 14, 700, '#2F3A34', 'Postcode')}
+    <rect x="244" y="206" width="200" height="38" rx="9" fill="#fff" stroke="#D9483B" stroke-width="2.5"/>${T(258, 231, 15, 400, '#14201A', '9021')}
+    <rect x="244" y="260" width="276" height="46" rx="11" fill="#9FE0C0"/>${T(382, 289, 17, 800, '#FFFFFF', 'Checkout', 'middle', 'var(--f-display)')}`;
+  const B = (x, y, w, h, say, bad) => `<rect x="${x}" y="${y}" width="${w}" height="${h}" rx="9" fill="none" stroke="${bad ? '#FF8A78' : '#4A5563'}" stroke-width="1.5" stroke-dasharray="${bad ? '0' : '4 4'}"/>${T(x + 10, y + h / 2 + 5, 13.5, 600, bad ? '#FF9A8A' : '#DDE3EA', say, 'start', 'var(--f-mono)')}`;
+  const sr = `<rect x="14" y="10" width="532" height="320" rx="20" fill="#0E1116"/>
+    ${B(28, 26, 180, 34, "link, Pip's Plants")}${B(456, 24, 76, 36, 'button', 1)}
+    ${B(44, 78, 176, 236, '', 1)}${T(60, 200, 13.5, 600, '#FF9A8A', 'image,', 'start', 'var(--f-mono)')}${T(60, 220, 13.5, 600, '#FF9A8A', 'IMG_4032.jpg', 'start', 'var(--f-mono)')}
+    ${B(236, 80, 296, 34, 'Monstera Deliciosa, $28')}${B(236, 116, 296, 34, 'Snake Plant, $19')}
+    ${B(236, 154, 296, 26, 'Free delivery over $40.')}
+    ${B(236, 206, 216, 38, 'edit text, 9021', 1)}
+    ${B(236, 260, 296, 46, 'Checkout  (plain text)', 1)}`;
+  const MODES = [
+    { name: 'low vision', use: '#hc', f: 'url(#hf-blur)', c: 'var(--l2)' },
+    { name: 'red-blind', use: '#hc', f: 'url(#cb-protan)', c: 'var(--l1)' },
+    { name: 'bright sunlight', use: '#hc', f: 'url(#hf-sun)', c: 'var(--l4)' },
+    { name: 'screen reader', use: '#hsr', f: '', c: 'var(--l5)' }
+  ];
+  svg.innerHTML = `<defs><g id="hc">${card}</g><g id="hsr">${sr}</g><clipPath id="lensClip"><circle id="lensC" cx="380" cy="190" r="86"/></clipPath></defs>
+    <use href="#hc"/>
+    <g clip-path="url(#lensClip)"><rect x="0" y="0" width="560" height="340" fill="#fff"/><use id="lensUse" href="#hc" filter="url(#hf-blur)"/></g>
+    <g id="lensRing"><circle r="86" fill="none" style="stroke:var(--ink)" stroke-width="3"/><circle r="92" fill="none" style="stroke:var(--paper)" stroke-width="2" opacity=".7"/>
+      <path d="M-62 -52a82 82 0 0 1 40 -26" fill="none" stroke="#fff" stroke-width="4" stroke-linecap="round" opacity=".8"/>
+      <path d="M62 62L96 96" style="stroke:var(--ink)" stroke-width="9" stroke-linecap="round"/>
+      <g id="lensTag"><rect x="-64" y="-124" width="128" height="28" rx="14" style="fill:var(--ink)"/><circle cx="-46" cy="-110" r="5" id="lensDot"/><text id="lensTxt" x="-34" y="-105" font-size="14" font-weight="800" style="font-family:var(--f-display);fill:var(--paper)">low vision</text></g></g>`;
+  $('#heroLegend').innerHTML = MODES.map((m, i) => `<span data-m="${i}"><i style="background:${m.c}"></i>${m.name[0].toUpperCase() + m.name.slice(1)}</span>`).join('');
+  const lensC = $('#lensC'), ring = $('#lensRing'), use = $('#lensUse'), tagTxt = $('#lensTxt'), tagRect = $('#lensTag rect'), dot = $('#lensDot'), cap = $('#heroCap');
+  let mode = -1;
+  const setMode = i => {
+    mode = i; const m = MODES[i];
+    use.setAttribute('href', m.use); if (m.f) use.setAttribute('filter', m.f); else use.removeAttribute('filter');
+    tagTxt.textContent = m.name; dot.setAttribute('style', `fill:${m.c}`);
+    const w = m.name.length * 8.6 + 44; tagRect.setAttribute('x', -w / 2); tagRect.setAttribute('width', w); dot.setAttribute('cx', -w / 2 + 18); tagTxt.setAttribute('x', -w / 2 + 30);
+    cap.textContent = m.name;
+    $$('#heroLegend span').forEach(s => s.classList.toggle('on', +s.dataset.m === i));
+  };
+  const place = (x, y) => { lensC.setAttribute('cx', x); lensC.setAttribute('cy', y); ring.setAttribute('transform', `translate(${x} ${y})`); };
+  setMode(0);
+  if (reduce) { setMode(1); place(300, 150); return; }
+  place(372, 170);
+  let t0 = null, last = 0, visible = true;
+  new IntersectionObserver(es => { visible = es[0].isIntersecting; }).observe(svg);
+  const frame = ts => {
+    if (t0 === null) t0 = ts;
+    const t = (ts - t0) / 1000;
+    if (visible) {
+      place(330 + 150 * Math.sin(t * 0.42), 172 + 70 * Math.sin(t * 0.67 + 0.8));
+      const m = Math.floor(t / 3.6) % MODES.length;
+      if (m !== mode) setMode(m);
+    }
+    requestAnimationFrame(frame);
+  };
+  requestAnimationFrame(frame);
+})();
+
+/* ================= PART 1: lenses ================= */
+const mock = $('#mock'), wrap = $('#mockWrap');
+const LABEL = { logo: "the Pip's Plants logo", menu: 'the menu icon', bag: 'the basket icon', h1: 'the heading "Your basket"', img1: 'the Monstera photo', info1: 'the Monstera name and price', qty1: 'the Monstera − and + buttons', dot1: 'the Monstera stock dot', img2: 'the Snake Plant photo', info2: 'the Snake Plant name and price', qty2: 'the Snake Plant − and + buttons', dot2: 'the Snake Plant stock dot', legend: 'the stock legend', note: 'the delivery note', label: 'the word "Postcode"', input: 'the postcode box', checkout: 'the Checkout button', chat: 'the chat bubble', minus1: 'the − button for Monstera', plus1: 'the + button for Monstera', minus2: 'the − button for Snake Plant', plus2: 'the + button for Snake Plant', chatIn: 'the chat message box', chatSend: 'the chat Send button' };
+const HOTS = ['logo', 'menu', 'bag', 'h1', 'img1', 'info1', 'qty1', 'dot1', 'img2', 'info2', 'qty2', 'dot2', 'legend', 'note', 'label', 'input', 'checkout', 'chat'];
+
+const BAR = {
+  faint: { lens: 'Low vision', t: 'Faint gray text', d: 'The delivery note is light gray on white, a contrast of about 2 : 1. Blurry eyes lose it first. Body text needs at least 4.5 : 1.', at: 'note' },
+  color: { lens: 'Color blindness', t: 'Stock shown by color alone', d: 'Green means in stock, red means sold out. With red-green color blindness (about 1 in 12 men) the two dots look the same. Add the words.', at: 'dot1' },
+  error: { lens: 'Color blindness', t: 'An error shown only in red', d: 'The postcode is wrong, but the only sign is a red outline. Say what\'s wrong in words, next to the box.', at: 'input' },
+  focus: { lens: 'Keyboard', t: 'Invisible focus', d: 'Tab moved focus, but nothing showed where. The focus outline was removed to look "clean".', at: 'menu' },
+  divbutton: { lens: 'Keyboard', t: 'A fake Checkout button', d: 'Checkout is a styled div, not a button. Tab skips it and Enter does nothing, so keyboard users can\'t pay.', at: 'checkout' },
+  trap: { lens: 'Keyboard', t: 'A keyboard trap', d: 'The chat popup grabbed focus and Tab never leaves it. Esc does nothing. The only way out is to reload and lose the basket.', at: 'chat' },
+  unlabelled: { lens: 'Screen reader', t: 'Buttons with no names', d: 'The icon buttons are announced as just "button". Nobody can tell the basket from the menu.', at: 'bag' },
+  noalt: { lens: 'Screen reader', t: 'Images without alt text', d: 'The photos have no alt text, so the screen reader reads their file names: "IMG_4032.jpg".', at: 'img1' },
+  nolabel: { lens: 'Screen reader', t: 'A text box with no label', d: 'The word "Postcode" isn\'t connected to the box, so you only hear "edit text".', at: 'input' },
+  sun: { lens: 'Bright sunlight', t: 'A pale button in bright light', d: 'Checkout is white text on pale mint, about 1.5 : 1. Outdoors it vanishes.', at: 'checkout' },
+  small: { lens: 'One hand', t: 'Tiny, crowded buttons', d: 'The − and + buttons are 22 pixels and nearly touching. A thumb hits the wrong one. Aim for 44 pixels.', at: 'qty1' },
+  slow: { lens: 'Slow connection', t: 'Blank boxes where images failed', d: 'The photos didn\'t load and, with no alt text, nothing says what they were. The icon buttons went blank too.', at: 'img2' }
+};
+const LENSES = [
+  { id: 'designed', name: 'As designed', c: 'var(--ink-2)', sub: 'the AI\'s view', bars: [] },
+  { id: 'lowvision', name: 'Low vision', c: 'var(--l2)', bars: ['faint'] },
+  { id: 'color', name: 'Color blindness', c: 'var(--l1)', bars: ['color', 'error'] },
+  { id: 'keyboard', name: 'Keyboard only', c: 'var(--l3)', bars: ['focus', 'divbutton', 'trap'] },
+  { id: 'sr', name: 'Screen reader', c: 'var(--l5)', bars: ['unlabelled', 'noalt', 'nolabel'] },
+  { id: 'life', name: 'Situations', c: 'var(--l4)', bars: ['sun', 'small', 'slow'] }
+];
+const CB = [
+  { id: 'deutan', name: 'Green-blind', f: 'url(#cb-deutan)', say: '<strong>Green-blind (deuteranopia).</strong> The most common kind. Reds and greens slide toward the same muddy yellow. Which plant is sold out? Click the thing that stops making sense.' },
+  { id: 'protan', name: 'Red-blind', f: 'url(#cb-protan)', say: '<strong>Red-blind (protanopia).</strong> Reds look dark and brownish, close to green. Which plant is sold out? Click the thing that stops making sense.' },
+  { id: 'tritan', name: 'Blue-blind', f: 'url(#cb-tritan)', say: '<strong>Blue-blind (tritanopia).</strong> Rare. Blues and greens blur, but red and green still differ here. Try Green-blind or Red-blind too.' },
+  { id: 'achroma', name: 'No color', f: 'url(#cb-achroma)', say: '<strong>No color at all (achromatopsia).</strong> Very rare, and a good test for everyone: if a page works in grayscale, it doesn\'t rely on color. Click what stops making sense.' }
+];
+const LIFE = [
+  { id: 'sun', name: 'Bright sun', say: '<strong>Outside at noon.</strong> Glare washes out everything pale. Click the part you can\'t read.' },
+  { id: 'hand', name: 'One hand', say: '<strong>Coffee in one hand, phone in the other.</strong> Your thumb covers about 44 pixels. Click the controls that are too small for it.' },
+  { id: 'slow', name: 'Slow internet', say: '<strong>A weak signal.</strong> The text arrived, the images and icons didn\'t. Click what makes no sense now.' }
+];
+let lens = 'designed', cb = 'deutan', life = 'sun';
+const found = []; // barrier keys in discovery order
+
+function rectOf(k) {
+  const el = mock.querySelector(`[data-k="${k}"]`);
+  if (!el || !el.getClientRects().length) return null;
+  const r = el.getBoundingClientRect(), w = wrap.getBoundingClientRect();
+  return { x: r.left - w.left, y: r.top - w.top, w: r.width, h: r.height };
+}
+const box = (r, pad = 0) => `left:${r.x - pad}px;top:${r.y - pad}px;width:${r.w + pad * 2}px;height:${r.h + pad * 2}px`;
+
+function renderLenses() {
+  $('#lenses').innerHTML = LENSES.map(l => {
+    const n = l.bars.filter(b => found.includes(b)).length;
+    const sub = l.id === 'designed' ? 'the AI\'s view' : `${n} of ${l.bars.length} found`;
+    return `<button class="lens" data-lens="${l.id}" aria-pressed="${lens === l.id}" style="--c:${l.c}"><b><i></i>${l.name}</b><small>${sub}</small></button>`;
+  }).join('');
+}
+function renderFound() {
+  $('#found').innerHTML = found.map((k, i) => `<li><span class="pn">${i + 1}</span><div><b>${BAR[k].t}</b><span class="ln">${BAR[k].lens}</span><p>${BAR[k].d}</p></div></li>`).join('');
+  $('#foundEmpty').hidden = found.length > 0;
+  $('#foundCount').textContent = `${found.length} of ${Object.keys(BAR).length}`;
+  $('#foundMeter').style.width = `${found.length / Object.keys(BAR).length * 100}%`;
+}
+function paintPins() {
+  const seen = {};
+  $('#ovPins').innerHTML = found.map((k, i) => {
+    const at = BAR[k].at; const r = rectOf(at); if (!r) return '';
+    const n = seen[at] = (seen[at] || 0) + 1;
+    return `<span class="pin" style="left:${r.x + r.w - 2 - (n - 1) * 26}px;top:${r.y + 2}px">${i + 1}</span>`;
+  }).join('');
+}
+function note(html, kind = 'info') { CS.say($('#lensNote'), html, kind); $('#lensNote').classList.add('o3'); }
+
+function find(k) {
+  if (found.includes(k)) return false;
+  found.push(k);
+  renderFound(); renderLenses(); paintPins();
+  if (k === 'faint') CS.tick('p1', 'blur');
+  if (k === 'color' || k === 'error') CS.tick('p1', 'color');
+  if (k === 'divbutton') CS.tick('p1', 'keys');
+  if (['sun', 'small', 'slow'].includes(k)) CS.tick('p1', 'life');
+  if (found.length === Object.keys(BAR).length) CS.toast('All 12 barriers found!');
+  return true;
+}
+const foundNote = k => `<strong>Found it: ${BAR[k].t.toLowerCase()}.</strong> ${BAR[k].d}`;
+
+/* which click finds what, per lens */
+function hitTarget(k) {
+  if (lens === 'lowvision') {
+    if (k === 'note') { find('faint'); return note(foundNote('faint'), 'good'); }
+    if (k === 'legend' || k === 'dot1' || k === 'dot2') return note('<strong>Blurry, but still there.</strong> The dots and legend are dark enough to make out. Look for text that fades into the background.');
+    return note('<strong>Still readable.</strong> Dark text on white survives the blur. Look for something paler.');
+  }
+  if (lens === 'color') {
+    if (cb === 'tritan' && ['dot1', 'dot2', 'legend', 'input'].includes(k)) return note('<strong>Good instinct.</strong> In this rare type red and green still differ. Switch to Green-blind or Red-blind and click it again.');
+    if (['dot1', 'dot2', 'legend'].includes(k)) { find('color'); return note(foundNote('color'), 'good'); }
+    if (k === 'input') { find('error'); return note(foundNote('error'), 'good'); }
+    return note('<strong>That works in any color.</strong> Look for places where the color itself carries the meaning.');
+  }
+  if (lens === 'life') {
+    if (life === 'sun') {
+      if (k === 'checkout') { find('sun'); return note(foundNote('sun'), 'good'); }
+      if (k === 'note') { const n = find('faint'); return note(n ? foundNote('faint') : '<strong>Yes, that\'s gone too.</strong> You already found it with low vision. What else vanished? Something you need to press.', n ? 'good' : 'info'); }
+      return note('<strong>Still readable in the glare.</strong> Dark on light survives. Look for pale on pale.');
+    }
+    if (life === 'hand') {
+      if (k === 'qty1' || k === 'qty2') { find('small'); return note(foundNote('small'), 'good'); }
+      if (k === 'menu' || k === 'bag') return note('<strong>Small, but workable.</strong> These are 32 pixels with space around them. Something else is smaller and more crowded.');
+      return note('<strong>Big enough for a thumb.</strong> Look for the smallest things you need to tap.');
+    }
+    if (life === 'slow') {
+      if (['img1', 'img2', 'menu', 'bag', 'qty1', 'qty2', 'chat', 'logo'].includes(k)) { find('slow'); return note(foundNote('slow'), 'good'); }
+      return note('<strong>Text still works.</strong> Words are tiny and arrive first. Look at the things that didn\'t load.');
+    }
+  }
+}
+function paintHot() {
+  const on = ['lowvision', 'color', 'life'].includes(lens);
+  $('#ovHot').innerHTML = on ? HOTS.map(k => { const r = rectOf(k); return r ? `<button class="hot" data-hot="${k}" style="${box(r, 2)}" aria-label="Check ${esc(LABEL[k])}"></button>` : ''; }).join('') : '';
+}
+$('#ovHot').addEventListener('click', e => { const b = e.target.closest('.hot'); if (b) hitTarget(b.dataset.hot); });
+
+/* ---- keyboard simulation ---- */
+const KSTOPS = ['logo', 'menu', 'bag', 'minus1', 'plus1', 'minus2', 'plus2', 'input', 'chat'];
+const TRAP = ['chatIn', 'chatSend'];
+const K = { i: -1, trap: -1, presses: 0, loops: 0, xray: false };
+const kFocus = () => K.trap >= 0 ? TRAP[K.trap] : (K.i >= 0 ? KSTOPS[K.i] : null);
+function paintRing() {
+  const ov = $('#ovRing');
+  if (lens === 'keyboard') {
+    const k = kFocus(); const r = k && rectOf(k);
+    ov.innerHTML = r ? `<span class="kring${K.xray ? '' : ' ghost'}" style="${box(r, 1)}"></span>` : '';
+  } else if (lens === 'sr' && !S.curtain) {
+    const r = S.i >= 0 && rectOf(SR[S.i].k);
+    ov.innerHTML = r ? `<span class="srring" style="${box(r, 2)}"></span>` : '';
+  } else ov.innerHTML = '';
+}
+function kStatus() {
+  const s = $('#kStatus'); if (!s) return;
+  const k = kFocus();
+  s.innerHTML = K.presses === 0 ? 'Focus starts at the top of the page.' : (K.xray ? `Focus is on <b>${esc(LABEL[k] || 'the page')}</b>.` : `You pressed Tab <b>${K.presses}</b> time${K.presses > 1 ? 's' : ''}. Where are you? The page doesn't show it.`);
+}
+function openChat(open) { $('#chatbox').hidden = !open; paintPins(); }
+function kPress(key) {
+  const prev = kFocus();
+  if (key === 'tab' || key === 'shift') {
+    K.presses++;
+    if (K.trap >= 0) {
+      K.trap = (K.trap + 1) % 2; K.loops++;
+      if (K.loops >= 3 && find('trap')) note(foundNote('trap'), 'good');
+      else if (!found.includes('trap')) note('<strong>The chat window popped open and took focus.</strong> Keep pressing Tab. Can you get back to the page?');
+      else note('<strong>Still stuck.</strong> Tab only moves between the message box and Send. Press Start over to reload the page.', 'bad');
+    } else if (key === 'shift') {
+      K.i = Math.max(-1, K.i - 1);
+    } else if (K.i === KSTOPS.length - 1) {
+      openChat(true); K.trap = 0; K.loops = 0;
+      note('<strong>The chat window popped open and took focus.</strong> Keep pressing Tab. Can you get back to the page?');
+    } else {
+      K.i++;
+      const now = KSTOPS[K.i];
+      if (prev === 'input' && now === 'chat') { find('divbutton'); note(`${foundNote('divbutton')} Focus jumped from the postcode box straight to the chat bubble.`, 'good'); }
+      else if (K.presses >= 3 && !found.includes('focus')) { find('focus'); note(`${foundNote('focus')} ${K.xray ? 'The dashed ring is X-ray vision. The page itself shows nothing.' : 'Switch on X-ray to see where focus really is.'}`, 'good'); }
+      else if (found.includes('focus') && !K.xray) note('<strong>Still invisible.</strong> Switch on X-ray to see where you are, then keep going. Your goal is Checkout.');
+      else if (K.xray) note(`<strong>Focus is on ${esc(LABEL[now])}.</strong> ${now.startsWith('minus') || now.startsWith('plus') ? 'These are real buttons, so Enter works on them, even though you can\'t see focus.' : 'Keep pressing Tab. Your goal is Checkout.'}`);
+      else note('<strong>Something happened.</strong> Focus moved, but where? Keep pressing Tab.');
+    }
+  }
+  if (key === 'enter') {
+    const k = kFocus();
+    if (!k) note('<strong>Nothing is focused yet.</strong> Press Tab first.');
+    else if (/^(minus|plus)/.test(k)) { const q = $('#q' + k.slice(-1)); q.textContent = Math.max(0, +q.textContent + (k.startsWith('plus') ? 1 : -1)); note(`<strong>That worked.</strong> ${esc(LABEL[k])} is a real button, so Enter presses it. You just couldn't see it was focused.`); }
+    else if (k === 'chat') { openChat(true); K.trap = 0; note('<strong>The chat window opened and grabbed focus.</strong> Now try to Tab out of it.'); }
+    else if (k === 'chatSend' || k === 'chatIn') note('<strong>Nothing to send.</strong> You wanted to pay, not chat. Try Tab or Esc to get out.');
+    else if (k === 'input') note('<strong>You\'re typing in the postcode box.</strong> It\'s red, but nothing says why. Keep pressing Tab.');
+    else note(`<strong>Enter on ${esc(LABEL[k])}.</strong> That one works. Keep going to Checkout.`);
+  }
+  if (key === 'esc') {
+    if (K.trap >= 0) note('<strong>Nothing happens.</strong> Escape should close a popup, but this one ignores it. Keep pressing Tab to see if you can get out.', 'bad');
+    else note('<strong>Nothing to close.</strong> Esc closes popups. Press Tab to move.');
+  }
+  if (key === 'reset') { K.i = -1; K.trap = -1; K.presses = 0; K.loops = 0; openChat(false); $('#q1').textContent = 1; $('#q2').textContent = 1; note('<strong>Page reloaded.</strong> In real life the basket might be empty now. Focus is back at the top.'); }
+  paintRing(); kStatus();
+}
+
+/* ---- screen reader simulation ---- */
+const SR = [
+  { k: 'logo', say: "link, Pip's Plants", why: 'Good. The logo image has alt text, so the link has a name.' },
+  { k: 'menu', say: 'button', b: 'unlabelled', why: 'Which button? It\'s an icon with no name.' },
+  { k: 'bag', say: 'button', b: 'unlabelled', why: 'Another nameless button. Basket? Account? You can\'t tell.' },
+  { k: 'h1', say: 'heading level 1, Your basket', why: 'Good. A real heading, so people can jump straight to it.' },
+  { k: 'img1', say: 'image, IMG_4032.jpg', b: 'noalt', why: 'No alt text, so you hear the file name.' },
+  { k: 'info1', say: 'Monstera Deliciosa, $28', why: '' },
+  { k: 'qty1', say: 'button, 1, button', b: 'unlabelled', why: 'Which one is minus? And the green stock dot says nothing at all.' },
+  { k: 'img2', say: 'image, IMG_4051.jpg', b: 'noalt', why: 'Another file name.' },
+  { k: 'info2', say: 'Snake Plant, $19', why: 'Nobody told you it\'s sold out. The red dot is silent.' },
+  { k: 'qty2', say: 'button, 1, button', b: 'unlabelled', why: '' },
+  { k: 'legend', say: 'In stock, Sold out', why: 'The legend is read, but nothing links it to the dots.' },
+  { k: 'note', say: 'Free delivery over $40. Order by 2pm for next-day delivery.', why: 'Faint text reads fine aloud. Contrast is a problem for eyes, not ears.' },
+  { k: 'label', say: 'Postcode', why: 'Just text. It isn\'t connected to the box below.' },
+  { k: 'input', say: 'edit text, 9021', b: 'nolabel', why: 'Tab in and you only hear "edit text". Nothing says the postcode is wrong, either.' },
+  { k: 'checkout', say: 'Checkout', b: 'divbutton', why: 'Plain text. Nothing says it\'s a button, and pressing it does nothing.' },
+  { k: 'chat', say: 'button', b: 'unlabelled', why: '' }
+];
+const S = { i: -1, curtain: true, voice: false, timer: null };
+const canSpeak = 'speechSynthesis' in window;
+function speak(t) { if (!S.voice || !canSpeak) return; try { speechSynthesis.cancel(); const u = new SpeechSynthesisUtterance(t); u.rate = 1.1; speechSynthesis.speak(u); } catch (e) { /* ignore */ } }
+function paintCurtain() {
+  const ov = $('#ovCurtain');
+  if (lens === 'sr' && S.curtain) {
+    const cur = S.i < 0 ? { say: 'Press Next to start' } : S.i >= SR.length ? { say: 'End of page' } : SR[S.i];
+    ov.innerHTML = `<div class="curtain"><div class="bubble" ${S.i >= 0 ? 'key="' + S.i + '"' : ''}><small>${S.i < 0 ? 'Screen curtain on' : 'Screen reader says'}</small>${esc(cur.say)}</div></div>`;
+    $('#ovPins').style.visibility = 'hidden';
+  } else { ov.innerHTML = ''; $('#ovPins').style.visibility = ''; }
+}
+function srGo(d) {
+  S.i = Math.max(-1, Math.min(SR.length, S.i + d));
+  const it = SR[S.i];
+  if (it) {
+    speak(it.say);
+    let html = `<strong>"${esc(it.say)}"</strong> ${esc(it.why || '')}`;
+    let kind = 'info';
+    if (it.b && find(it.b)) { html += ` <strong>Barrier found: ${esc(BAR[it.b].t.toLowerCase())}.</strong>`; kind = 'good'; }
+    note(html, kind);
+  } else if (S.i >= SR.length) {
+    speak('End of page');
+    CS.tick('p1', 'sr');
+    note('<strong>End of page.</strong> You heard every item. Three kinds of barrier hide in there: nameless buttons, file names instead of descriptions, and a box with no label. Try it with the curtain off to see where each one is.', 'good');
+    srStop();
+  }
+  const list = $('#saidList');
+  if (list) {
+    list.innerHTML = SR.slice(0, Math.max(0, Math.min(S.i + 1, SR.length))).map((s, j) => `<li class="${j === S.i ? 'cur' : ''}${s.b ? ' badsay' : ''}">${esc(s.say)}</li>`).join('') + (S.i >= SR.length ? '<li class="cur">End of page</li>' : '');
+    list.scrollTop = list.scrollHeight;
+  }
+  paintCurtain(); paintRing();
+}
+function srStop() { clearInterval(S.timer); S.timer = null; const b = $('#srAll'); if (b) b.textContent = 'Read to the end'; }
+
+/* ---- mode controls ---- */
+const toggle = (id, label, on) => `<button class="toggle" id="${id}" aria-pressed="${on}"><span class="sw" aria-hidden="true"></span>${label}</button>`;
+function renderMode() {
+  const c = $('#modeCtl');
+  if (lens === 'designed') c.innerHTML = `<h3 class="ctl-title">As the AI designed it</h3><p>Seen with sharp eyes, a mouse and fast Wi-Fi, the page looks tidy. That's the only way the AI checked it. Pick a lens above to see it as someone else.</p>`;
+  if (lens === 'lowvision') c.innerHTML = `<h3 class="ctl-title">Low vision</h3><p>Roughly how the page looks without glasses, with cataracts, or on a tired evening. Many people also zoom in to 200% or more.</p>`;
+  if (lens === 'color') c.innerHTML = `<h3 class="ctl-title">Color blindness</h3><p class="ctl-sub">About 1 in 12 men and 1 in 200 women see color differently.</p><div class="seg-control wrap" role="group" aria-label="Type of color blindness">${CB.map(x => `<button data-cb="${x.id}" aria-pressed="${cb === x.id}">${x.name}</button>`).join('')}</div>`;
+  if (lens === 'life') c.innerHTML = `<h3 class="ctl-title">Everyday situations</h3><p class="ctl-sub">Anyone can be disabled for a moment.</p><div class="seg-control wrap" role="group" aria-label="Situation">${LIFE.map(x => `<button data-life="${x.id}" aria-pressed="${life === x.id}">${x.name}</button>`).join('')}</div>`;
+  if (lens === 'keyboard') c.innerHTML = `<h3 class="ctl-title">Your keyboard</h3><p class="ctl-sub">Tab moves forward, Shift + Tab moves back, Enter presses.</p>
+    <div class="keys"><button class="btn key" data-key="tab">Tab</button><button class="btn key" data-key="shift">Shift + Tab</button><button class="btn key" data-key="enter">Enter</button><button class="btn key" data-key="esc">Esc</button><button class="btn" data-key="reset">Start over</button></div>
+    ${toggle('xray', 'X-ray: show where focus really is', K.xray)}<p class="kstatus" id="kStatus" aria-live="polite"></p>`;
+  if (lens === 'sr') c.innerHTML = `<h3 class="ctl-title">Your screen reader</h3><p class="ctl-sub">On a phone you'd swipe right to hear the next item.</p>
+    <div class="keys"><button class="btn" data-sr="-1">Previous</button><button class="btn primary" data-sr="1">Next item</button><button class="btn" id="srAll">Read to the end</button></div>
+    <div class="row" style="gap:4px 18px">${toggle('curtainT', 'Screen curtain', S.curtain)}${canSpeak ? toggle('voiceT', 'Read aloud', S.voice) : ''}</div>
+    <ol class="said-list" id="saidList" aria-label="What the screen reader said"></ol>`;
+  if (lens === 'keyboard') kStatus();
+  if (lens === 'sr') { S.i = Math.min(S.i, SR.length - 1); srGo(0); }
+}
+function applyLens() {
+  let f = '';
+  if (lens === 'lowvision') f = 'blur(2.4px)';
+  if (lens === 'color') f = CB.find(x => x.id === cb).f;
+  if (lens === 'life' && life === 'sun') f = 'contrast(.55) brightness(1.29) saturate(.7)';
+  mock.style.filter = f;
+  mock.classList.toggle('slow', lens === 'life' && life === 'slow');
+  let fx = '';
+  if (lens === 'life' && life === 'sun') fx = '<div class="glare"></div>';
+  if (lens === 'life' && life === 'hand') { const r = rectOf('qty1'); if (r) fx = `<div class="thumbzone" style="left:${r.x + r.w / 2 - 26}px;top:${r.y + r.h / 2 - 26}px;width:52px;height:52px"><span>your thumb</span></div>`; }
+  if (lens === 'life' && life === 'slow') fx = '<div class="loading">Loading images… 3%</div>';
+  $('#ovFx').innerHTML = fx;
+  if (lens !== 'keyboard') openChat(false);
+  if (lens !== 'sr') srStop();
+  paintHot(); paintRing(); paintCurtain(); paintPins();
+}
+const INTRO = {
+  designed: '<strong>Your goal:</strong> find all 12 barriers hiding in this tidy page. Each lens reveals one to three of them.',
+  lowvision: '<strong>Low vision.</strong> Click the text that\'s hardest to read.',
+  keyboard: '<strong>Keyboard only.</strong> Many people never use a mouse: people with tremors or paralysis, blind people, and plenty of power users. Press <b>Tab</b> to move through the page. Your goal: reach Checkout.',
+  sr: '<strong>Screen reader.</strong> Blind people hear the page one item at a time. The screen curtain hides the page, just as it\'s hidden for them. Press <b>Next item</b>.'
+};
+function setLens(id) {
+  lens = id;
+  renderLenses(); renderMode(); applyLens();
+  if (id === 'color') note(CB.find(x => x.id === cb).say);
+  else if (id === 'life') note(LIFE.find(x => x.id === life).say);
+  else if (id !== 'sr') note(INTRO[id]);
+  if (id === 'sr' && S.i < 0) note(INTRO.sr);
+}
+$('#lenses').addEventListener('click', e => { const b = e.target.closest('.lens'); if (b) setLens(b.dataset.lens); });
+$('#modeCtl').addEventListener('click', e => {
+  const t = e.target.closest('button'); if (!t) return;
+  if (t.dataset.cb) { cb = t.dataset.cb; renderMode(); applyLens(); note(CB.find(x => x.id === cb).say); }
+  if (t.dataset.life) { life = t.dataset.life; renderMode(); applyLens(); note(LIFE.find(x => x.id === life).say); }
+  if (t.dataset.key) kPress(t.dataset.key);
+  if (t.id === 'xray') { K.xray = !K.xray; t.setAttribute('aria-pressed', K.xray); paintRing(); kStatus(); note(K.xray ? '<strong>X-ray on.</strong> The dashed ring shows where focus really is. The page itself still shows nothing. Keep pressing Tab: your goal is Checkout.' : '<strong>X-ray off.</strong> This is what keyboard users actually see: no sign of where they are.'); }
+  if (t.dataset.sr) { srStop(); if (+t.dataset.sr > 0 && S.i >= SR.length) S.i = -1; srGo(+t.dataset.sr); }
+  if (t.id === 'srAll') {
+    if (S.timer) { srStop(); return; }
+    if (S.i >= SR.length) S.i = -1;
+    t.textContent = 'Pause'; srGo(1);
+    S.timer = setInterval(() => { if (S.i >= SR.length) srStop(); else srGo(1); }, reduce ? 1400 : 1100);
+  }
+  if (t.id === 'curtainT') { S.curtain = !S.curtain; t.setAttribute('aria-pressed', S.curtain); paintCurtain(); paintRing(); }
+  if (t.id === 'voiceT') { S.voice = !S.voice; t.setAttribute('aria-pressed', S.voice); if (!S.voice && canSpeak) speechSynthesis.cancel(); }
+});
+new ResizeObserver(() => { paintPins(); paintHot(); paintRing(); if (lens === 'life' && life === 'hand') applyLens(); }).observe(wrap);
+renderFound(); setLens('designed');
+
+/* ================= PART 2 ================= */
+/* sunlight + contrast */
+const grayOf = t => { const v = Math.round(200 - 1.75 * t); const h = v.toString(16).padStart(2, '0'); return `#${h}${h}${h}`.toUpperCase(); };
+function paintSun() {
+  const s = +$('#sunR').value / 100, t = +$('#inkR').value;
+  const g = grayOf(t), r = ratio(g, '#FFFFFF');
+  $('#sunText').style.color = g;
+  const c = 1 - 0.62 * s;
+  $('#sunScreen').style.filter = `contrast(${c}) brightness(${1 / (0.5 + 0.5 * c)})`;
+  $('#sunGlare').style.opacity = s * 0.6;
+  $('#sunO').textContent = s === 0 ? 'Indoors' : s < 0.5 ? 'Cloudy' : s < 0.85 ? 'Sunny' : 'Noon sun';
+  $('#inkO').textContent = g;
+  const pass = r >= 4.5;
+  $('#ratioN').textContent = `${r.toFixed(1)} : 1`;
+  $('#ratioV').textContent = r >= 7 ? 'Passes AAA' : pass ? 'Passes AA' : r >= 3 ? 'Large text only' : 'Fails';
+  $('#ratio').classList.toggle('pass', pass);
+  const n = $('#sunNote');
+  if (pass && s >= 0.5) { CS.say(n, `<strong>Readable at noon.</strong> At ${r.toFixed(1)} : 1 the note survives the glare. The AI's soft gray was about 1.9 : 1. "Soft" and "subtle" are how contrast problems get described in a design review.`, 'good'); CS.tick('p2', 'sun'); }
+  else if (pass) CS.say(n, `<strong>That passes: ${r.toFixed(1)} : 1.</strong> Now turn up the sun to see why the rule exists.`, 'info');
+  else if (s >= 0.5) CS.say(n, `<strong>Gone in the glare.</strong> At ${r.toFixed(1)} : 1 the note fades into the screen. Drag the text color darker until it passes 4.5 : 1.`, 'bad');
+  else CS.say(n, 'Body text needs at least <b>4.5 : 1</b> against its background. Large text (about 24 px, or 19 px bold) needs 3 : 1.', 'info');
+}
+['#sunR', '#inkR'].forEach(s => $(s).addEventListener('input', paintSun));
+paintSun();
+
+/* shaky thumb */
+const T = { q: 3, size: 22, taps: 0, small: 0, hit: 0, miss: 0, wrong: 0, done: false };
+function paintStepper() {
+  const s = T.size, gap = Math.max(4, Math.round(s * 0.18));
+  $$('#stepper .sb').forEach(b => { b.style.width = b.style.height = s + 'px'; });
+  $('#stepper').style.gap = gap + 'px';
+  $('#tapQ').textContent = T.q; $('#tapTotal').textContent = `$${T.q * 28}`;
+  $('#sizeO').textContent = `${s} px`;
+  $('#tapStats').innerHTML = T.taps ? `<span class="chip" style="--c:var(--good)"><i></i>${T.hit} on target</span><span class="chip" style="--c:var(--ink-2)"><i></i>${T.miss} missed</span><span class="chip" style="--c:var(--bad)"><i></i>${T.wrong} wrong button</span>` : '';
+}
+function tapAt(ax, ay) {
+  if (T.q === 0 || T.done) { tapReset(); }
+  const scr = $('#tapScreen'), sr = scr.getBoundingClientRect();
+  const lx = ax + gauss() * 11, ly = ay + gauss() * 11 + 4;
+  $$('.finger,.aim', scr).forEach(x => x.remove());
+  scr.insertAdjacentHTML('beforeend', `<span class="aim" style="left:${ax}px;top:${ay}px"></span><span class="finger" style="left:${lx}px;top:${ly}px"></span>`);
+  let hit = null;
+  $$('#stepper .sb').forEach(b => { const r = b.getBoundingClientRect(); const x = lx + sr.left, y = ly + sr.top; if (x >= r.left && x <= r.right && y >= r.top && y <= r.bottom) hit = b.dataset.b; });
+  T.taps++; if (T.size < 36) T.small++;
+  const n = $('#tapNote');
+  if (hit === 'minus') { T.hit++; T.q--; }
+  else if (hit === 'plus') { T.wrong++; T.q++; }
+  else if (hit === 'bin') { T.wrong++; T.q = 0; }
+  else T.miss++;
+  paintStepper();
+  if (hit === 'bin') CS.say(n, '<strong>You hit the bin.</strong> All three plants are gone from the basket. Tiny buttons packed side by side turn a wobble into a mistake. Press Start again.', 'bad');
+  else if (T.q === 1) {
+    if (T.size >= 44 && T.small >= 2) { T.done = true; CS.say(n, `<strong>Done, first try or close to it.</strong> At ${T.size} px your wobble still lands on the button. Same thumb, same walk, different design. Aim for 44 px or more for anything people tap.`, 'good'); CS.tick('p2', 'thumb'); }
+    else if (T.size >= 44) { T.done = true; CS.say(n, '<strong>Easy at this size.</strong> Now set the size back to 22 px and try again, so you can feel the difference.', 'info'); }
+    else { T.done = true; CS.say(n, `<strong>You got there in ${T.taps} taps.</strong> Now drag Button size to 44 px and do it again.`, 'info'); }
+  }
+  else if (hit === 'plus') CS.say(n, '<strong>Wrong button.</strong> Your thumb landed on +, so now you have more plants. That\'s a real order mistake.', 'bad');
+  else if (hit === 'minus') CS.say(n, '<strong>Hit.</strong> One down. Keep going.', 'good');
+  else CS.say(n, `<strong>Missed.</strong> Your thumb landed ${T.size < 36 ? 'just off the tiny button' : 'off the button'}. The blue dot is where you aimed, the red circle is where your thumb landed.`, 'info');
+}
+function tapReset() { T.q = 3; T.taps = 0; T.hit = 0; T.miss = 0; T.wrong = 0; T.done = false; $$('#tapScreen .finger, #tapScreen .aim').forEach(x => x.remove()); paintStepper(); CS.say($('#tapNote'), 'Back to 3 plants. Try again.', 'info'); }
+function aimMinus() { const m = $('#stepper [data-b="minus"]').getBoundingClientRect(), sr = $('#tapScreen').getBoundingClientRect(); return [m.left + m.width / 2 - sr.left, m.top + m.height / 2 - sr.top]; }
+$('#tapBtn').addEventListener('click', () => tapAt(...aimMinus()));
+$('#tapReset').addEventListener('click', tapReset);
+$('#tapScreen').addEventListener('click', e => { const r = e.currentTarget.getBoundingClientRect(); tapAt(e.clientX - r.left, e.clientY - r.top); });
+$('#sizeR').addEventListener('input', e => { T.size = +e.target.value; paintStepper(); });
+paintStepper();
+
+/* persona spectrum */
+const FIX = [
+  { id: 'contrast', name: 'Strong contrast', p: 'Low vision', t: 'Eyes dilated after an eye exam', s: 'Reading your phone in bright sun' },
+  { id: 'targets', name: 'Big buttons', p: 'A tremor, or limited hand movement', t: 'A cast on your wrist', s: 'Walking the dog, one hand free' },
+  { id: 'keyboard', name: 'Keyboard support', p: 'Can\'t use a mouse, or blind and using a screen reader', t: 'A sprained wrist', s: 'A broken trackpad, or you\'re just faster with keys' },
+  { id: 'captions', name: 'Captions', p: 'Deaf or hard of hearing', t: 'An ear infection', s: 'A noisy café, or a sleeping baby next to you' },
+  { id: 'plain', name: 'Plain words', p: 'A learning or cognitive disability', t: 'A migraine, or after a night shift', s: 'Reading in your second language' },
+  { id: 'motion', name: 'Less motion', p: 'A vestibular disorder, where motion causes dizziness', t: 'Recovering from a concussion', s: 'Trying to focus while animations pull at your eye' }
+];
+const seenFix = new Set();
+function paintFix(id) {
+  $$('#fixSeg button').forEach(b => b.setAttribute('aria-pressed', b.dataset.fix === id));
+  const f = FIX.find(x => x.id === id);
+  $('#spectrum').innerHTML = !f ? '' : [['Permanent', f.p, 'var(--l5)'], ['Temporary', f.t, 'var(--l2)'], ['Situational', f.s, 'var(--l4)']].map(([k, v, c]) => `<div><span class="k" style="--c:${c}"><i></i>${k}</span><p>${esc(v)}</p></div>`).join('');
+  if (f) { seenFix.add(id); if (seenFix.size >= 3) CS.tick('p2', 'spec'); }
+}
+$('#fixSeg').innerHTML = FIX.map(f => `<button data-fix="${f.id}" aria-pressed="false">${f.name}</button>`).join('');
+$('#fixSeg').addEventListener('click', e => { const b = e.target.closest('button'); if (b) paintFix(b.dataset.fix); });
+$('#spectrum').innerHTML = '<div style="grid-column:1/-1; background:transparent; padding:4px 0" class="muted">Pick a fix above.</div>';
+
+/* ================= PART 3: code lab ================= */
+const PLANT_URI = 'data:image/svg+xml,' + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 56 56"><rect width="56" height="56" fill="#EAF3EC"/><path d="M28 40C17 38 9 28 13 16c7 2 13 11 15 24z" fill="#2F8F5B"/><path d="M28 40c2-13 10-24 21-25 1 12-8 23-21 25z" fill="#3FA86A"/><path d="M28 40c-5-10-5-22 2-31 7 9 5 21-2 31z" fill="#267A4C"/><path d="M16 22l5 3M15.5 28l6 2M45 21l-5 4M45.5 27l-6 3" stroke="#EAF3EC" stroke-width="1.6" stroke-linecap="round"/><path d="M19 41h18l-3 12H22z" fill="#D9774B"/><rect x="17" y="38" width="22" height="5" rx="2" fill="#C4653D"/></svg>');
+const HEART_URI = 'data:image/svg+xml,' + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 20s-7-4.4-7-10a4 4 0 0 1 7-2.6A4 4 0 0 1 19 10c0 5.6-7 10-7 10z" fill="none" stroke="#1F4D36" stroke-width="2" stroke-linejoin="round"/></svg>');
+const BASE_CSS = `body{margin:0;padding:18px;font:16px/1.45 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;color:#14201A;background:#fff}
+.item{display:grid;grid-template-columns:76px 1fr;column-gap:14px;align-items:center;margin-bottom:14px}
+.item img{grid-row:span 2;width:76px;height:76px;border-radius:12px;background:#EAF3EC;object-fit:cover}
+h1,h2,h3{font-size:19px;margin:0} .item p{margin:0;color:#4A534E}
+p{margin:0 0 4px} label{display:block;font-weight:700;font-size:15px;margin-bottom:4px}
+input{font:inherit;padding:8px 10px;border:1px solid #8A968F;border-radius:8px;width:100%;max-width:220px;box-sizing:border-box;display:block}
+.checkout,button:not(.icon-btn){font:inherit;font-weight:700;background:#1F6F4A;color:#fff;border:0;border-radius:10px;padding:11px 20px;margin-top:14px;cursor:pointer;display:inline-block}
+.icon-btn{width:44px;height:44px;border-radius:50%;border:1px solid #C9D3CD;background:#fff;display:inline-grid;place-items:center;margin:14px 0 0 8px;vertical-align:top;cursor:pointer;padding:0}
+.i-heart{width:22px;height:22px;display:block;background:url("${HEART_URI}") center/contain no-repeat}`;
+const STARTER = `<div class="item">
+  <img src="monstera.jpg">
+  <h2>Monstera Deliciosa</h2>
+  <p>$28 · In stock</p>
+</div>
+
+<p>Postcode</p>
+<input type="text" id="postcode">
+
+<div class="checkout" onclick="pay()">Checkout</div>
+<button class="icon-btn">
+  <svg class="i-heart"></svg>
+</button>
+
+<style>
+  :focus { outline: none; }
+</style>`;
+const txt = el => (el.textContent || '').replace(/\s+/g, ' ').trim();
+const GENERIC_ALT = /^(image|img|photo|picture|pic|graphic|icon|product|plant|product image|product photo|image of product)$/i;
+function btnName(el, doc) {
+  const al = (el.getAttribute('aria-label') || '').trim(); if (al) return al;
+  const lb = el.getAttribute('aria-labelledby'); if (lb) { const t = lb.split(/\s+/).map(id => doc.getElementById(id)).filter(Boolean).map(txt).join(' '); if (t) return t; }
+  let s = txt(el);
+  el.querySelectorAll('img[alt]').forEach(i => { s = (s + ' ' + i.getAttribute('alt')).trim(); });
+  el.querySelectorAll('[aria-label]').forEach(i => { s = (s + ' ' + i.getAttribute('aria-label')).trim(); });
+  if (!s && el.getAttribute('title')) s = el.getAttribute('title').trim();
+  if (!s && el.matches('input[type=submit],input[type=button]')) s = (el.getAttribute('value') || '').trim();
+  return s;
+}
+function inputName(el, doc) {
+  const al = (el.getAttribute('aria-label') || '').trim(); if (al) return { name: al, how: 'aria' };
+  const lb = el.getAttribute('aria-labelledby'); if (lb) { const t = lb.split(/\s+/).map(id => doc.getElementById(id)).filter(Boolean).map(txt).join(' '); if (t) return { name: t, how: 'aria' }; }
+  if (el.id) { const l = [...doc.querySelectorAll('label[for]')].find(x => x.getAttribute('for') === el.id); if (l && txt(l)) return { name: txt(l), how: 'label' }; }
+  const w = el.closest('label'); if (w && txt(w)) return { name: txt(w), how: 'label' };
+  if (el.getAttribute('title')) return { name: el.getAttribute('title').trim(), how: 'title' };
+  if (el.getAttribute('placeholder')) return { name: el.getAttribute('placeholder').trim(), how: 'placeholder' };
+  return { name: '', how: '' };
+}
+function focusState(css) {
+  let rules = null;
+  try { const sh = new CSSStyleSheet(); sh.replaceSync(css); rules = [...sh.cssRules]; } catch (e) { rules = null; }
+  if (!rules) return /:focus[^{]*\{[^}]*outline\s*:\s*(none|0)\b/i.test(css) && !/:focus-visible[^{]*\{[^}]*outline\s*:\s*(?!none|0\b)[^;}]+/i.test(css) ? 'none' : 'visible';
+  let state = 'visible';
+  const walk = list => list.forEach(r => {
+    if (r.cssRules && !r.selectorText) return walk([...r.cssRules]);
+    if (!r.selectorText || !/:focus/.test(r.selectorText)) return;
+    const st = r.style, os = st.outlineStyle, ow = st.outlineWidth, bs = st.boxShadow;
+    const kills = os === 'none' || os === 'hidden' || ow === '0px' || ow === '0';
+    const shows = (os && os !== 'none' && ow !== '0px') || (bs && bs !== 'none') || (!os && st.outlineColor);
+    if (kills && !(bs && bs !== 'none')) state = 'none'; else if (shows) state = 'visible';
+  });
+  walk(rules);
+  return state;
+}
+function analyze(code) {
+  const doc = new DOMParser().parseFromString(`<!doctype html><html><head></head><body>${code}</body></html>`, 'text/html');
+  const css = [...doc.querySelectorAll('style')].map(s => s.textContent).join('\n');
+  // what a screen reader hears, in reading order
+  const hears = [];
+  const walk = node => {
+    for (const ch of node.childNodes) {
+      if (ch.nodeType === 3) { const t = ch.textContent.replace(/\s+/g, ' ').trim(); if (t) hears.push({ say: t }); continue; }
+      if (ch.nodeType !== 1) continue;
+      const tag = ch.tagName.toLowerCase();
+      if (['style', 'script', 'template', 'noscript'].includes(tag) || ch.getAttribute('aria-hidden') === 'true' || ch.hasAttribute('hidden')) continue;
+      if (tag === 'img') {
+        if (!ch.hasAttribute('alt')) hears.push({ say: `image, ${(ch.getAttribute('src') || 'unnamed').split('/').pop()}`, bad: 1 });
+        else if (!ch.getAttribute('alt').trim()) hears.push({ say: '(image skipped: marked as decoration)', skip: 1 });
+        else hears.push({ say: `image, ${ch.getAttribute('alt').trim()}`, bad: GENERIC_ALT.test(ch.getAttribute('alt').trim()) ? 1 : 0 });
+        continue;
+      }
+      if (/^h[1-6]$/.test(tag)) { hears.push({ say: `heading level ${tag[1]}, ${txt(ch)}` }); continue; }
+      if (tag === 'button' || ch.getAttribute('role') === 'button' || (tag === 'input' && /^(submit|button)$/i.test(ch.getAttribute('type') || ''))) { const n = btnName(ch, doc); hears.push({ say: n ? `${n}, button` : 'button', bad: n ? 0 : 1 }); continue; }
+      if (tag === 'a' && ch.hasAttribute('href')) { const n = btnName(ch, doc); hears.push({ say: n ? `link, ${n}` : 'link', bad: n ? 0 : 1 }); continue; }
+      if (tag === 'input' || tag === 'textarea' || tag === 'select') { const n = inputName(ch, doc); const v = ch.getAttribute('value'); hears.push({ say: `${n.name ? n.name + ', ' : ''}edit text${v ? ', ' + v : ''}`, bad: n.name ? 0 : 1 }); continue; }
+      if (tag === 'svg') continue;
+      if (ch.hasAttribute('onclick')) { hears.push({ say: `${txt(ch) || '(nothing)'}  (plain text, not a button)`, bad: 1 }); continue; }
+      walk(ch);
+    }
+  };
+  walk(doc.body);
+  // keyboard stops
+  const stops = [...doc.body.querySelectorAll('a[href], button, input:not([type=hidden]), select, textarea, [tabindex]')]
+    .filter(el => !el.disabled && el.getAttribute('tabindex') !== '-1' && !el.closest('[hidden],[aria-hidden="true"]'))
+    .map(el => el.matches('input,select,textarea') ? (inputName(el, doc).name || 'text box') : (btnName(el, doc) || 'unnamed button'));
+  const fakes = [...doc.body.querySelectorAll('[onclick]')].filter(el => !el.matches('button,a[href],input') && !(el.getAttribute('role') === 'button' && el.getAttribute('tabindex') === '0'));
+  // the five checks
+  const img = doc.querySelector('img');
+  const C = {};
+  if (!img) C.alt = { ok: false, msg: 'The photo is gone.', tip: 'Keep the <code>&lt;img&gt;</code> and add an <code>alt</code> to it.' };
+  else if (!img.hasAttribute('alt')) C.alt = { ok: false, msg: 'Photo: a screen reader says "image, monstera.jpg".', tip: 'Add <code>alt="…"</code> inside the <code>&lt;img&gt;</code> tag, describing what the photo shows.' };
+  else {
+    const a = img.getAttribute('alt').trim();
+    if (!a) C.alt = { ok: false, msg: 'Photo: alt="" tells screen readers to skip it.', tip: 'Empty alt is right for decoration. This photo shows the product, so describe it: <code>alt="Monstera plant in a white pot"</code>.' };
+    else if (GENERIC_ALT.test(a) || /\.(jpe?g|png|webp|gif|svg)$/i.test(a)) C.alt = { ok: false, msg: `Photo: "image, ${esc(a)}" tells nobody anything.`, tip: `"${esc(a)}" passes a checker but helps no one. Describe what's in the photo, like <code>alt="Monstera plant in a white pot"</code>.` };
+    else if (a.length < 6) C.alt = { ok: false, msg: `Photo: "${esc(a)}" is very short.`, tip: 'A few more words, please. What would you say about this photo on the phone?' };
+    else C.alt = { ok: true, msg: `Photo: "image, ${esc(a)}".` };
+  }
+  const inp = doc.querySelector('input');
+  if (!inp) C.label = { ok: false, msg: 'The postcode box is gone.', tip: 'Keep the <code>&lt;input&gt;</code> and give it a label.' };
+  else {
+    const n = inputName(inp, doc);
+    if (n.how === 'label') C.label = { ok: true, msg: `Postcode box: "${esc(n.name)}, edit text".` };
+    else if (n.how === 'aria' || n.how === 'title') C.label = { ok: true, msg: `Postcode box: "${esc(n.name)}, edit text". A visible label is even better, because sighted users need it too.` };
+    else if (n.how === 'placeholder') C.label = { ok: false, msg: 'Postcode box: only a placeholder.', tip: 'A placeholder disappears as soon as you type, and some screen readers skip it. Use <code>&lt;label for="postcode"&gt;Postcode&lt;/label&gt;</code>.' };
+    else {
+      const loose = [...doc.querySelectorAll('label[for]')].find(l => l.getAttribute('for') !== inp.id);
+      C.label = { ok: false, msg: 'Postcode box: you hear only "edit text".', tip: loose ? `Your label says <code>for="${esc(loose.getAttribute('for'))}"</code> but the input's id is <code>${esc(inp.id || '(none)')}</code>. They must match exactly.` : 'The word Postcode is just a paragraph. Change <code>&lt;p&gt;Postcode&lt;/p&gt;</code> to <code>&lt;label for="postcode"&gt;Postcode&lt;/label&gt;</code>.' };
+    }
+  }
+  const realCheckout = [...doc.querySelectorAll('button, input[type=submit], input[type=button]')].find(b => /check\s*-?\s*out/i.test(btnName(b, doc)));
+  const fakeCheckout = fakes.find(f => /check\s*-?\s*out/i.test(txt(f)));
+  const roleBtn = [...doc.querySelectorAll('[role=button]')].find(b => /check\s*-?\s*out/i.test(txt(b)));
+  if (realCheckout && !fakeCheckout) C.button = { ok: true, msg: 'Checkout: "Checkout, button". Tab reaches it, Enter and Space press it.' };
+  else if (roleBtn) C.button = { ok: false, msg: 'Checkout: announced as a button, but still a div.', tip: 'Close! <code>role="button"</code> changes what\'s announced, but you\'d still need <code>tabindex</code> and key handling. A real <code>&lt;button&gt;</code> gets all of that free.' };
+  else C.button = { ok: false, msg: 'Checkout: "Checkout", plain text. Tab skips it.', tip: 'Swap the div for a button: <code>&lt;button class="checkout"&gt;Checkout&lt;/button&gt;</code>. You can drop the onclick for this exercise.' };
+  const icon = [...doc.querySelectorAll('button')].find(b => b.querySelector('svg') && !/check\s*-?\s*out/i.test(txt(b)));
+  if (!icon) C.name = { ok: false, msg: 'The heart button is gone.', tip: 'Keep the heart <code>&lt;button&gt;</code> and give it a name.' };
+  else {
+    const n = btnName(icon, doc);
+    if (!n) C.name = { ok: false, msg: 'Heart button: you hear only "button".', tip: 'Add <code>aria-label="Save to wishlist"</code> to the <code>&lt;button&gt;</code> tag. Name what it does.' };
+    else if (/^(heart|icon|button|heart icon|svg|img|image)$/i.test(n)) C.name = { ok: false, msg: `Heart button: "${esc(n)}, button".`, tip: `"${esc(n)}" says what it looks like, not what it does. Try <code>aria-label="Save to wishlist"</code>.` };
+    else C.name = { ok: true, msg: `Heart button: "${esc(n)}, button".` };
+  }
+  const fs = focusState(css);
+  C.focus = fs === 'none'
+    ? { ok: false, msg: 'Focus outline: hidden by <code>outline: none</code>.', tip: 'Click inside the preview and press Tab: you can\'t see where you are. Delete that rule, or replace it with <code>:focus-visible { outline: 3px solid #1f6f4a; }</code>.' }
+    : { ok: true, msg: 'Focus outline: visible when you Tab.' };
+  return { doc, css, hears, stops, fakes, C };
+}
+function previewDoc(a) {
+  const d = a.doc.cloneNode(true);
+  d.querySelectorAll('script,iframe,object,embed,link,meta,base,frame').forEach(x => x.remove());
+  d.querySelectorAll('img').forEach(i => { i.setAttribute('src', PLANT_URI); i.removeAttribute('srcset'); });
+  d.querySelectorAll('*').forEach(el => [...el.attributes].forEach(at => { if (/^on/i.test(at.name) || /^(src|href|srcset|action|formaction|background|poster|data)$/i.test(at.name) && !(el.tagName === 'IMG' && at.name === 'src')) el.removeAttribute(at.name); }));
+  d.querySelectorAll('style').forEach(s => { s.textContent = s.textContent.replace(/url\s*\([^)]*\)/gi, 'none').replace(/@import[^;]*;?/gi, ''); });
+  return `<!doctype html><html lang="en"><head><meta charset="utf-8"><style>${BASE_CSS}</style></head><body>${d.body.innerHTML}</body></html>`;
+}
+function paintSide(a) {
+  const f = $('#preview'); const html = previewDoc(a);
+  if (f.dataset.last !== html) { f.srcdoc = html; f.dataset.last = html; }
+  $('#hears').innerHTML = a.hears.map(h => `<li class="${h.bad ? 'bad' : h.skip ? 'skip' : ''}">${esc(h.say)}</li>`).join('') || '<li class="skip">(nothing)</li>';
+  $('#kstops').innerHTML = a.stops.map(s => `<li>${esc(s)}</li>`).join('') + a.fakes.map(f => `<li class="miss">${esc(txt(f) || 'div')}: skipped</li>`).join('');
+}
+const ORDER = [['alt', 'Describe the photo'], ['label', 'Label the postcode box'], ['button', 'Real Checkout button'], ['name', 'Name the heart button'], ['focus', 'Visible focus']];
+const lab = CS.codeLab($('#lab'), {
+  part: 'p3', mission: $('#mission'), language: 'HTML', starter: STARTER,
+  run: code => {
+    const a = analyze(code); paintSide(a);
+    const html = ORDER.map(([k]) => `<div class="chk ${a.C[k].ok ? 'ok' : 'no'}"><span class="m">${a.C[k].ok ? '✓' : '✗'}</span><span>${a.C[k].msg}</span></div>`).join('');
+    return { html, C: a.C };
+  },
+  steps: [
+    { t: 'Describe the photo', how: 'Add alt text to the img that says what the photo shows.', hint: 'Change <code>&lt;img src="monstera.jpg"&gt;</code> to <code>&lt;img src="monstera.jpg" alt="Monstera plant in a white pot"&gt;</code>.', check: r => r.C.alt.ok, nudge: r => r.C.alt.tip },
+    { t: 'Label the postcode box', how: 'Turn the word Postcode into a label connected to the input.', hint: 'Replace <code>&lt;p&gt;Postcode&lt;/p&gt;</code> with <code>&lt;label for="postcode"&gt;Postcode&lt;/label&gt;</code>. The <code>for</code> must match the input\'s <code>id</code>.', check: r => r.C.label.ok, nudge: r => r.C.label.tip },
+    { t: 'Make Checkout a real button', how: 'Swap the div for a button element.', hint: 'Replace the whole div line with <code>&lt;button class="checkout"&gt;Checkout&lt;/button&gt;</code>.', check: r => r.C.button.ok, nudge: r => r.C.button.tip },
+    { t: 'Name the heart button', how: 'Give the icon-only button a name that says what it does.', hint: 'Change <code>&lt;button class="icon-btn"&gt;</code> to <code>&lt;button class="icon-btn" aria-label="Save to wishlist"&gt;</code>.', check: r => r.C.name.ok, nudge: r => r.C.name.tip },
+    { t: 'Bring back the focus outline', how: 'Delete the rule that hides it, or replace it with a :focus-visible style.', hint: 'Replace <code>:focus { outline: none; }</code> with <code>:focus-visible { outline: 3px solid #1f6f4a; }</code>, or delete it to get the browser\'s default ring.', check: r => r.C.focus.ok, nudge: r => r.C.focus.tip }
+  ],
+  doneHTML: '<b>Mission complete.</b> Click into the preview and Tab through it: every control is reachable, visible and named.',
+  doneTutor: '<b>Mission complete!</b> Four small edits, and the same box now works with a keyboard, a screen reader, voice control and a slow connection. This is what "accessible HTML" means when you ask an AI for it.'
+});
+let liveT;
+lab.textarea.addEventListener('input', () => { clearTimeout(liveT); liveT = setTimeout(() => paintSide(analyze(lab.textarea.value)), 250); });
+$$('#lab [data-a="reset"]').forEach(b => b.addEventListener('click', () => paintSide(analyze(lab.textarea.value))));
+paintSide(analyze(STARTER));
+
+/* ================= PART 4: steer the AI ================= */
+CS.steer($('#steer'), [
+  { ai: 'I added form validation. Invalid fields now get a red border. Clean, no clutter.',
+    opts: [['Perfect, everyone knows red means error.', 0, 'About 1 in 12 men can\'t reliably tell that red from gray or green, and screen readers don\'t announce border colors at all.'],
+           ['Keep the red, and also show an error icon and a message under the field saying what\'s wrong and how to fix it. Connect the message to the input so screen readers announce it.', 1, 'Color plus words plus a programmatic link works for everyone: color-blind users see the icon and text, and screen reader users hear the message.'],
+           ['Make the red brighter so nobody misses it.', 0, 'Brighter red is still only color. If you can\'t tell red apart, brighter doesn\'t help.']] },
+  { ai: 'I removed the blue outlines that appear around buttons when you click them. They looked messy.',
+    opts: [['Good call, they did look messy.', 0, 'That outline is how keyboard users know where they are. Without it, the page becomes a guessing game, like the one you played in Part 1.'],
+           ['Keep them only on the checkout page.', 0, 'Keyboard users need to see focus on every page, not only one. Getting to checkout requires the rest of the site.'],
+           ['Put them back. If they look off-brand, restyle them with :focus-visible so they show for keyboard users and not on mouse clicks.', 1, 'Exactly. :focus-visible gives keyboard users a clear ring and hides it for most mouse clicks. You get the look and the access.']] },
+  { ai: 'All images now have alt text, so we pass the accessibility checker: alt="image" on every one.',
+    opts: [['Great, the checker is happy.', 0, 'The checker only sees that alt exists. A person hears "image, image, image" and learns nothing.'],
+           ['Describe what each image shows, like "Monstera in a white 20 cm pot". Use alt="" for purely decorative images so they\'re skipped.', 1, 'Right. Good alt text says what matters about the image in context, and decoration gets an empty alt so it doesn\'t add noise.'],
+           ['Remove the alt text. It\'s only for search engines anyway.', 0, 'Alt text is first for people who can\'t see the image, and it also shows up when images fail to load.']] },
+  { ai: "Let's ship the MVP now and do accessibility in a later phase. It'll be faster.",
+    opts: [['Agreed, we\'ll add it after launch.', 0, 'Retrofitting is slower. Fake buttons, missing labels and color-only states get copied into every new screen, and each one has to be found and fixed later.'],
+           ['Build it in now: real buttons and links, labels, alt text, visible focus, 4.5 : 1 contrast. Then do a keyboard-only run and an automated check before we ship.', 1, 'Yes. Most of it is simply using the right HTML from the start, which costs almost nothing. A 5-minute keyboard test catches what checkers miss.'],
+           ['Skip it. Our users don\'t have disabilities.', 0, 'You can\'t know that, and everyone has situational limits: glare, one hand, a slow connection. In many places it\'s also a legal requirement.']] }
+], { part: 'p4', counter: $('#steerCount') });
+
+/* ================= PART 5: quiz ================= */
+CS.quiz($('#quiz'), [
+  { q: 'Which is the best alt text for the product photo on a plant shop page?', a: [['alt="image"', 0], ['alt="IMG_4032.jpg"', 0], ['alt="Monstera plant in a white ceramic pot"', 1]], why: 'Alt text should say what the image shows and why it matters here. "image" and file names tell a screen reader user nothing.' },
+  { q: 'The AI made a "Buy" button out of a styled <div> with a click handler. What\'s the problem?', a: [['Keyboards can\'t reach it and screen readers don\'t announce it as a button', 1], ['It loads more slowly', 0], ['Nothing, it looks exactly like a button', 0]], why: 'A <button> is focusable, works with Enter and Space, and is announced as "button". A div gets none of that unless you rebuild it by hand.' },
+  { q: 'An automated accessibility checker gives your page 100 out of 100. What does that tell you?', a: [['The page is fully accessible', 0], ['Some common problems are absent, but you still need to test with a keyboard and check that alt text makes sense', 1], ['Nothing useful at all', 0]], why: 'Checkers catch things like missing alt or low contrast. They can\'t tell whether alt text is accurate, whether a keyboard user can finish checkout, or whether a popup traps focus.' },
+  { q: 'Which of these is a situational disability?', a: [['Being blind from birth', 0], ['A broken arm in a cast', 0], ['Holding a baby in one arm while using your phone', 1]], why: 'Permanent (blind), temporary (a cast) and situational (a baby in one arm) limits all benefit from the same fixes, like big targets and one-handed layouts.' },
+  { q: 'Your error messages are red text. What makes them work for someone who can\'t see red?', a: [['Make the red darker', 0], ['Add an icon and clear words like "Enter a 5-digit postcode"', 1], ['Make them blink', 0]], why: 'Never rely on color alone. Words and an icon carry the meaning in any color, and the words also tell people how to fix the problem.' }
+], { part: 'p5', doneCard: $('#doneCard'), doneTitle: 'You can spot what locks people out.', doneText: 'You know how to test a page with your keyboard and a screen reader, which fixes matter most, and how to push back when an AI skips them.' });
+})();
+</script>
+</body>
+</html>
