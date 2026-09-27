@@ -1,0 +1,65 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>CS School · Computer science for people who build with AI</title>
+<meta name="description" content="A free, interactive course in the computer science and software engineering ideas you need to build with AI tools and steer the AI.">
+<link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="assets/cs-school.css">
+<style>
+.home-hero .lede{font-size:1.25rem; color:var(--ink-2); margin-top:20px; max-width:40ch}
+.home-hero .row{margin-top:28px}
+.overall h2{font-size:1.25rem}
+.overall .big{font-family:var(--f-display); font-weight:900; font-size:2.4rem; line-height:1}
+.how{display:grid; grid-template-columns:repeat(5,minmax(0,1fr)); gap:14px; margin-top:8px}
+.how > div{border-radius:18px; padding:16px 18px}
+.how b{display:block; font-family:var(--f-display); font-weight:800; font-size:1.1rem; margin-bottom:2px}
+.how span{font-size:.98rem; color:var(--ink-2)}
+.how i{display:grid; place-items:center; width:34px; height:34px; border-radius:11px; margin-bottom:10px; font-style:normal; font-family:var(--f-display); font-weight:800; background:color-mix(in srgb, var(--c) 18%, transparent); color:var(--ink)}
+.site-foot{padding-block:32px 64px; color:var(--ink-2); font-size:.95rem}
+.site-foot .wrap{display:flex; flex-wrap:wrap; gap:10px 24px; justify-content:space-between; align-items:center}
+@media (max-width:900px){ .how{grid-template-columns:repeat(2,minmax(0,1fr))} }
+@media (max-width:640px){ .how{grid-template-columns:minmax(0,1fr)} }
+</style>
+</head>
+<body>
+<main id="top">
+  <section class="wrap home-hero">
+    <div>
+      <div class="kicker">A free, hands-on course</div>
+      <h1 style="margin-top:14px">Learn the computer science behind building with AI.</h1>
+      <p class="lede">AI can write the code. You still decide what gets built, how the pieces fit, and when the AI is wrong. 23 short, interactive courses teach you to make those calls.</p>
+      <div class="row"><a class="btn primary" id="continueBtn" href="lessons/101-how-the-internet-works.html">Start with 101</a><a class="btn" href="#level-1">Browse courses</a></div>
+    </div>
+    <div class="overall glass">
+      <h2>Your progress</h2>
+      <div class="big" id="overallCount">0 of 23 courses complete</div>
+      <div class="meter" aria-hidden="true"><i id="overallMeter" style="width:0"></i></div>
+      <p class="muted small">Progress is saved in this browser. No account needed.</p>
+    </div>
+  </section>
+
+  <section class="wrap" aria-labelledby="howTitle">
+    <h2 id="howTitle" class="vh">How every course works</h2>
+    <div class="how">
+      <div class="glass" style="--c:var(--l1)"><i>1</i><b>A real problem</b><span>Each course opens with a moment you will meet when building with AI.</span></div>
+      <div class="glass" style="--c:var(--l2)"><i>2</i><b>Play with it</b><span>An interactive model you can poke, break and fix.</span></div>
+      <div class="glass" style="--c:var(--l3)"><i>3</i><b>Try it yourself</b><span>A small, safe exercise in a practice terminal or code editor.</span></div>
+      <div class="glass" style="--c:var(--l4)"><i>4</i><b>Steer the AI</b><span>Pick the reply you would send when an AI proposes something.</span></div>
+      <div class="glass" style="--c:var(--l5)"><i>5</i><b>Check</b><span>Five quick questions that explain themselves.</span></div>
+    </div>
+  </section>
+
+  <div class="wrap" id="catalog"></div>
+</main>
+<footer class="site-foot"><div class="wrap"><span>CS School · Computer science for people who build with AI</span><button class="btn" id="resetBtn" type="button">Reset my progress</button></div></footer>
+<script src="assets/cs-school.js"></script>
+<script>
+CS.home(CS.$('#catalog'));
+CS.$('#resetBtn').addEventListener('click', () => {
+  if (confirm('Clear your progress on every course?')) { CS.progress.reset(); CS.home(CS.$('#catalog')); }
+});
+</script>
+</body>
+</html>

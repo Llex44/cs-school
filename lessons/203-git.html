@@ -1,0 +1,872 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Git &amp; version control · CS School</title>
+<meta name="description" content="Course 203: save points, branches and merges, so you and your AI can experiment without fear.">
+<link rel="icon" href="../assets/favicon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="../assets/cs-school.css">
+<style>
+/* lesson-specific styles: lemonade stand preview, history timeline, commit anatomy, git graph, conflict, file list */
+.ctl .graph-box{background:var(--glass-strong); box-shadow:none; border:0}
+.edits{display:grid; grid-template-columns:1fr 1fr; gap:10px}
+.edits .btn{justify-content:flex-start; text-align:left}
+.edits .btn.risky{color:var(--bad)}
+.changes{font-size:1rem; background:var(--glass-strong); border-radius:12px; padding:12px 14px; min-height:52px; display:flex; flex-direction:column; gap:4px}
+.changes .c{display:flex; gap:12px; animation:rise .3s}
+.changes .c code{background:none; padding:0; color:var(--l1); font-weight:600; min-width:96px}
+.changes .empty{color:var(--ink-2)}
+.commit-row{display:flex; gap:10px; flex-wrap:wrap}
+.commit-row input{flex:1 1 220px; min-width:0; font:inherit; font-size:1rem; padding:10px 12px; border:1px solid var(--hair); border-radius:10px; background:var(--glass-strong); box-shadow:inset 0 1px 2px rgba(18,20,23,.06); color:var(--ink); min-height:44px}
+.commit-row input:focus{border-color:var(--l2); outline:none; box-shadow:0 0 0 3px color-mix(in srgb, var(--l2) 25%, transparent)}
+.browser{border:1px solid var(--hair); border-radius:16px; overflow:hidden; background:#FFFDF6; box-shadow:var(--float)}
+.browser-bar{display:flex; align-items:center; gap:6px; padding:8px 12px; background:var(--panel); border-bottom:1px solid var(--hair)}
+.browser-bar i{width:11px; height:11px; border-radius:50%; background:var(--rule); display:block}
+.url{margin-left:8px; flex:1; font-family:var(--f-mono); font-size:.85rem; color:var(--ink-2); overflow:hidden; white-space:nowrap; text-overflow:ellipsis}
+.past-banner{display:none; background:var(--l2); color:#fff; padding:8px 12px; font-size:.95rem}
+.past .past-banner{display:block}
+.stand{--stand:#FFC83D; --stand-ink:#6B4A00; color:#2A2200; min-height:300px; transition:filter .4s; position:relative; overflow:hidden}
+.stand.pink{--stand:#FF7BB5; --stand-ink:#7A1043}
+.awning{height:40px; background:repeating-linear-gradient(90deg,var(--stand) 0 30px,#FFFFFF 30px 60px); position:relative; transition:transform .5s}
+.awning::after{content:""; position:absolute; left:0; right:0; top:100%; height:14px; background:radial-gradient(circle at 15px 0,var(--stand) 14px,transparent 15px) 0 0/60px 14px repeat-x}
+.stand-body{padding:30px 22px 22px; display:flex; flex-direction:column; align-items:center; text-align:center; gap:6px}
+.stand .lemon{width:64px; height:64px; transition:transform .5s}
+.stand h4{font-family:var(--f-display); font-weight:900; font-size:1.8rem; margin:4px 0 0; color:var(--stand-ink); transition:transform .5s; line-height:1.1}
+.stand .tag-line{font-size:1rem; color:#5B5132}
+.stand .menu{margin:8px 0 0; padding:10px 16px; list-style:none; border:2px dashed var(--stand-ink); border-radius:12px; font-size:.95rem; min-width:210px; animation:rise .4s}
+.stand .menu li{display:flex; justify-content:space-between; gap:18px}
+.stand .order{margin-top:10px; font-family:var(--f-display); font-weight:800; font-size:1rem; background:var(--stand); color:#2A2200; border:2px solid #2A2200; border-radius:99px; padding:6px 18px}
+.stand .err{display:none; position:absolute; left:10px; right:10px; bottom:10px; background:#2B0B0B; color:#FFB4B4; font-family:var(--f-mono); font-size:.8rem; padding:8px 10px; border-radius:8px; text-align:left}
+.stand.broken .awning{transform:translateX(34px) rotate(4deg)}
+.stand.broken h4{transform:rotate(-8deg) translate(-20px,6px)}
+.stand.broken .lemon{transform:scale(1.9) translate(40px,10px) rotate(40deg); opacity:.5}
+.stand.broken .order{display:none}
+.stand.broken .err{display:block; animation:shake .4s}
+.stand.broken .menu{transform:skewX(-14deg)}
+@keyframes shake{25%{transform:translateX(-6px)}75%{transform:translateX(6px)}}
+.past .stand{filter:sepia(.55) saturate(.8)}
+/* timeline as a single line */
+.tl-wrap{overflow-x:auto; padding:4px 0 8px; margin-top:8px}
+.tl{list-style:none; display:flex; margin:0; padding:0; min-width:min-content}
+.tl li{position:relative; flex:none; width:132px}
+.tl li::before{content:""; position:absolute; top:40px; left:0; right:0; height:2px; margin-top:-1px; background:color-mix(in srgb, var(--ink) 18%, transparent)}
+.tl li:first-child::before{left:50%}
+.tl li:last-child::before{right:50%}
+.tl li:only-child::before{display:none}
+.tl-node{position:relative; background:none; border:0; cursor:pointer; display:flex; flex-direction:column; align-items:center; gap:6px; width:100%; padding:0 6px 6px; color:var(--ink); font:inherit; border-radius:10px}
+.tl-node:hover{background:var(--glass-strong)}
+.tl-here{height:22px; font-family:var(--f-display); font-weight:700; font-size:.8rem; color:var(--l2); white-space:nowrap; display:flex; align-items:flex-end}
+.tl-dot{width:24px; height:24px; display:grid; place-items:center; position:relative; z-index:1}
+.tl-dot::after{content:""; width:12px; height:12px; border-radius:50%; background:var(--ink-2); box-shadow:0 0 0 3px var(--paper); transition:all .3s}
+.tl-node.here .tl-dot::after{width:16px; height:16px; background:var(--l2); box-shadow:0 0 0 3px var(--paper), 0 0 0 8px color-mix(in srgb, var(--l2) 22%, transparent)}
+.tl-node.new .tl-dot{animation:pop .5s cubic-bezier(.3,1.7,.5,1)}
+.tl-msg{font-size:.95rem; line-height:1.3; text-align:center; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden}
+.tl-id{font-family:var(--f-mono); font-size:.8rem; color:var(--ink-2)}
+/* commit anatomy */
+.receipt{font-family:var(--f-mono); font-size:.95rem; background:var(--term); color:var(--term-ink); border-radius:12px; padding:18px 20px; overflow-x:auto; white-space:pre; line-height:1.7}
+.receipt .y{color:#FFC53D} .receipt .d{color:var(--term-dim)}
+.anatomy{margin:0; display:grid; grid-template-columns:1fr 1fr; gap:16px 24px}
+.anatomy div{border-radius:16px; padding:14px 16px}
+.anatomy dt{font-family:var(--f-display); font-weight:800; font-size:1.1rem}
+.anatomy dd{margin:2px 0 0; font-size:1rem; color:var(--ink-2)}
+/* ---------- graph ---------- */
+.graph-box{border-radius:18px; padding:10px; overflow-x:auto}
+.graph-box svg{display:block}
+.g-node{transform-box:fill-box; transform-origin:center}
+.g-node.pop{animation:pop .5s cubic-bezier(.3,1.7,.5,1)}
+.g-edge.draw{stroke-dasharray:1; stroke-dashoffset:1; animation:draw .5s forwards}
+@keyframes draw{to{stroke-dashoffset:0}}
+.g-pulse{transform-box:fill-box; transform-origin:center; animation:pulse 1.8s infinite}
+@keyframes pulse{0%{transform:scale(1); opacity:.35}100%{transform:scale(2.6); opacity:0}}
+.g-label{font-family:var(--f-display); font-weight:700; font-size:12.5px}
+.status-line{font-size:1.05rem; min-height:1.7em}
+/* conflict */
+.conflict{display:grid; grid-template-columns:1fr 1fr; gap:14px}
+.universe{border-radius:18px; padding:14px 18px}
+.universe .who{font-family:var(--f-display); font-weight:700; font-size:1rem; color:var(--ink-2); margin-bottom:6px}
+.universe .said{font-family:var(--f-display); font-size:1.3rem; font-weight:800}
+.code .m{color:#FF8C7A} .code .t{color:#5CE0B0} .code .d{color:var(--term-dim)} .code .ok{color:#8BF0A8; animation:rise .4s; display:inline-block}
+.files{display:flex; flex-direction:column}
+.file{display:flex; justify-content:space-between; align-items:center; gap:10px; padding:7px 0}
+.file code{background:none; padding:0; font-size:.95rem}
+.file .st{font-size:.95rem; display:flex; align-items:center; gap:8px; color:var(--ink-2)}
+.file .st::before{content:""; width:10px; height:10px; border-radius:50%; background:var(--rule)}
+.file .st.modified{color:var(--bad)} .file .st.modified::before{background:var(--bad)}
+.file .st.staged{color:var(--good)} .file .st.staged::before{background:var(--good)}
+.file.flash{animation:flash .9s}
+@media (max-width:900px){ .conflict,.anatomy{grid-template-columns:minmax(0,1fr)} }
+@media (max-width:640px){ .edits{grid-template-columns:minmax(0,1fr)} }
+@media (prefers-reduced-motion: reduce){ .g-edge.draw{stroke-dashoffset:0} }
+</style>
+</head>
+<body>
+<main id="top">
+  <section class="wrap hero">
+    <div>
+      <div class="kicker">Core curriculum · Course 203 · Git &amp; version control</div>
+      <h1>Git is a time machine for your code.</h1>
+      <p class="lede">Every change you or your AI makes can be saved as a point in history. You'll learn to save, branch off, merge, and go back, and to notice when an AI is about to do something risky with your project's history.</p>
+      <ul class="facts">
+        <li>About 15 minutes</li>
+        <li>5 parts</li>
+        <li>Practice terminal</li>
+        <li>No coding experience needed</li>
+      </ul>
+      <div class="row hero-cta"><a class="btn primary" href="#p1">Start the lesson</a></div>
+    </div>
+    <figure style="margin:0">
+      <div class="hero-visual glass">
+        <svg id="heroGraph" role="img" aria-label="An animated diagram of a project's history: commits appear along the main line, branches split off for experiments, and later join back in."></svg>
+        <div class="legend" id="heroLegend"></div>
+      </div>
+      <div class="hero-caption glass" aria-hidden="true"><span>$</span><span id="heroCap">git log --graph</span></div>
+    </figure>
+  </section>
+
+  <div class="wrap">
+  <!-- STOP 1 -->
+  <section class="part first" id="p1">
+    <span class="bullet glass" data-p="p1">1</span>
+    <div class="part-head">
+      <div class="kicker">Part 1 of 5</div>
+      <h2>Save points</h2>
+      <p>A <b>commit</b> is a save point for your whole project, with a short note about what changed. You can always go back to one.</p>
+    </div>
+
+    <div class="chat" aria-label="Example conversation">
+      <div class="msg ai"><span class="who">AI assistant</span>I improved 14 files to make your site faster!</div>
+      <div class="msg me"><span class="who">You</span>The whole page is broken now. Can we get yesterday's version back?</div>
+      <div class="msg ai"><span class="who">AI assistant</span>Yes, if we made a commit yesterday. Git keeps every save point.</div>
+    </div>
+
+    <div class="task glass" data-part="p1">
+      <h3>Your task</h3>
+      <ol>
+        <li data-t="edit"><span>Make a change to Lucy's lemonade website.</span></li>
+        <li data-t="commit"><span>Save it as a commit.</span></li>
+        <li data-t="break"><span>Let the AI "improve" the site.</span></li>
+        <li data-t="recover"><span>Get a working version back.</span></li>
+      </ol>
+    </div>
+
+    <div class="pg">
+      <div class="pg-col">
+        <div class="o1 ctl glass">
+          <h3 class="ctl-title">Change the website</h3>
+          <div class="edits">
+            <button class="btn" data-edit="name">Rename the stand</button>
+            <button class="btn" data-edit="pink">Paint it pink</button>
+            <button class="btn" data-edit="menu">Add a price list</button>
+            <button class="btn risky" data-edit="broken">Let the AI "improve" it</button>
+          </div>
+        </div>
+        <div class="o3 ctl glass">
+          <h3 class="ctl-title">Unsaved changes</h3>
+          <div class="changes" id="changes"></div>
+        </div>
+        <div class="o4 ctl glass">
+          <label class="ctl-title" for="msg">Describe the change, then commit</label>
+          <div class="commit-row">
+            <input id="msg" type="text" autocomplete="off" placeholder="For example: Add a price list">
+            <button class="btn primary" id="commitBtn">Commit</button>
+          </div>
+          <div class="row" style="margin-top:10px"><button class="btn" id="discardBtn">Throw away unsaved changes</button></div>
+        </div>
+        <div class="o5 note" id="tipA" aria-live="polite">Start with a change on the left. Watch the website update.</div>
+        <details class="deeper glass o7">
+          <summary>Under the hood: the staging area <small>optional</small></summary>
+          <div>
+            <p>Real git has one extra step before a commit. First you <b>stage</b> the changes you want (<code>git add</code>), then you commit them. It's like packing items into a box before you seal and label it. This lets you save some changes now and leave others for later.</p>
+            <p>AI coding tools usually do this for you. You'll try it yourself in part 3.</p>
+          </div>
+        </details>
+      </div>
+      <div class="pg-col">
+        <div class="o2 stack" style="gap:10px">
+          <div class="browser" id="browser">
+            <div class="browser-bar"><i></i><i></i><i></i><span class="url">lucys-lemonade.com</span></div>
+            <div class="past-banner" id="pastBanner"></div>
+            <div class="stand" id="stand"></div>
+          </div>
+          <div class="row" id="pastActions" hidden>
+            <button class="btn primary" id="restoreBtn">Restore this version</button>
+            <button class="btn" id="nowBtn">Back to now</button>
+          </div>
+        </div>
+        <div class="o6 ctl glass">
+          <h3 class="ctl-title">History</h3>
+          <p class="ctl-sub">Each dot is a commit. Click one to see the site as it was then.</p>
+          <div class="tl-wrap"><ol class="tl" id="timeline"></ol></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="stack" style="margin-top:56px">
+      <h3>What's inside a commit</h3>
+      <p class="muted">This is your latest save point, printed the way git prints it.</p>
+      <div class="receipt" id="receipt"></div>
+      <dl class="anatomy">
+        <div class="glass"><dt>An ID</dt><dd>A unique fingerprint made from the contents, like <code id="anatId">3f9a2c1</code>. You and the AI can point to any commit by its ID.</dd></div>
+        <div class="glass"><dt>Who and when</dt><dd>The author and the time. Useful when you ask "what changed since Tuesday?"</dd></div>
+        <div class="glass"><dt>A message</dt><dd>A short note on what changed and why. Good messages make the history readable.</dd></div>
+        <div class="glass"><dt>A snapshot</dt><dd>The complete state of every file at that moment, so you can return to it exactly.</dd></div>
+        <div class="glass"><dt>A parent</dt><dd>A link to the commit before it. The chain of parents is your project's history.</dd></div>
+      </dl>
+    </div>
+  </section>
+
+  <!-- STOP 2 -->
+  <section class="part" id="p2">
+    <span class="bullet glass" data-p="p2">2</span>
+    <div class="part-head">
+      <div class="kicker">Part 2 of 5</div>
+      <h2>Branches: a new line for every experiment</h2>
+      <p>A <b>branch</b> is a separate line of history where you can try an idea without touching the working version. <b>Main</b> is the line everyone relies on. When an idea works, you <b>merge</b> its line back into main.</p>
+    </div>
+
+    <div class="task glass" data-part="p2">
+      <h3>Your task</h3>
+      <ol>
+        <li data-t="branch"><span>Start a new branch.</span></li>
+        <li data-t="bcommit"><span>Commit twice on your branch.</span></li>
+        <li data-t="switch"><span>Switch back to main.</span></li>
+        <li data-t="merge"><span>Switch to your branch again and merge it into main.</span></li>
+      </ol>
+    </div>
+
+    <div class="stack">
+      <div class="graph-box glass"><svg id="bGraph" role="img" aria-label="Map of the project's branches"></svg></div>
+      <div class="status-line" id="bStatus" aria-live="polite"></div>
+      <div class="row">
+        <button class="btn primary" id="bCommit">Commit here</button>
+        <button class="btn" id="bBranch">Start a new branch</button>
+        <button class="btn" id="bMerge">Merge into main</button>
+      </div>
+      <div class="row" id="bSwitch"></div>
+    </div>
+
+    <div class="stack" style="margin-top:32px">
+      <p>The glowing dot and the dark label mark <b>HEAD</b>, which means "you are here". New commits always land where HEAD is.</p>
+      <p>Good AI coding tools work this way on bigger changes. They create a branch, commit there, and ask you to review before anything reaches main.</p>
+      <details class="deeper glass">
+        <summary>Under the hood: pull requests <small>optional</small></summary>
+        <div>
+          <p>On GitHub you usually don't merge a branch directly. You open a <b>pull request</b> (PR), a page that says "here are my branch's changes, please review and merge them." Teammates or AI reviewers comment, automated tests run, and only then does someone click Merge.</p>
+          <p>When an AI tool says "I opened a PR", its work is waiting on a branch for your approval. Nothing has changed on main yet.</p>
+        </div>
+      </details>
+    </div>
+
+    <div class="stack" style="margin-top:56px">
+      <h3>When two lines change the same thing: merge conflicts</h3>
+      <p class="muted">If two branches change the <i>same line</i> in different ways, git can't guess which one you want. It stops and marks the spot. This is a <b>merge conflict</b>, and it's normal.</p>
+      <div class="task glass" style="margin-bottom:0"><h3>Your task</h3><ol><li data-t="conflict" id="conflictTask"><span>Decide which headline the website should use.</span></li></ol></div>
+      <div class="conflict">
+        <div class="universe glass"><div class="who">On <span class="chip" style="--c:var(--l1)"><i></i>main</span> you wrote</div><div class="said">Fresh Lemonade, Made Today</div></div>
+        <div class="universe glass b"><div class="who">On <span class="chip" style="--c:var(--l2)"><i></i>ai-redesign</span> the AI wrote</div><div class="said">Ice-Cold Lemonade</div></div>
+      </div>
+      <p class="muted" style="font-size:1rem">Here's what git puts in the file. The marked lines show both versions.</p>
+      <div class="code" id="conflictCode"></div>
+      <div class="row">
+        <button class="btn" data-res="main">Keep mine</button>
+        <button class="btn" data-res="ai">Keep the AI's</button>
+        <button class="btn" data-res="both">Combine both</button>
+      </div>
+      <div class="note" id="conflictNote" hidden></div>
+    </div>
+  </section>
+
+  <!-- STOP 3 -->
+  <section class="part" id="p3">
+    <span class="bullet glass" data-p="p3">3</span>
+    <div class="part-head">
+      <div class="kicker">Part 3 of 5</div>
+      <h2>Try it: your first git commands</h2>
+      <p>AI tools type these commands for you all day. Type them once yourself and you'll recognize them everywhere. This practice terminal is safe. Nothing here can break.</p>
+    </div>
+
+    <div class="lab">
+      <div class="a-mission ctl glass">
+        <h3 class="ctl-title">Your mission</h3>
+        <p class="ctl-sub" style="margin-top:0">Lucy updated the menu on her website but hasn't saved it yet. Help her save it, then try a safe experiment.</p>
+        <ol class="mission" id="mission"></ol>
+      </div>
+      <div class="a-work" id="term"></div>
+      <div class="a-side">
+        <div class="ctl glass"><h3 class="ctl-title">Files</h3><div class="files" id="files"></div></div>
+        <details class="deeper glass" style="margin-top:18px">
+          <summary>Under the hood: your computer vs GitHub <small>optional</small></summary>
+          <div>
+            <p><b>Git</b> is the tool that keeps history on your computer. <b>GitHub</b> is a website that stores a shared copy so other people, and AI agents in the cloud, can work on it.</p>
+            <p><code>git push</code> sends your new commits up to GitHub. <code>git pull</code> brings down commits other people made. When an AI says "I pushed the branch", your team can now see the work.</p>
+          </div>
+        </details>
+      </div>
+      <div class="a-extra ctl glass">
+        <h3 class="ctl-title">History</h3>
+        <div class="graph-box"><svg id="tGraph" role="img" aria-label="History of the practice project"></svg></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- STOP 4 -->
+  <section class="part" id="p4">
+    <span class="bullet glass" data-p="p4">4</span>
+    <div class="part-head">
+      <div class="kicker">Part 4 of 5</div>
+      <h2>Steer the AI</h2>
+      <p>AI tools are fast and confident, and sometimes wrong about git. Here are four things one might say. Pick the reply you'd send.</p>
+    </div>
+    <p class="counter" id="steerCount"></p>
+    <div id="steer"></div>
+  </section>
+
+  <!-- STOP 5 -->
+  <section class="part last" id="p5">
+    <span class="bullet glass" data-p="p5">5</span>
+    <div class="part-head">
+      <div class="kicker">Part 5 of 5</div>
+      <h2>Check your understanding</h2>
+      <p>Five quick questions. Each answer explains itself.</p>
+    </div>
+    <div id="quiz"></div>
+    <div id="doneCard" aria-live="polite"></div>
+  </section>
+  </div>
+
+  <section class="after" id="cheat">
+    <div class="wrap stack">
+      <h2>Cheat sheet</h2>
+      <p class="muted">The commands you'll see AI tools run most, and what to listen for.</p>
+      <div class="table-wrap glass">
+        <table>
+          <thead><tr><th>Command</th><th>In plain words</th><th>When the AI says…</th></tr></thead>
+          <tbody>
+            <tr><td><code>git status</code></td><td>What has changed since the last save point?</td><td>"Let me check the state of the repo."</td></tr>
+            <tr><td><code>git add</code></td><td>Put these changes in the next save point.</td><td>"Staging the changes."</td></tr>
+            <tr><td><code>git commit -m "…"</code></td><td>Make a save point with a note.</td><td>"Committed: Add login page." Check that the message is specific.</td></tr>
+            <tr><td><code>git log</code></td><td>Show the history.</td><td>"Looking at recent commits."</td></tr>
+            <tr><td><code>git switch -c name</code></td><td>Start a new branch and move to it.</td><td>"I'll work on a new branch." A good sign.</td></tr>
+            <tr><td><code>git merge name</code></td><td>Bring a branch's work into this one.</td><td>"Merging into main." Did you review it first?</td></tr>
+            <tr><td><code>git push</code> / <code>git pull</code></td><td>Send commits to GitHub, or bring others' commits down.</td><td>"Pushed the branch and opened a PR."</td></tr>
+            <tr><td><code>git revert</code></td><td>Undo a commit by adding an opposite commit.</td><td>"I'll revert that change." Safe, because history is kept.</td></tr>
+            <tr><td><code>git push --force</code></td><td>Overwrite the shared history.</td><td>Stop and ask why. On main, this can erase teammates' work.</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+</main>
+<script src="../assets/cs-school.js"></script>
+<script>
+(() => {
+const { $, $$, esc, reduce } = CS;
+const hex = () => CS.hex(7);
+const LANE = ['var(--l1)', 'var(--l2)', 'var(--l3)', 'var(--l5)', 'var(--l4)'];
+const fmtDate = d => d.toDateString().slice(0, 10) + ' ' + d.toTimeString().slice(0, 5);
+
+CS.lesson({
+  id: '203',
+  parts: [
+    { id: 'p1', title: 'Save points' },
+    { id: 'p2', title: 'Branches' },
+    { id: 'p3', title: 'Try it' },
+    { id: 'p4', title: 'Steer the AI' },
+    { id: 'p5', title: 'Check' }
+  ]
+});
+
+class GitGraph {
+  constructor(svg, opts = {}) { this.svg = svg; this.opts = opts; this.reset(); }
+  reset() { this.commits = []; this.branches = [{ name: 'main', lane: 0, tip: null }]; this.head = 'main'; this.seen = new Set(); }
+  br(n) { return this.branches.find(b => b.name === n); }
+  get cur() { return this.br(this.head); }
+  get(id) { return this.commits.find(c => c.id === id); }
+  commit(msg, o = {}) {
+    const b = this.cur;
+    const c = { id: hex(), msg, branch: b.name, lane: b.lane, parents: b.tip ? [b.tip] : [], i: this.commits.length, files: o.files || [], date: new Date() };
+    if (o.mergeFrom) c.parents.push(o.mergeFrom);
+    this.commits.push(c); b.tip = c.id;
+    if (!o.silent) this.render();
+    return c;
+  }
+  branch(name) {
+    if (this.br(name)) return false;
+    this.branches.push({ name, lane: this.branches.length, tip: this.cur.tip });
+    return true;
+  }
+  switch(name) { if (!this.br(name)) return false; this.head = name; this.render(); return true; }
+  isAncestor(a, b) {
+    const stack = [b], seen = new Set();
+    while (stack.length) { const id = stack.pop(); if (id === a) return true; if (seen.has(id)) continue; seen.add(id); const c = this.get(id); if (c) stack.push(...c.parents); }
+    return false;
+  }
+  merge(name) {
+    const src = this.br(name);
+    if (!src || name === this.head) return null;
+    if (this.isAncestor(src.tip, this.cur.tip)) return 'uptodate';
+    return this.commit(`Merge branch '${name}'`, { mergeFrom: src.tip });
+  }
+  firstParentLog() { const out = []; let id = this.cur.tip; while (id) { const c = this.get(id); out.push(c); id = c.parents[0]; } return out; }
+  render() {
+    const S = this.opts.S || 60, L = this.opts.L || 50, X0 = 34;
+    const cols = Math.max(this.commits.length, this.opts.minCols || 0);
+    const labels = {};
+    this.branches.forEach(b => { if (b.tip) (labels[b.tip] = labels[b.tip] || []).push(b); });
+    const maxStack = Math.max(this.opts.minStack || 1, ...Object.values(labels).map(a => a.length));
+    const Y0 = 26 + maxStack * 28;
+    const lanes = Math.max(this.branches.length, this.opts.minLanes || 1);
+    const W = X0 * 2 + (cols - 1) * S + 40, H = Y0 + (lanes - 1) * L + 24;
+    const pos = c => [X0 + c.i * S, Y0 + c.lane * L];
+    let edges = '', nodes = '', tags = '';
+    const fresh = [];
+    this.commits.forEach(c => {
+      const [cx, cy] = pos(c);
+      const isNew = !this.seen.has(c.id);
+      c.parents.forEach((pid, k) => {
+        const p = this.get(pid); const [px, py] = pos(p);
+        let d;
+        if (py === cy) d = `M${px} ${py}H${cx}`;
+        else if (k === 0) d = `M${px} ${py}C${px + S * .55} ${py} ${px + S * .45} ${cy} ${px + S} ${cy}H${cx}`;
+        else d = `M${px} ${py}H${cx - S}C${cx - S * .45} ${py} ${cx - S * .55} ${cy} ${cx} ${cy}`;
+        const col = k === 0 ? LANE[c.lane % 5] : LANE[p.lane % 5];
+        edges += `<path class="g-edge${isNew ? ' draw' : ''}" pathLength="1" d="${d}" style="stroke:${col};fill:none" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>`;
+      });
+      const isHead = this.cur.tip === c.id;
+      const merge = c.parents.length > 1;
+      nodes += `<g class="g-node${isNew ? ' pop' : ''}"><title>${esc(c.id + ': ' + c.msg)}</title>`;
+      const col = LANE[c.lane % 5];
+      if (isHead) nodes += `<circle class="g-pulse" cx="${cx}" cy="${cy}" r="9" style="fill:${col}"/><circle cx="${cx}" cy="${cy}" r="14" style="fill:${col}" opacity=".16"/><circle cx="${cx}" cy="${cy}" r="7.5" style="fill:${col};stroke:var(--paper)" stroke-width="3"/>`;
+      else if (merge) nodes += `<circle cx="${cx}" cy="${cy}" r="6.5" style="fill:var(--paper);stroke:${col}" stroke-width="3"/>`;
+      else nodes += `<circle cx="${cx}" cy="${cy}" r="5.5" style="fill:${col};stroke:var(--paper)" stroke-width="2.5"/>`;
+      nodes += `</g>`;
+      if (isNew) fresh.push(c.id);
+    });
+    Object.entries(labels).forEach(([id, bs]) => {
+      const [cx, cy] = pos(this.get(id));
+      bs.forEach((b, k) => {
+        const isHead = b.name === this.head;
+        const txt = (isHead ? 'HEAD → ' : '') + b.name;
+        const w = txt.length * 7.1 + 32, y = cy - 18 - 22 - k * 28;
+        const x = Math.min(Math.max(cx - w / 2, 2), W - w - 2);
+        tags += `<g><rect x="${x}" y="${y}" width="${w}" height="24" rx="12" style="fill:${isHead ? 'var(--ink)' : 'var(--glass-strong)'};stroke:${isHead ? 'none' : 'var(--hair)'}" stroke-width="1"/><circle cx="${x + 14}" cy="${y + 12}" r="4" style="fill:${LANE[b.lane % 5]}"/><text class="g-label" x="${x + 24}" y="${y + 16.5}" style="fill:${isHead ? 'var(--paper)' : 'var(--ink)'}">${esc(txt)}</text></g>`;
+      });
+    });
+    this.svg.setAttribute('viewBox', `0 0 ${W} ${H}`);
+    if (this.opts.fluid) { this.svg.removeAttribute('width'); this.svg.removeAttribute('height'); }
+    else { this.svg.setAttribute('width', W); this.svg.setAttribute('height', H); }
+    this.svg.innerHTML = edges + nodes + tags;
+    fresh.forEach(id => this.seen.add(id));
+    const box = this.svg.parentElement;
+    if (!this.opts.fluid && box) box.scrollLeft = box.scrollWidth;
+  }
+}
+(function hero() {
+  const g = new GitGraph($('#heroGraph'), { fluid: true, minCols: 13, minLanes: 3, minStack: 2, S: 42, L: 44 });
+  const cap = $('#heroCap');
+  const script = [
+    ['commit', 'First version'], ['commit', 'Add lemon logo'],
+    ['branch', 'ai-redesign'], ['commit', 'Try bold layout'], ['commit', 'New colors'],
+    ['switch', 'main'], ['commit', 'Fix typo'],
+    ['branch', 'price-list'], ['commit', 'Add prices'],
+    ['switch', 'main'], ['merge', 'ai-redesign'], ['merge', 'price-list'], ['commit', 'Ship it']
+  ];
+  $('#heroLegend').innerHTML = [['main', 0], ['ai-redesign', 1], ['price-list', 2]].map(([n, l]) => `<span><i style="background:${LANE[l]}"></i>${n}</span>`).join('');
+  const run = ([op, arg]) => {
+    if (op === 'commit') { g.commit(arg); cap.textContent = `git commit -m "${arg}"`; }
+    if (op === 'branch') { g.branch(arg); g.switch(arg); cap.textContent = `git switch -c ${arg}`; }
+    if (op === 'switch') { g.switch(arg); cap.textContent = `git switch ${arg}`; }
+    if (op === 'merge') { g.merge(arg); cap.textContent = `git merge ${arg}`; }
+  };
+  g.reset();
+  script.forEach(([op, arg]) => {
+    if (op === 'commit') g.commit(arg, { silent: true });
+    else if (op === 'branch') { g.branch(arg); g.head = arg; }
+    else if (op === 'switch') g.head = arg;
+    else g.commit(`Merge branch '${arg}'`, { mergeFrom: g.br(arg).tip, silent: true });
+  });
+  g.commits.forEach(c => g.seen.add(c.id));
+  g.render();
+  if (reduce) return;
+  let i = 0;
+  const loop = () => {
+    if (i === 0) { g.reset(); g.render(); }
+    run(script[i]);
+    i = (i + 1) % script.length;
+    setTimeout(loop, i === 0 ? 3400 : 1000);
+  };
+  setTimeout(loop, 3000);
+})();
+const NAMES = ["Lucy's Lemonade", "Lucy's Lemonade & Iced Tea"];
+const base = { name: NAMES[0], pink: false, menu: false, broken: false };
+let work = { ...base };
+const hist = [{ id: hex(), msg: 'Open the lemonade stand', snap: { ...base }, date: new Date(Date.now() - 86400000) }];
+let viewing = null, fresh = null;
+const lemonSvg = `<svg class="lemon" viewBox="0 0 64 64" aria-hidden="true"><path d="M34 12c4-7 12-8 16-6-2 5-8 9-16 6z" fill="#3FA34D" stroke="#2A2200" stroke-width="2"/><ellipse cx="32" cy="36" rx="24" ry="19" fill="#FFE14D" stroke="#2A2200" stroke-width="2.5"/><path d="M8 36c-3 0-5 1-6 3M56 36c3 0 5 1 6 3" stroke="#2A2200" stroke-width="2.5" stroke-linecap="round"/><ellipse cx="24" cy="29" rx="7" ry="4" fill="#FFF6B0"/></svg>`;
+function standHTML(s) {
+  return `<div class="awning"></div><div class="stand-body">${lemonSvg}
+    <h4>${s.broken ? 'undefined' : esc(s.name)}</h4>
+    <div class="tag-line">${s.broken ? 'NaN% fresh, squeezed [object Object]' : 'Fresh squeezed, every morning'}</div>
+    ${s.menu ? `<ul class="menu"><li><span>Lemonade</span><span>$3</span></li><li><span>Iced tea</span><span>$3</span></li><li><span>Mint special</span><span>$4</span></li></ul>` : ''}
+    <span class="order">Order a cup</span></div>
+    <div class="err">Uncaught TypeError: Cannot read properties of undefined (reading 'price')<br>&nbsp;&nbsp;at renderStand (stand.js:14)</div>`;
+}
+function diff(a, b) {
+  const out = [];
+  if (a.name !== b.name) out.push(['index.html', 'Changed the stand name', b.name === NAMES[1] ? 'Add iced tea to the name' : 'Go back to the short name']);
+  if (a.pink !== b.pink) out.push(['styles.css', b.pink ? 'Painted it pink' : 'Back to yellow', b.pink ? 'Paint the stand pink' : 'Paint the stand yellow again']);
+  if (a.menu !== b.menu) out.push(['menu.html', b.menu ? 'Added a price list' : 'Removed the price list', b.menu ? 'Add a price list' : 'Remove the price list']);
+  if (a.broken !== b.broken) out.push(['14 files', b.broken ? 'The AI "improved" everything' : 'Fixed everything', b.broken ? 'AI refactor for speed' : 'Fix the stand']);
+  return out;
+}
+const latest = () => hist[hist.length - 1];
+function renderA() {
+  const past = viewing !== null;
+  const snap = past ? hist[viewing].snap : work;
+  const st = $('#stand');
+  st.className = 'stand' + (snap.pink ? ' pink' : '') + (snap.broken ? ' broken' : '');
+  st.innerHTML = standHTML(snap);
+  $('#browser').classList.toggle('past', past);
+  $('#pastActions').hidden = !past;
+  if (past) $('#pastBanner').innerHTML = `You're viewing the past: <b>${hist[viewing].id}</b> "${esc(hist[viewing].msg)}"`;
+  const ds = diff(latest().snap, work);
+  $('#changes').innerHTML = ds.length ? ds.map(d => `<div class="c"><code>${d[0]}</code><span>${esc(d[1])}</span></div>`).join('') : `<span class="empty">None. The site matches your latest commit.</span>`;
+  $('#commitBtn').disabled = past || !ds.length;
+  $('#discardBtn').disabled = past || !ds.length;
+  $$('[data-edit]').forEach(b => { b.disabled = past || work.broken; });
+  const msg = $('#msg');
+  msg.disabled = past;
+  if (!msg.dataset.touched) msg.value = ds.length ? ds.map(d => d[2]).join(' and ').replace(/^./, c => c.toUpperCase()) : '';
+  const hereIdx = past ? viewing : hist.length - 1;
+  $('#timeline').innerHTML = hist.map((c, i) => `<li><button class="tl-node${i === hereIdx ? ' here' : ''}${c.id === fresh ? ' new' : ''}" data-i="${i}" aria-label="Commit ${c.id}: ${esc(c.msg)}${i === hereIdx ? (past ? ' (viewing)' : ' (current)') : ''}">
+      <span class="tl-here">${i === hereIdx ? (past ? 'Viewing' : 'Current') : ''}</span><span class="tl-dot"></span>
+      <span class="tl-msg">${esc(c.msg)}</span><span class="tl-id">${c.id}</span></button></li>`).join('');
+  fresh = null;
+  const tw = $('.tl-wrap'); tw.scrollLeft = tw.scrollWidth;
+  const L = latest();
+  L.full = L.full || L.id + hex() + hex() + hex() + hex() + hex().slice(0, 5);
+  const prev = hist.length > 1 ? hist[hist.length - 2].snap : null;
+  const files = prev ? diff(prev, L.snap).map(d => ' ' + d[0] + ' | changed').join('\n') : ' index.html | added\n styles.css | added';
+  $('#receipt').innerHTML = `<span class="y">commit ${L.full} (HEAD -&gt; main)</span>\n<span class="d">Author:</span> You &lt;you@lucys-lemonade.com&gt;\n<span class="d">Date:</span>   ${fmtDate(L.date)}\n\n    ${esc(L.msg)}\n\n<span class="d">${files || ' (no file changes)'}</span>`;
+  $('#anatId').textContent = L.id;
+}
+function tipA(html, kind = '') { const t = $('#tipA'); t.className = 'o5 note ' + kind; t.innerHTML = html; }
+$$('[data-edit]').forEach(b => b.addEventListener('click', () => {
+  const k = b.dataset.edit;
+  if (k === 'name') work.name = work.name === NAMES[0] ? NAMES[1] : NAMES[0];
+  else work[k] = !work[k];
+  if (k === 'broken') {
+    CS.tick('p1', 'break');
+    tipA(latest().snap.broken
+      ? '<strong>Still broken.</strong> Click an older commit in the history to find a working version.'
+      : '<strong>The AI broke the site.</strong> Your last good version is committed, so you can undo this. Throw away the unsaved changes, or commit the broken version and then travel back in the history.', 'bad');
+  } else {
+    CS.tick('p1', 'edit');
+    tipA('<strong>Changed.</strong> The change is listed under "Unsaved changes". Commit it to make a save point.');
+  }
+  renderA();
+}));
+$('#msg').addEventListener('input', e => { e.target.dataset.touched = e.target.value ? '1' : ''; });
+$('#commitBtn').addEventListener('click', () => {
+  const msg = $('#msg').value.trim() || 'Update';
+  const c = { id: hex(), msg, snap: { ...work }, date: new Date() };
+  hist.push(c); fresh = c.id;
+  $('#msg').dataset.touched = '';
+  CS.tick('p1', 'commit');
+  if (work.broken) tipA('<strong>You committed the broken version.</strong> That\'s fine, the history keeps everything. Now click an earlier commit in the history to go back to a working one.', 'bad');
+  else if (/^(update|updates|changes|stuff|fix|wip|asdf|misc)$/i.test(msg)) tipA(`<strong>Saved, but vague.</strong> "${esc(msg)}" won't help anyone later. A message like "Add a price list" says what changed.`);
+  else tipA(`<strong>Saved.</strong> Commit <code>${c.id}</code> is now in the history.${CS.ticked('p1', 'break') ? '' : ' Next, let the AI "improve" the site.'}`, 'good');
+  renderA();
+});
+$('#discardBtn').addEventListener('click', () => {
+  const wasBroken = work.broken;
+  work = { ...latest().snap };
+  $('#msg').dataset.touched = '';
+  if (wasBroken) { CS.tick('p1', 'recover'); tipA('<strong>Fixed.</strong> The unsaved changes are gone and the site matches your last commit again. In real git this is <code>git restore</code>.', 'good'); }
+  else tipA('<strong>Changes thrown away.</strong> The site is back to your latest commit.', 'good');
+  renderA();
+});
+$('#timeline').addEventListener('click', e => {
+  const n = e.target.closest('.tl-node'); if (!n) return;
+  const i = +n.dataset.i;
+  if (viewing === null && diff(latest().snap, work).length) {
+    tipA('<strong>Commit or throw away your changes first.</strong> Git won\'t let you travel while you have unsaved work, so nothing gets lost by accident.');
+    return;
+  }
+  if (i === hist.length - 1) { viewing = null; renderA(); return; }
+  viewing = i;
+  tipA(`<strong>Time travel.</strong> The website above shows the project exactly as it was at <code>${hist[i].id}</code>. Press <b>Restore this version</b> to make it current again.`);
+  renderA();
+});
+$('#nowBtn').addEventListener('click', () => { viewing = null; renderA(); });
+$('#restoreBtn').addEventListener('click', () => {
+  const src = hist[viewing];
+  const wasBroken = latest().snap.broken;
+  work = { ...src.snap };
+  const c = { id: hex(), msg: `Restore "${src.msg}"`, snap: { ...work }, date: new Date() };
+  hist.push(c); fresh = c.id; viewing = null;
+  if (wasBroken && !src.snap.broken) CS.tick('p1', 'recover');
+  tipA('<strong>Restored.</strong> Git didn\'t delete anything. It added a new save point on top, so even the broken version is still in the history if you ever need it.', 'good');
+  renderA();
+});
+renderA();
+const bg = new GitGraph($('#bGraph'), { minCols: 8 });
+['First version', 'Add lemon logo', 'Add contact page'].forEach(m => bg.commit(m, { silent: true }));
+bg.commits.forEach(c => bg.seen.add(c.id));
+const BR_NAMES = ['ai-redesign', 'dark-mode', 'new-checkout'];
+const MSGS = { main: ['Fix typo on homepage', 'Update opening hours', 'Speed up images', 'Add FAQ'], 'ai-redesign': ['Try bold layout', 'New color palette', 'Bigger buttons'], 'dark-mode': ['Add dark colors', 'Dark mode toggle'], 'new-checkout': ['Add cart', 'Add payment step'] };
+const cnt = {}, onBranch = {};
+function chip(name) { const b = bg.br(name); return `<span class="chip" style="--c:${LANE[b.lane % 5]}"><i></i>${esc(name)}</span>`; }
+function renderB(msg) {
+  bg.render();
+  $('#bBranch').disabled = bg.branches.length > BR_NAMES.length;
+  $('#bMerge').disabled = bg.head === 'main';
+  $('#bMerge').textContent = bg.head === 'main' ? 'Merge into main' : `Merge ${bg.head} into main`;
+  $('#bSwitch').innerHTML = bg.branches.length > 1 ? '<span class="muted">Switch to</span>' + bg.branches.filter(b => b.name !== bg.head).map(b => `<button class="btn" data-sw="${b.name}">${chip(b.name)}</button>`).join('') : '';
+  $('#bStatus').innerHTML = msg || `You're on ${chip(bg.head)}. New commits will go here.`;
+}
+$('#bCommit').addEventListener('click', () => {
+  const list = MSGS[bg.head] || MSGS.main; cnt[bg.head] = cnt[bg.head] || 0;
+  const m = list[cnt[bg.head]++ % list.length];
+  bg.commit(m);
+  if (bg.head !== 'main') { onBranch[bg.head] = (onBranch[bg.head] || 0) + 1; if (onBranch[bg.head] >= 2) CS.tick('p2', 'bcommit'); }
+  renderB(`Committed "${esc(m)}" on ${chip(bg.head)}.` + (bg.head === 'main' ? '' : ' Main is untouched.'));
+});
+$('#bBranch').addEventListener('click', () => {
+  const name = BR_NAMES.find(n => !bg.br(n));
+  bg.branch(name); bg.head = name;
+  CS.tick('p2', 'branch');
+  renderB(`Created ${chip(name)} and switched to it. It starts as an exact copy of where you were.`);
+});
+$('#bSwitch').addEventListener('click', e => {
+  const b = e.target.closest('[data-sw]'); if (!b) return;
+  bg.head = b.dataset.sw;
+  if (bg.head === 'main' && CS.ticked('p2', 'branch')) CS.tick('p2', 'switch');
+  renderB(`Switched to ${chip(bg.head)}. Your files now look the way this line has them.`);
+});
+$('#bMerge').addEventListener('click', () => {
+  const name = bg.head;
+  bg.head = 'main';
+  const r = bg.merge(name);
+  if (r === 'uptodate') { bg.head = name; renderB(`Main already has everything from ${chip(name)}. Make a commit on it first.`); return; }
+  CS.tick('p2', 'switch'); CS.tick('p2', 'merge');
+  renderB(`Merged ${chip(name)} into ${chip('main')}. The experiment is now part of the real thing, and its history is kept.`);
+});
+renderB();
+
+const CONFLICT = `<span class="d">&lt;h1&gt;</span>\n<span class="m">&lt;&lt;&lt;&lt;&lt;&lt;&lt; main</span>\nFresh Lemonade, Made Today\n<span class="m">=======</span>\nIce-Cold Lemonade\n<span class="t">&gt;&gt;&gt;&gt;&gt;&gt;&gt; ai-redesign</span>\n<span class="d">&lt;/h1&gt;</span>`;
+$('#conflictCode').innerHTML = CONFLICT;
+const RES = {
+  main: ['Fresh Lemonade, Made Today', "You kept your version. The AI's headline is dropped from this line, but it's still in the branch's history."],
+  ai: ['Ice-Cold Lemonade', "You kept the AI's version. Your old headline is still in main's history if you change your mind."],
+  both: ['Fresh, Ice-Cold Lemonade, Made Today', 'You wrote something new that combines both. Often the best answer, and a choice only a person (or a carefully instructed AI) can make.']
+};
+$$('[data-res]').forEach(b => b.addEventListener('click', () => {
+  const [line, why] = RES[b.dataset.res];
+  $('#conflictCode').innerHTML = `<span class="d">&lt;h1&gt;</span>\n<span class="ok">${line}</span>\n<span class="d">&lt;/h1&gt;</span>`;
+  const n = $('#conflictNote'); n.hidden = false; n.className = 'note good';
+  n.innerHTML = `<strong>Conflict resolved.</strong> ${why} The markers are gone, so git can finish the merge.`;
+  $('#conflictTask').classList.add('done');
+}));
+
+/* ---------------- Part 3: terminal ---------------- */
+const tg = new GitGraph($('#tGraph'), { minCols: 6 });
+tg.commit('Open the stand', { silent: true, files: ['index.html'] });
+tg.commit('Add lemon logo', { silent: true, files: ['index.html'] });
+tg.commits.forEach(c => tg.seen.add(c.id));
+const files = { 'index.html': 'clean', 'menu.html': 'modified', 'colors.css': 'clean' };
+const DIFFS = {
+  'menu.html': `<span class="y">diff --git a/menu.html b/menu.html</span>\n<span class="dim">@@ -3,4 +3,6 @@</span>\n   &lt;h2&gt;Menu&lt;/h2&gt;\n<span class="r">-  &lt;li&gt;Lemonade  $2&lt;/li&gt;</span>\n<span class="g">+  &lt;li&gt;Lemonade  $3&lt;/li&gt;</span>\n<span class="g">+  &lt;li&gt;Iced tea  $3&lt;/li&gt;</span>\n<span class="g">+  &lt;li&gt;Mint special  $4&lt;/li&gt;</span>`,
+  'colors.css': `<span class="y">diff --git a/colors.css b/colors.css</span>\n<span class="dim">@@ -1,3 +1,3 @@</span>\n :root {\n<span class="r">-  --stand: #ffc83d;</span>\n<span class="g">+  --stand: #ff7bb5;</span>\n }`
+};
+const F = { branchName: null };
+let term;
+const LABEL = { clean: 'unchanged', modified: 'changed, not staged', staged: 'staged, ready to commit' };
+function renderFiles(flash) {
+  $('#files').innerHTML = Object.entries(files).map(([f, s]) => `<div class="file${f === flash ? ' flash' : ''}"><code>${f}</code><span class="st ${s}">${LABEL[s]}</span></div>`).join('');
+}
+const SUBS = ['status', 'add', 'commit', 'log', 'switch', 'checkout', 'branch', 'merge', 'diff', 'push', 'pull', 'init', 'restore'];
+function statusText() {
+  const staged = Object.keys(files).filter(f => files[f] === 'staged');
+  const mod = Object.keys(files).filter(f => files[f] === 'modified');
+  let s = `On branch ${tg.head}\n`;
+  if (!staged.length && !mod.length) return s + 'nothing to commit, working tree clean';
+  if (staged.length) s += `Changes to be committed:\n<span class="g">${staged.map(f => '        modified:   ' + f).join('\n')}</span>\n`;
+  if (mod.length) s += `${staged.length ? '\n' : ''}Changes not staged for commit:\n  <span class="dim">(use "git add &lt;file&gt;..." to update what will be committed)</span>\n<span class="r">${mod.map(f => '        modified:   ' + f).join('\n')}</span>`;
+  return s;
+}
+function run(a, line, io, api) {
+  const { print, tutor } = io;
+  if (a[0] === 'help') { print(`Commands you can use here:\n  <span class="y">git status</span>               what changed?\n  <span class="y">git add &lt;file&gt;</span>           stage a file (<span class="y">git add .</span> for all)\n  <span class="y">git commit -m "message"</span>  make a save point\n  <span class="y">git log --oneline</span>        show the history\n  <span class="y">git diff</span>                 show exact line changes\n  <span class="y">git branch</span>               list branches\n  <span class="y">git switch -c &lt;name&gt;</span>     start a new branch\n  <span class="y">git switch &lt;name&gt;</span>        change branch\n  <span class="y">git merge &lt;name&gt;</span>         bring a branch in\n  <span class="y">ls</span>  <span class="y">clear</span>  <span class="y">hint</span>`); return null; }
+  if (a[0] === 'ls') { print(Object.keys(files).join('  ')); return null; }
+  if (a[0] === 'pwd') { print('/home/lucy/lemonade'); return null; }
+  if (a[0] !== 'git') {
+    print(`zsh: command not found: ${esc(a[0])}`, 'r');
+    tutor(CS.lev(a[0], 'git') <= 1 ? "Close! It's spelled <b>git</b>." : 'Every command in this mission starts with <b>git</b>. Type <b>help</b> to see them all.');
+    return null;
+  }
+  const sub = a[1];
+  if (!sub) { print('usage: git &lt;command&gt; [&lt;args&gt;]'); tutor('Add a command after git, like <b>git status</b>.'); return null; }
+  switch (sub) {
+    case 'status': print(statusText()); return { k: 'status' };
+    case 'add': {
+      const targets = a.slice(2);
+      if (!targets.length) { print("Nothing specified, nothing added.\n<span class=\"dim\">hint: Maybe you wanted to say 'git add .'?</span>"); return null; }
+      const changed = [];
+      for (const t of targets) {
+        if (t === '.' || t === '-A' || t === '--all') Object.keys(files).forEach(f => { if (files[f] === 'modified') { files[f] = 'staged'; changed.push(f); } });
+        else if (!(t in files)) { print(`fatal: pathspec '${esc(t)}' did not match any files`, 'r'); tutor('Check the spelling. Type <b>ls</b> to see the file names.'); return null; }
+        else if (files[t] === 'modified') { files[t] = 'staged'; changed.push(t); }
+      }
+      renderFiles(changed[0]);
+      tutor(changed.length ? `git add prints nothing when it works. <b>${changed.join(', ')}</b> ${changed.length > 1 ? 'are' : 'is'} now staged, ready to commit.` : 'Nothing new to stage. That file has no changes.');
+      return { k: 'add' };
+    }
+    case 'commit': {
+      const mi = a.findIndex(x => x === '-m' || x === '-am');
+      if (a.includes('-am') || a.includes('-a')) Object.keys(files).forEach(f => { if (files[f] === 'modified') files[f] = 'staged'; });
+      const staged = Object.keys(files).filter(f => files[f] === 'staged');
+      const msg = mi >= 0 ? a[mi + 1] : undefined;
+      if (!staged.length) {
+        const mod = Object.keys(files).some(f => files[f] === 'modified');
+        print(`On branch ${tg.head}\n${mod ? 'no changes added to commit (use "git add" and/or "git commit -a")' : 'nothing to commit, working tree clean'}`);
+        if (mod) tutor('Stage your changes with <b>git add</b> first, then commit.');
+        return null;
+      }
+      if (mi < 0) { tutor('Real git would open a text editor for your message here. Add <b>-m "your message"</b> to write it on the same line.'); return null; }
+      if (!msg) { print("error: switch `m' requires a value", 'r'); tutor('Put your message in quotes after -m, like <b>-m "Add summer menu"</b>.'); return null; }
+      if (api.step === 5 && tg.head === 'main' && staged.includes('colors.css')) { tutor(`Hold on, you're on <b>main</b>. For this mission, save the AI's experiment on your branch. Run <b>git switch ${esc(F.branchName)}</b> first.`); return null; }
+      staged.forEach(f => files[f] = 'clean');
+      const c = tg.commit(msg, { files: staged });
+      print(`[${tg.head} ${c.id}] ${esc(msg)}\n ${staged.length} file${staged.length > 1 ? 's' : ''} changed, ${staged.length * 3} insertions(+), ${staged.length} deletion${staged.length > 1 ? 's' : ''}(-)`);
+      renderFiles();
+      if (/^(update|updates|changes|stuff|fix|wip|asdf|misc|commit)$/i.test(msg.trim())) tutor(`Saved. Tip: "${esc(msg)}" is vague. A message like "Add summer menu" tells future you what happened.`);
+      return { k: 'commit', files: staged };
+    }
+    case 'log': {
+      const one = a.includes('--oneline');
+      const deco = c => { const bs = tg.branches.filter(b => b.tip === c.id).map(b => b.name === tg.head ? `<span class="g">HEAD -&gt; ${b.name}</span>` : `<span class="r">${b.name}</span>`); return bs.length ? ` <span class="y">(</span>${bs.join('<span class="y">, </span>')}<span class="y">)</span>` : ''; };
+      const log = tg.firstParentLog();
+      print(one ? log.map(c => `<span class="y">${c.id}</span>${deco(c)} ${esc(c.msg)}`).join('\n')
+        : log.map(c => `<span class="y">commit ${c.id}</span>${deco(c)}\nAuthor: Lucy &lt;lucy@lucys-lemonade.com&gt;\nDate:   ${fmtDate(c.date)}\n\n    ${esc(c.msg)}\n`).join('\n'));
+      return { k: 'log' };
+    }
+    case 'diff': {
+      const staged = a.includes('--staged') || a.includes('--cached');
+      const fs = Object.keys(files).filter(f => files[f] === (staged ? 'staged' : 'modified'));
+      if (!fs.length) { tutor(staged ? 'No staged changes to show.' : 'No unstaged changes. Staged changes show with <b>git diff --staged</b>.'); return null; }
+      print(fs.map(f => DIFFS[f] || '').join('\n'));
+      tutor('Red lines were removed and green lines were added. AI tools show you diffs like this when they propose changes.');
+      return { k: 'diff' };
+    }
+    case 'branch': {
+      if (a[2] && !a[2].startsWith('-')) {
+        if (tg.br(a[2])) { print(`fatal: a branch named '${esc(a[2])}' already exists`, 'r'); return null; }
+        tg.branch(a[2]); tg.render();
+        tutor(`Created <b>${esc(a[2])}</b>, but you're still on ${tg.head}. Use <b>git switch ${esc(a[2])}</b> to move to it, or <b>git switch -c</b> to create and move in one go.`);
+        return { k: 'branch' };
+      }
+      print(tg.branches.map(b => b.name === tg.head ? `<span class="g">* ${b.name}</span>` : `  ${b.name}`).join('\n')); return { k: 'branchlist' };
+    }
+    case 'switch': case 'checkout': {
+      const create = a.includes('-c') || a.includes('-b');
+      const name = a.slice(2).find(x => !x.startsWith('-'));
+      if (!name) { print('fatal: missing branch name', 'r'); return null; }
+      if (create) {
+        if (!/^[\w./-]+$/.test(name)) { print(`fatal: '${esc(name)}' is not a valid branch name`, 'r'); tutor("Branch names can't have spaces. Use dashes, like <b>try-new-colors</b>."); return null; }
+        if (tg.br(name)) { print(`fatal: a branch named '${esc(name)}' already exists`, 'r'); return null; }
+        tg.branch(name); tg.switch(name);
+        print(`Switched to a new branch '${esc(name)}'`);
+        return { k: 'create', name };
+      }
+      if (name in files) { tutor("That's a file name. To throw away changes to a file, real git uses <b>git restore</b>, but you don't need that here."); return null; }
+      if (!tg.br(name)) { print(`fatal: invalid reference: ${esc(name)}`, 'r'); tutor('No branch has that name. Type <b>git branch</b> to list them.'); return null; }
+      if (name === tg.head) { print(`Already on '${esc(name)}'`); return { k: 'switch', name }; }
+      tg.switch(name); print(`Switched to branch '${esc(name)}'`);
+      return { k: 'switch', name };
+    }
+    case 'merge': {
+      const name = a[2];
+      if (!name) { print('fatal: No remote for the current branch.', 'r'); tutor('Say which branch to merge, like <b>git merge try-new-colors</b>.'); return null; }
+      if (!tg.br(name)) { print(`merge: ${esc(name)} - not something we can merge`, 'r'); return null; }
+      const r = tg.merge(name);
+      if (r === null) { print('Already up to date.'); tutor("You can't merge a branch into itself. Switch to main first."); return null; }
+      if (r === 'uptodate') { print('Already up to date.'); if (tg.head !== 'main') tutor('To bring your experiment into main, switch to <b>main</b> first, then merge your branch.'); return { k: 'merge', name: null }; }
+      const fs = tg.get(r.parents[1]).files;
+      print(`Merge made by the 'ort' strategy.\n${(fs.length ? fs : ['colors.css']).map(f => ` ${f} | 2 <span class="g">+</span><span class="r">-</span>`).join('\n')}`);
+      return { k: 'merge', name };
+    }
+    case 'push': print('fatal: No configured push destination.', 'r'); tutor('This practice project lives only on this page. In a real project, <b>git push</b> sends your commits to GitHub.'); return null;
+    case 'pull': print('There is no tracking information for the current branch.'); tutor('In a real project, <b>git pull</b> brings down commits that teammates or AI agents pushed.'); return null;
+    case 'init': print('Reinitialized existing Git repository in /home/lucy/lemonade/.git/'); return null;
+    case 'restore': tutor('<b>git restore</b> throws away unsaved changes. Handy, but not needed for this mission.'); return null;
+    default: {
+      const best = SUBS.map(s => [s, CS.lev(sub, s)]).sort((x, y) => x[1] - y[1])[0];
+      print(`git: '${esc(sub)}' is not a git command. See 'git --help'.` + (best[1] <= 2 ? `\n\nThe most similar command is\n\t${best[0]}` : ''), 'r');
+      return null;
+    }
+  }
+}
+term = CS.terminal($('#term'), {
+  part: 'p3',
+  mission: $('#mission'),
+  prompt: () => `~/lemonade (${tg.head}) $`,
+  intro: 'Type a command below and press Enter.\nStuck? Press "Show a hint", or type <span class="y">help</span>.',
+  steps: [
+    { t: 'Check what changed', how: 'Ask git for a status report.', cmd: 'git status', done: a => a.k === 'status' },
+    { t: 'Choose what to save', how: 'Stage menu.html so it goes into the next commit.', cmd: 'git add menu.html', done: () => files['menu.html'] === 'staged' },
+    { t: 'Make a save point', how: 'Commit with a message that says what you did.', cmd: 'git commit -m "Add summer menu"', done: a => a.k === 'commit' && a.files.includes('menu.html') },
+    { t: 'Look at the history', how: 'See your new commit in the log.', cmd: 'git log --oneline', done: a => a.k === 'log' },
+    { t: 'Start a safe experiment', how: 'Create a new branch and switch to it.', cmd: 'git switch -c try-new-colors', done: a => a.k === 'create' },
+    { t: "Save the AI's work on your branch", how: 'The AI edited colors.css. Stage it, then commit it.', cmd: () => files['colors.css'] === 'staged' ? 'git commit -m "Try pink colors"' : 'git add colors.css', done: a => a.k === 'commit' && tg.head !== 'main' && a.files.includes('colors.css') },
+    { t: 'Go back to main', how: 'Switch to the main branch.', cmd: 'git switch main', done: () => tg.head === 'main' },
+    { t: 'Bring the experiment in', how: 'Merge your branch into main.', cmd: () => `git merge ${F.branchName || 'try-new-colors'}`, done: a => a.k === 'merge' && a.name === F.branchName && tg.head === 'main' }
+  ],
+  run,
+  onStep(i, action, api) {
+    if (i !== 4) return;
+    F.branchName = action.name;
+    setTimeout(() => {
+      files['colors.css'] = 'modified';
+      renderFiles('colors.css');
+      api.io.ai(`I tried a pink palette in colors.css on <b>${esc(action.name)}</b>. Want to save it?`);
+    }, 500);
+  },
+  doneHTML: '<b>Mission complete.</b> Try <code>git log --oneline</code> or <code>git diff</code> if you want to explore.',
+  doneTutor: '<b>Mission complete!</b> You just did what AI tools do dozens of times a day: check, stage, commit, branch, and merge.'
+});
+tg.render(); renderFiles();
+
+/* ---------------- Part 4: steer the AI ---------------- */
+CS.steer($('#steer'), [
+  { ai: "The redesign is done. I'll commit it straight to main and push so it's live right away.",
+    opts: [["Sounds good, ship it.", 0, "Risky. Main is the version people rely on. Nobody has reviewed this, and if it breaks, users see it immediately."],
+           ["Put it on a branch and open a pull request so I can review it first.", 1, "Exactly. A branch plus a pull request lets you see the changes, run tests, and merge only when you're happy."],
+           ["Delete main and make the redesign the new main.", 0, "That throws away history and any work others based on main. It's never necessary."]] },
+  { ai: "I committed everything, including the .env file with your payment API key, so nothing gets lost.",
+    opts: [["That's fine, the repository is private.", 0, "Private repositories get shared, copied, and leaked. Secrets should never live in git history."],
+           ["Just delete the file in the next commit.", 0, "The key is still in the earlier commit. Anyone with the history can find it."],
+           ["Treat the key as leaked: create a new one, remove the file from the repo, and add .env to .gitignore.", 1, "Right. Once a secret is committed, assume it's exposed. Replace it, then make sure git ignores that file from now on."]] },
+  { ai: 'Done! I made one commit called "updates" that changes 48 files.',
+    opts: [["Great, thanks.", 0, "If something breaks, you won't know which of the 48 changes caused it, and you can't undo just one part."],
+           ["Please split this into smaller commits with messages that say what changed and why.", 1, "Yes. Small, well-named commits make the history readable and let you undo one change without losing the rest."],
+           ["Undo everything and start over.", 0, "Too much. The work may be fine. It just needs to be organized so it can be reviewed."]] },
+  { ai: "The merge broke the tests, so I'll run git push --force to rewrite main's history back to how it was.",
+    opts: [["Don't force-push main. Use git revert to undo the merge with a new commit instead.", 1, "Correct. A revert undoes the change while keeping the history intact, so everyone's copy stays in sync."],
+           ["OK, whatever fixes it fastest.", 0, "Force-pushing a shared branch can erase other people's commits and confuse every copy of the project."],
+           ["Leave the tests broken for now.", 0, "Broken tests on main block everyone. Undo safely instead."]] }
+], { part: 'p4', counter: $('#steerCount') });
+
+/* ---------------- Part 5: quiz ---------------- */
+CS.quiz($('#quiz'), [
+  { q: 'What is a commit?', a: [['A save point of the whole project, with a message', 1], ['A backup copy uploaded to the cloud', 0], ['A kind of bug in the code', 0]], why: 'A commit captures every file at a moment in time, plus who, when, and why. It stays on your computer until you push it.' },
+  { q: 'You want the AI to try a risky redesign without breaking the live site. What do you ask for?', a: [['Work directly on main, carefully', 0], ['Do it on a new branch', 1], ['Turn off git while it works', 0]], why: 'A branch keeps the experiment separate. Main stays safe until you merge.' },
+  { q: 'An AI tool says "I opened a pull request." What happened?', a: [['Its changes are live for users', 0], ['It downloaded code from GitHub', 0], ['Its branch is waiting for review before merging', 1]], why: 'A pull request asks for a branch to be reviewed and merged. Nothing reaches main until someone approves.' },
+  { q: 'True or false: if a secret key was committed, deleting the file in a new commit makes it safe.', a: [['True', 0], ['False', 1]], why: 'Git keeps every earlier snapshot, so the key is still in the history. Replace the key.' },
+  { q: 'What is the difference between Git and GitHub?', a: [['They are the same thing', 0], ['Git tracks history; GitHub is a website that hosts a shared copy', 1], ['GitHub tracks history; Git is the website', 0]], why: 'Git is the tool on your computer. GitHub (like GitLab or Bitbucket) stores a copy online so people and AI agents can work together.' }
+], { part: 'p5', doneCard: $('#doneCard'), doneTitle: 'You can steer git now.', doneText: 'You know how save points, branches, merges, and pull requests work, and when to push back on an AI.' });
+})();
+</script>
+</body>
+</html>
