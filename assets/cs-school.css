@@ -270,7 +270,10 @@ td code{white-space:nowrap}
 .level{padding-block:36px}
 .level-head{display:flex; align-items:baseline; gap:14px; flex-wrap:wrap; margin-bottom:18px}
 .level-head .dot{width:12px; height:12px; border-radius:50%; background:var(--c); align-self:center}
+.group-title{font-size:1.4rem; margin:30px 0 14px}
+.level-head + .group-title{margin-top:6px}
 .course-grid{display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:18px}
+.course-grid.n4{grid-template-columns:repeat(4,minmax(0,1fr))}
 .course{display:flex; flex-direction:column; gap:10px; border-radius:20px; padding:18px 20px; text-decoration:none; transition:transform .2s, box-shadow .2s}
 .course:hover{transform:translateY(-3px)}
 .course .num{font-family:var(--f-mono); font-size:.9rem; color:var(--ink-2); display:flex; justify-content:space-between; align-items:center; gap:8px}
@@ -290,7 +293,7 @@ td code{white-space:nowrap}
   .pg-col{display:contents}
   .o1{order:1} .o2{order:2} .o3{order:3} .o4{order:4} .o5{order:5} .o6{order:6} .o7{order:7} .o8{order:8} .o9{order:9}
   .crumb{display:none}
-  .course-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .course-grid,.course-grid.n4{grid-template-columns:repeat(2,minmax(0,1fr))}
 }
 @media (max-width:640px){
   body{font-size:17px}
@@ -299,7 +302,7 @@ td code{white-space:nowrap}
   .stop{width:20px}
   .term-out{height:300px}
   .brand span{display:none}
-  .course-grid{grid-template-columns:minmax(0,1fr)}
+  .course-grid,.course-grid.n4{grid-template-columns:minmax(0,1fr)}
   .lesson-foot .wrap{grid-template-columns:minmax(0,1fr)}
   .lesson-foot .next{text-align:left}
   .lesson-foot .home{justify-self:start}
