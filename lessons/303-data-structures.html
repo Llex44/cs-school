@@ -1,0 +1,920 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Data structures · CS School</title>
+<meta name="description" content="Course 303: lists, hash tables, stacks, queues, trees and graphs as objects you can touch, and how to pick the right one when an AI writes your code.">
+<link rel="icon" href="../assets/favicon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="../assets/cs-school.css">
+<style>
+/* lesson-specific styles: morphing hero, list vs hash table, stack & queue, tree, graph, pick game, app preview */
+.cl-lines{font-size:16px}
+.hero-dot{transition:transform 1s cubic-bezier(.5,0,.2,1)}
+.decor{transition:opacity .6s}
+.legend span.on{color:var(--ink); font-weight:700}
+
+/* part 1: list vs hash table */
+.pane{border-radius:20px; padding:16px 18px 18px; display:flex; flex-direction:column; gap:12px}
+.pane-head{display:flex; justify-content:space-between; align-items:baseline; gap:12px; flex-wrap:wrap}
+.pane-head h3{font-size:1.2rem}
+.steps{font-family:var(--f-display); font-weight:900; font-size:1.3rem; font-variant-numeric:tabular-nums}
+.steps small{font-family:var(--f-body); font-weight:400; font-size:.9rem; color:var(--ink-2); margin-left:4px}
+.steps.win{color:var(--good)}
+.slots{display:flex; flex-wrap:wrap; gap:6px}
+.slot{display:inline-flex; align-items:center; gap:6px; border-radius:10px; padding:5px 10px 5px 6px; background:var(--glass-strong); border:1px solid var(--hair); font-size:.95rem; transition:background .15s}
+.slot i{font-style:normal; font-family:var(--f-mono); font-size:.8rem; color:var(--ink-2); min-width:1.6em; text-align:center; border-radius:6px; background:color-mix(in srgb, var(--ink) 7%, transparent); padding:1px 3px}
+.slot.seen{background:color-mix(in srgb, var(--ink) 9%, transparent); color:var(--ink-2)}
+.slot.scan{background:var(--tip-bg); color:var(--ink)}
+.slot.hit{background:var(--good-bg); color:var(--good); font-weight:700}
+.slot.new,.bsong.new{animation:pop .45s cubic-bezier(.3,1.6,.5,1)}
+.hashline{display:flex; flex-wrap:wrap; align-items:center; gap:6px 8px; font-size:.95rem; min-height:36px}
+.hashline .hc{border-radius:99px; padding:3px 11px; background:var(--glass-strong); border:1px solid var(--hair); animation:rise .3s}
+.hashline .hc b{font-family:var(--f-mono); font-weight:600}
+.hashline .ar{color:var(--ink-2)}
+.buckets{display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:8px}
+.bucket{border-radius:14px; background:color-mix(in srgb, var(--ink) 5%, transparent); padding:6px 8px 8px; min-height:92px; display:flex; flex-direction:column; gap:4px; transition:background .25s, box-shadow .25s}
+.bucket .bn{font-family:var(--f-display); font-weight:800; font-size:.85rem; color:var(--ink-2)}
+.bucket.go{background:color-mix(in srgb, var(--l2) 16%, transparent); box-shadow:0 0 0 2px var(--l2)}
+.bsong{border-radius:8px; padding:3px 7px; font-size:.88rem; line-height:1.25; background:var(--glass-strong); border:1px solid var(--hair); overflow-wrap:anywhere}
+.bsong.scan{background:var(--tip-bg)} .bsong.hit{background:var(--good-bg); color:var(--good); font-weight:700}
+.songchips{display:flex; flex-wrap:wrap; gap:6px}
+.songchips .btn{min-height:40px; padding:6px 12px; font-size:.95rem; font-family:var(--f-body); font-weight:700}
+.addrow{display:flex; gap:10px; flex-wrap:wrap}
+.addrow .input{flex:1 1 180px}
+.mini-score{display:none; margin:12px 0 0; font-size:.95rem; color:var(--ink-2)} .mini-score b{color:var(--ink); font-family:var(--f-display); font-weight:900}
+.vs{display:grid; grid-template-columns:minmax(0,1fr) minmax(0,1fr); gap:18px}
+
+/* part 2: shapes */
+.shape-panel{border-radius:20px; padding:18px 20px 20px}
+.sq{display:grid; grid-template-columns:minmax(0,.8fr) minmax(0,1.2fr); gap:18px; margin-top:14px}
+.sq-box{border-radius:16px; background:color-mix(in srgb, var(--ink) 4%, transparent); padding:14px; display:flex; flex-direction:column; gap:8px; min-height:280px}
+.sq-box h4{font-family:var(--f-display); font-weight:800; font-size:1.1rem; margin:0}
+.sq-box .sq-sub{font-size:.95rem; color:var(--ink-2)}
+.pile{display:flex; flex-direction:column; gap:5px; align-items:stretch; margin-top:auto}
+.line{display:flex; gap:6px; flex-wrap:wrap; align-items:center; margin-top:auto}
+.item{border-radius:10px; padding:7px 12px; font-size:.95rem; font-weight:700; background:var(--glass-strong); border:1px solid var(--hair); animation:rise .35s}
+.pile .item:first-child{background:color-mix(in srgb, var(--l5) 18%, var(--paper))}
+.line .item:first-child{background:color-mix(in srgb, var(--l3) 18%, var(--paper))}
+.endlab{font-family:var(--f-display); font-weight:800; font-size:.85rem; color:var(--ink-2)}
+.taken{min-height:1.6em; font-size:.95rem}
+.taken b{animation:rise .4s; display:inline-block}
+.empty{font-size:.95rem; color:var(--ink-2); margin-top:auto}
+.tree svg,.graph svg{display:block; width:100%; height:auto}
+.tn{cursor:pointer}
+.tn rect{fill:var(--glass-strong); stroke:color-mix(in srgb, var(--ink) 22%, transparent); stroke-width:1.5; transition:fill .2s}
+.tn text{font-family:var(--f-display); font-weight:700; font-size:14px; fill:var(--ink); pointer-events:none}
+.tn.open rect{fill:var(--ink); stroke:var(--ink)} .tn.open text{fill:var(--paper)}
+.tn.song rect{fill:color-mix(in srgb, var(--l3) 14%, var(--paper))}
+.tn.hit rect{fill:var(--good-bg); stroke:var(--good)} .tn.hit text{fill:var(--good)}
+.tn.miss rect{fill:var(--bad-bg)}
+.tn:hover rect{stroke:var(--ink)}
+.tn:focus{outline:none} .tn:focus-visible rect{stroke:var(--l2); stroke-width:3}
+.tlink{fill:none; stroke:color-mix(in srgb, var(--ink) 25%, transparent); stroke-width:2}
+.tlink.on{stroke:var(--ink); stroke-width:2.5}
+.json{font-size:.9rem; max-height:280px; overflow:auto}
+.json .hl{background:rgba(139,240,168,.18); color:#8BF0A8; border-radius:3px}
+.gn{cursor:pointer}
+.gn circle{stroke-width:2.5; transition:fill .2s, stroke-width .2s}
+.gn text.ini{font-family:var(--f-display); font-weight:900; font-size:13px; fill:var(--ink); pointer-events:none}
+.gn text.nm{font-family:var(--f-display); font-weight:700; font-size:13px; fill:var(--ink); pointer-events:none; paint-order:stroke; stroke:var(--paper); stroke-width:4px; stroke-linejoin:round}
+.gn:focus{outline:none} .gn:focus-visible circle{stroke:var(--l2); stroke-width:5}
+.ge{fill:none; stroke:color-mix(in srgb, var(--ink) 18%, transparent); stroke-width:2; transition:stroke .25s, stroke-width .25s}
+.ge.n1{stroke:var(--l2); stroke-width:3}
+.ge.path{stroke:var(--l5); stroke-width:5}
+.graph-legend{display:flex; flex-wrap:wrap; gap:6px 16px; font-size:.95rem; color:var(--ink-2)}
+.graph-legend span{display:flex; align-items:center; gap:8px}
+.graph-legend i{width:22px; height:4px; border-radius:2px; display:block}
+.pick-opts{display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:8px}
+.pick-opts .btn{justify-content:center}
+.pick-opts .btn.wrong{background:var(--bad-bg); color:var(--bad)}
+.pick-opts .btn.right{background:var(--good-bg); color:var(--good); opacity:1}
+.job{font-family:var(--f-display); font-weight:800; font-size:1.25rem; line-height:1.3}
+.pick-prog{display:flex; gap:6px}
+.pick-prog i{width:28px; height:6px; border-radius:3px; background:color-mix(in srgb, var(--ink) 12%, transparent)}
+.pick-prog i.done{background:var(--good)} .pick-prog i.cur{background:var(--ink)}
+
+/* part 3: app preview + reference */
+.phone-card{border-radius:18px; background:var(--glass-strong); padding:14px; display:flex; flex-direction:column; gap:12px}
+.phone-card .ph{font-family:var(--f-display); font-weight:800; font-size:.9rem; color:var(--ink-2)}
+.track-row{display:flex; gap:12px; align-items:center}
+.track-row .cover{flex:none; width:52px; height:52px; border-radius:12px; display:grid; place-items:center; font-family:var(--f-display); font-weight:900; font-size:1.2rem; color:#fff}
+.track-row b{font-family:var(--f-display); font-weight:800; display:block; line-height:1.2}
+.track-row div span{font-size:.95rem; color:var(--ink-2)}
+.mini{display:flex; flex-wrap:wrap; gap:6px}
+.mini span{border-radius:99px; padding:3px 11px; font-size:.92rem; background:color-mix(in srgb, var(--l2) 12%, var(--paper)); animation:rise .4s}
+.ref{margin:0; display:grid; grid-template-columns:auto minmax(0,1fr); gap:8px 12px; font-size:.95rem; align-items:baseline}
+.ref dt code{white-space:nowrap}
+.ref dd{margin:0; color:var(--ink-2)}
+@media (min-width:901px){ .lab-left{grid-template-areas:"mission work" "side work" "extra work"; grid-template-rows:auto auto 1fr} }
+@media (max-width:900px){
+  .pg{align-items:stretch} .pg > *, .pg-col > *{min-width:0}
+  .sq,.vs{grid-template-columns:minmax(0,1fr)}
+  .sq-box{min-height:0}
+  .mini-score:not([hidden]){display:block}
+}
+@media (max-width:640px){ .buckets{grid-template-columns:repeat(2,minmax(0,1fr))} .bucket{min-height:0} .pick-opts{grid-template-columns:repeat(2,minmax(0,1fr))} .shape-panel{padding:16px 14px} }
+</style>
+</head>
+<body>
+<main id="top">
+  <section class="wrap hero">
+    <div>
+      <div class="kicker">Theory elective · Course 303 · Data structures</div>
+      <h1>How you store data decides how fast you can find it.</h1>
+      <p class="lede">Lists, hash tables, stacks, queues, trees and graphs are shapes for data. Each makes some jobs instant and others slow. You'll handle each one, pick the right shape for real jobs, and learn to question the choices an AI makes for you.</p>
+      <ul class="facts">
+        <li>About 15 minutes</li>
+        <li>5 parts</li>
+        <li>Code lab</li>
+        <li>No coding experience needed</li>
+      </ul>
+      <div class="row hero-cta"><a class="btn primary" href="#p1">Start the lesson</a></div>
+    </div>
+    <figure style="margin:0">
+      <div class="hero-visual glass">
+        <svg id="heroArt" viewBox="0 0 520 260" role="img" aria-label="Fifteen dots rearrange themselves into four shapes in turn: a list in a row, a hash table of buckets, a tree of branches, and a graph of connections."></svg>
+        <div class="legend" id="heroLegend"><span data-k="0"><i style="background:var(--l2)"></i>list</span><span data-k="1"><i style="background:var(--l3)"></i>hash table</span><span data-k="2"><i style="background:var(--l4)"></i>tree</span><span data-k="3"><i style="background:var(--l5)"></i>graph</span></div>
+      </div>
+      <div class="hero-caption glass" aria-hidden="true"><span id="heroKind">list</span><span id="heroCap">playlist[3]</span></div>
+    </figure>
+  </section>
+
+  <div class="wrap">
+  <!-- PART 1 -->
+  <section class="part" id="p1">
+    <span class="bullet glass" data-p="p1">1</span>
+    <div class="part-head">
+      <div class="kicker">Part 1 of 5</div>
+      <h2>Finding a song: lists vs hash tables</h2>
+      <p>A <b>data structure</b> is a way of arranging data so certain jobs are fast. You're building Hum, a music app. Here are the same ten songs stored two ways.</p>
+    </div>
+
+    <div class="chat" aria-label="Example conversation">
+      <div class="msg me"><span class="who">You</span>Opening a song from a shared link takes almost a second now. We have 50,000 songs.</div>
+      <div class="msg ai"><span class="who">AI assistant</span>I keep the songs in a list and scan it for the song's id. I can switch to a hash map for instant lookups.</div>
+      <div class="msg me"><span class="who">You</span>What's a hash map, and why is it instant?</div>
+    </div>
+
+    <div class="task glass" data-part="p1">
+      <h3>Your task</h3>
+      <ol>
+        <li data-t="find"><span>Look up a song. Compare the steps in the list and the hash table.</span></li>
+        <li data-t="add"><span>Add a song of your own and watch where it lands.</span></li>
+        <li data-t="collide"><span>Look up a song that shares its bucket with another song.</span></li>
+      </ol>
+    </div>
+
+    <div class="pg">
+      <div class="pg-col">
+        <div class="o1 ctl glass">
+          <h3 class="ctl-title">Find a song</h3>
+          <p class="ctl-sub">Both structures search at the same time.</p>
+          <div class="songchips" id="findChips"></div>
+          <p class="mini-score" id="miniScore" hidden></p>
+        </div>
+        <div class="o4 ctl glass">
+          <label class="ctl-title" for="addIn">Add a song</label>
+          <p class="ctl-sub">Any title you like. It goes into both structures.</p>
+          <form class="addrow" id="addForm" autocomplete="off">
+            <input class="input" id="addIn" maxlength="24" placeholder="For example: Cold Brew">
+            <button class="btn primary" type="submit">Add</button>
+          </form>
+        </div>
+      </div>
+      <div class="pg-col">
+        <div class="o2 stack" style="gap:16px">
+          <div class="pane glass">
+            <div class="pane-head"><h3>As a list</h3><span class="steps" id="lSteps">0<small>steps</small></span></div>
+            <div class="slots" id="slots"></div>
+          </div>
+          <div class="pane glass">
+            <div class="pane-head"><h3>As a hash table</h3><span class="steps" id="hSteps">0<small>steps</small></span></div>
+            <div class="hashline" id="hashline"><span class="muted">Pick a song to see which bucket it belongs in.</span></div>
+            <div class="buckets" id="buckets"></div>
+          </div>
+        </div>
+        <div class="o3 note" id="p1Note" aria-live="polite">Pick a song on the left. The list checks songs one by one. The hash table works out where to look.</div>
+      </div>
+    </div>
+
+    <div class="stack" style="margin-top:56px">
+      <h3>How a hash table knows where to look</h3>
+      <p>A <b>hash function</b> turns a key, like a song title or an id, into a number, and that number picks a <b>bucket</b>. Here the function adds up the letter codes and keeps the remainder after dividing by 8. The same title always gives the same bucket, so finding it later means doing the math again and looking in one place.</p>
+      <p>When two keys land in the same bucket, that's a <b>collision</b>. The table just checks the few songs in that bucket. With enough buckets they stay tiny, so a lookup takes about the same time with 10 songs or 10 million.</p>
+      <div class="table-wrap glass">
+        <table>
+          <thead><tr><th>Job</th><th>List (array)</th><th>Hash table (object, Map, Set)</th></tr></thead>
+          <tbody>
+            <tr><td>Find a song by its id</td><td>Check one by one: up to n steps</td><td>About 1 step</td></tr>
+            <tr><td>"Have I seen this before?"</td><td>Up to n steps</td><td>About 1 step, with a Set</td></tr>
+            <tr><td>Get the 3rd song</td><td>1 step: <code>songs[2]</code></td><td>No positions to ask for</td></tr>
+            <tr><td>Keep songs in the order you arranged</td><td>That's what it's for</td><td>Not what it's for</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p>In JavaScript, a list is an array <code>[ ]</code>. Hash tables are objects <code>{ }</code>, <code>Map</code> and <code>Set</code>. In Python they're called dictionaries. When an AI says "I'll use a hash map" or "a dictionary", this is what it means.</p>
+      <details class="deeper glass">
+        <summary>Under the hood: real hash functions <small>optional</small></summary>
+        <div>
+          <p>Adding letter codes is too simple for real use: "Low Tide" and "Tide Low" would always collide. Real hash functions scramble every bit of the key, so similar keys land far apart.</p>
+          <p>When buckets get crowded, the table doubles its number of buckets and re-files every key. That's occasional extra work that keeps lookups fast.</p>
+          <p>Keys must match exactly. "Blue Hour" and "blue hour" hash to different buckets, which is why AI code often lowercases emails before storing or looking them up.</p>
+        </div>
+      </details>
+    </div>
+  </section>
+
+  <!-- PART 2 -->
+  <section class="part" id="p2">
+    <span class="bullet glass" data-p="p2">2</span>
+    <div class="part-head">
+      <div class="kicker">Part 2 of 5</div>
+      <h2>Shapes that fit the job</h2>
+      <p>Some data has a natural shape: a pile where the newest is on top, a line where the first in goes first, folders inside folders, a web of connections. Handle each one, then match shapes to jobs.</p>
+    </div>
+
+    <div class="task glass" data-part="p2">
+      <h3>Your task</h3>
+      <ol>
+        <li data-t="sq"><span>Stack &amp; queue: add three songs, then take one out.</span></li>
+        <li data-t="tree"><span>Tree: find the song "Low Tide" in the library.</span></li>
+        <li data-t="graph"><span>Graph: find how two artists are connected, at least two links apart.</span></li>
+        <li data-t="pick"><span>Match six jobs to the right structure.</span></li>
+      </ol>
+    </div>
+
+    <div class="stack" style="gap:16px">
+      <div class="seg-control" id="shapeTabs" role="tablist" aria-label="Shapes" style="align-self:flex-start">
+        <button role="tab" aria-pressed="true" aria-selected="true" data-tab="sq">Stack &amp; queue</button><button role="tab" aria-pressed="false" aria-selected="false" data-tab="tree">Tree</button><button role="tab" aria-pressed="false" aria-selected="false" data-tab="graph">Graph</button>
+      </div>
+
+      <div class="shape-panel glass" id="tab-sq" role="tabpanel">
+        <h3 class="ctl-title">Stack &amp; queue</h3>
+        <p class="ctl-sub">The same songs go into both. Watch which one comes out.</p>
+        <div class="row">
+          <button class="btn primary" id="sqAdd">Add a song</button>
+          <button class="btn" id="sqTake" disabled>Take one out</button>
+        </div>
+        <div class="sq">
+          <div class="sq-box">
+            <h4>Stack</h4>
+            <span class="sq-sub">Like a pile of plates: add on top, take from the top. Last in, first out.</span>
+            <div class="taken" id="stTaken" aria-live="polite"></div>
+            <span class="endlab" id="stTop" hidden>↓ top: comes out next</span>
+            <div class="pile" id="pile"></div>
+          </div>
+          <div class="sq-box">
+            <h4>Queue</h4>
+            <span class="sq-sub">Like a line at a counter: join at the back, leave from the front. First in, first out.</span>
+            <div class="taken" id="quTaken" aria-live="polite"></div>
+            <span class="endlab" id="quFront" hidden>front: comes out next →  back</span>
+            <div class="line" id="qline"></div>
+          </div>
+        </div>
+        <div class="note info" id="sqNote" style="margin-top:14px" aria-live="polite">Add a few songs first.</div>
+      </div>
+
+      <div class="shape-panel glass" id="tab-tree" role="tabpanel" hidden>
+        <h3 class="ctl-title">Tree: your library</h3>
+        <p class="ctl-sub">Folders inside folders. Open folders to find "Low Tide". Try to open as few as you can.</p>
+        <div class="tree"><svg id="treeSvg" role="group" aria-label="Library tree"></svg></div>
+        <div class="row" style="justify-content:space-between; margin-top:6px">
+          <span class="label" id="treeCount">Folders opened: 0</span>
+          <button class="btn" id="treeReset">Start over</button>
+        </div>
+        <div class="note info" id="treeNote" style="margin-top:12px" aria-live="polite">Start at the top. Each click opens one folder.</div>
+        <div class="stack" style="gap:6px; margin-top:14px">
+          <span class="label">The same tree, written as JSON</span>
+          <div class="code json" id="treeJson"></div>
+        </div>
+      </div>
+
+      <div class="shape-panel glass" id="tab-graph" role="tabpanel" hidden>
+        <h3 class="ctl-title">Graph: fans also like</h3>
+        <p class="ctl-sub">Each circle is an artist. A line means many fans listen to both. Tap one artist, then another.</p>
+        <div class="graph"><svg id="graphSvg" role="group" aria-label="Artist graph"></svg></div>
+        <div class="graph-legend"><span><i style="background:var(--l2)"></i>1 link away</span><span><i style="background:var(--l5)"></i>shortest path</span></div>
+        <div class="note info" id="graphNote" style="margin-top:12px" aria-live="polite">Tap an artist to see who their fans also like.</div>
+      </div>
+
+      <div class="ctl glass stack" id="pickCard" style="gap:14px; margin-top:16px">
+        <div class="row" style="justify-content:space-between">
+          <h3 class="ctl-title" style="margin:0">Pick the structure</h3>
+          <div class="pick-prog" id="pickProg" aria-hidden="true"></div>
+        </div>
+        <div>
+          <div class="kicker" id="pickNum">Job 1 of 6</div>
+          <p class="job" id="pickJob"></p>
+        </div>
+        <div class="pick-opts" id="pickOpts"></div>
+        <div class="note" id="pickNote" hidden aria-live="polite"></div>
+      </div>
+    </div>
+
+    <div class="stack" style="margin-top:56px">
+      <h3>Where you'll meet these shapes</h3>
+      <p><b>Stacks</b> power undo, the Back button, and the way a program remembers which function called which (that's the "stack" in "stack trace"). <b>Queues</b> hold jobs waiting their turn: songs up next, emails to send, background tasks. <b>Trees</b> are folders, comment threads, menus, JSON and the HTML of every web page. <b>Graphs</b> are friends, followers, links between pages, and routes between places.</p>
+      <details class="deeper glass">
+        <summary>Under the hood: how graphs are stored <small>optional</small></summary>
+        <div>
+          <p>A graph is usually stored as a hash table from each item to a list of its neighbours: <code>{ "Juno Vale": ["Kite Club", "Paper Boats"], … }</code>. Finding a shortest path means exploring neighbours in rings: first everyone 1 link away, then 2 links away, and so on. That's called breadth-first search.</p>
+          <p>A tree is a graph with rules: one top, every item has exactly one parent, and no loops. Those rules are what make folders easy to navigate.</p>
+        </div>
+      </details>
+    </div>
+  </section>
+
+  <!-- PART 3 -->
+  <section class="part" id="p3">
+    <span class="bullet glass" data-p="p3">3</span>
+    <div class="part-head">
+      <div class="kicker">Part 3 of 5</div>
+      <h2>Try it: power up Hum with Map and Set</h2>
+      <p>Hum's home screen shows your most played song and songs you haven't tried yet. You'll build it with a <code>Map</code> for lookups and counting, and a <code>Set</code> for "have I seen this?". Each step is one line.</p>
+    </div>
+
+    <div class="lab lab-left">
+      <div class="a-mission ctl glass">
+        <h3 class="ctl-title">Your mission</h3>
+        <p class="ctl-sub" style="margin-top:0">Fill in the three lines marked "your code". The app preview updates when you run it.</p>
+        <ol class="mission" id="mission"></ol>
+      </div>
+      <div class="a-work" id="lab"></div>
+      <div class="a-side ctl glass">
+        <h3 class="ctl-title">Hum: home screen</h3>
+        <div class="phone-card" id="appPreview"><span class="muted small">Run your code to fill this in.</span></div>
+      </div>
+      <details class="a-extra deeper glass">
+        <summary>Under the hood: the JavaScript toolbox <small>optional</small></summary>
+        <div>
+          <dl class="ref">
+            <dt><code>[a, b, c]</code></dt><dd>Array: a list in order. <code>songs[0]</code> is the first.</dd>
+            <dt><code>{ id: 's1' }</code></dt><dd>Object: named fields for one thing.</dd>
+            <dt><code>new Map()</code></dt><dd>Hash table: <code>.set(key, value)</code>, <code>.get(key)</code>, <code>.has(key)</code>.</dd>
+            <dt><code>new Set()</code></dt><dd>Hash table of keys only: <code>.add(x)</code>, <code>.has(x)</code>. No duplicates.</dd>
+          </dl>
+        </div>
+      </details>
+    </div>
+  </section>
+
+  <!-- PART 4 -->
+  <section class="part" id="p4">
+    <span class="bullet glass" data-p="p4">4</span>
+    <div class="part-head">
+      <div class="kicker">Part 4 of 5</div>
+      <h2>Steer the AI</h2>
+      <p>AI tools pick a data structure in almost every piece of code they write, usually an array. Sometimes that's right. Pick the reply you'd send.</p>
+    </div>
+    <p class="counter" id="steerCount"></p>
+    <div id="steer"></div>
+  </section>
+
+  <!-- PART 5 -->
+  <section class="part" id="p5">
+    <span class="bullet glass" data-p="p5">5</span>
+    <div class="part-head">
+      <div class="kicker">Part 5 of 5</div>
+      <h2>Check your understanding</h2>
+      <p>Five quick questions. Each answer explains itself.</p>
+    </div>
+    <div id="quiz"></div>
+    <div id="doneCard" aria-live="polite"></div>
+  </section>
+  </div>
+
+  <section class="after" id="cheat">
+    <div class="wrap stack">
+      <h2>Cheat sheet</h2>
+      <p class="muted">Six shapes, what each is good at, and how it looks in code.</p>
+      <div class="table-wrap glass">
+        <table>
+          <thead><tr><th>Structure</th><th>Good at</th><th>In JavaScript</th><th>You'll see it in</th></tr></thead>
+          <tbody>
+            <tr><td><b>List</b> (array)</td><td>Order and position</td><td><code>[a, b, c]</code>, <code>list[2]</code></td><td>A playlist, a top-10 chart</td></tr>
+            <tr><td><b>Hash table</b></td><td>Finding by key in about 1 step</td><td><code>{ }</code>, <code>new Map()</code>, <code>new Set()</code></td><td>Song by id, "is this email taken?"</td></tr>
+            <tr><td><b>Stack</b></td><td>Last in, first out</td><td>array with <code>push</code> / <code>pop</code></td><td>Undo, the Back button</td></tr>
+            <tr><td><b>Queue</b></td><td>First in, first out</td><td>array with <code>push</code> / <code>shift</code>, or a job queue</td><td>Up next, emails to send</td></tr>
+            <tr><td><b>Tree</b></td><td>Nesting, one parent each</td><td>nested objects, JSON</td><td>Folders, comment threads, HTML</td></tr>
+            <tr><td><b>Graph</b></td><td>Connections in every direction</td><td>a Map from item to its neighbours</td><td>Friends, links, recommendations</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p class="muted">Questions to ask the AI: "How will we look this up?" · "Could a Map or Set replace this search?" · "Does the order matter here?" · "Is this structure more than we need?"</p>
+    </div>
+  </section>
+</main>
+<script src="../assets/cs-school.js"></script>
+<script>
+(() => {
+const { $, $$, esc, reduce } = CS;
+
+CS.lesson({
+  id: '303',
+  parts: [
+    { id: 'p1', title: 'Lists vs hash tables' },
+    { id: 'p2', title: 'Shapes' },
+    { id: 'p3', title: 'Try it' },
+    { id: 'p4', title: 'Steer the AI' },
+    { id: 'p5', title: 'Check' }
+  ]
+});
+const COLS = ['var(--l1)', 'var(--l2)', 'var(--l3)', 'var(--l4)', 'var(--l5)'];
+
+/* ---------------- hero: one set of dots, four shapes ---------------- */
+(function hero() {
+  const svg = $('#heroArt');
+  const N = 15;
+  // list
+  const list = Array.from({ length: N }, (_, i) => [30 + i * 32.8, 130]);
+  // hash table: 5 buckets
+  const bk = [0, 1, 2, 3, 4, 0, 2, 3, 0, 4, 1, 3, 4, 2, 0], cnt = [0, 0, 0, 0, 0];
+  const hash = bk.map(b => [72 + b * 94, 206 - (cnt[b]++) * 38]);
+  // tree: a perfect binary tree
+  const tree = []; const lv = [1, 2, 4, 8];
+  lv.forEach((n, d) => { for (let k = 0; k < n; k++) tree.push([520 * (k + .5) / n, 36 + d * 62]); });
+  // graph: organic positions
+  const graph = [[60, 60], [150, 40], [250, 70], [360, 45], [460, 80], [95, 150], [200, 140], [305, 160], [420, 170], [40, 230], [140, 225], [245, 225], [350, 235], [470, 225], [250, 118]];
+  const EDGES = [[0, 1], [1, 2], [2, 3], [3, 4], [0, 5], [5, 6], [6, 14], [14, 2], [14, 7], [7, 8], [8, 4], [5, 9], [9, 10], [10, 11], [11, 7], [11, 12], [12, 13], [8, 13], [6, 10], [3, 7]];
+  const SHAPES = [list, hash, tree, graph];
+  const CAP = [['list', 'playlist[3]'], ['hash table', 'songById.get("s7")'], ['tree', 'library.playlists["Beach days"]'], ['graph', 'fansAlsoLike.get("Juno Vale")']];
+  const line = (a, b) => `<path d="M${a[0]} ${a[1]}L${b[0]} ${b[1]}"/>`;
+  const decor = [
+    `<g class="decor" style="stroke:none">${list.map((p, i) => `<rect x="${p[0] - 15}" y="${p[1] - 18}" width="30" height="36" rx="8" style="fill:color-mix(in srgb, var(--ink) 6%, transparent)"/><text x="${p[0]}" y="${p[1] + 36}" text-anchor="middle" style="font-family:var(--f-mono);font-size:11px;fill:var(--ink-2)">${i}</text>`).join('')}</g>`,
+    `<g class="decor">${[0, 1, 2, 3, 4].map(b => `<rect x="${72 + b * 94 - 36}" y="92" width="72" height="136" rx="16" style="fill:color-mix(in srgb, var(--ink) 6%, transparent)"/><text x="${72 + b * 94}" y="248" text-anchor="middle" style="font-family:var(--f-display);font-weight:800;font-size:12px;fill:var(--ink-2)">bucket ${b}</text>`).join('')}</g>`,
+    `<g class="decor" style="fill:none;stroke:color-mix(in srgb, var(--ink) 28%, transparent);stroke-width:2">${tree.slice(1).map((p, i) => line(tree[Math.floor(i / 2)], p)).join('')}</g>`,
+    `<g class="decor" style="fill:none;stroke:color-mix(in srgb, var(--ink) 24%, transparent);stroke-width:2">${EDGES.map(([a, b]) => { const A = graph[a], B = graph[b]; const mx = (A[0] + B[0]) / 2 + (A[1] - B[1]) * .15, my = (A[1] + B[1]) / 2 + (B[0] - A[0]) * .15; return `<path d="M${A[0]} ${A[1]}Q${mx} ${my} ${B[0]} ${B[1]}"/>`; }).join('')}</g>`
+  ];
+  svg.innerHTML = decor.join('') + Array.from({ length: N }, (_, i) => `<circle class="hero-dot" r="11" cx="0" cy="0" style="fill:${COLS[i % 5]};stroke:var(--paper);stroke-width:3"/>`).join('');
+  const dots = $$('.hero-dot', svg), decs = $$('.decor', svg);
+  let k = 0;
+  const show = s => {
+    dots.forEach((d, i) => { d.style.transform = `translate(${SHAPES[s][i][0]}px, ${SHAPES[s][i][1]}px)`; });
+    decs.forEach((g, j) => { g.style.opacity = j === s ? 1 : 0; });
+    $('#heroKind').textContent = CAP[s][0]; $('#heroCap').textContent = CAP[s][1];
+    $$('#heroLegend span').forEach(sp => sp.classList.toggle('on', +sp.dataset.k === s));
+  };
+  show(0);
+  if (reduce) return;
+  setInterval(() => { k = (k + 1) % 4; show(k); }, 3200);
+})();
+
+/* ---------------- Part 1: list vs hash table ---------------- */
+const B = 8;
+const hsum = s => [...s].reduce((a, c) => a + c.charCodeAt(0), 0);
+const SONGS = ['Paper Moons', 'Low Tide', 'Kite Season', 'Glass Garden', 'Salt & Honey', 'Orbit', 'Blue Hour', 'Wildflower', 'Neon Rain', 'Soft Focus'];
+const list = SONGS.slice();
+const buckets = Array.from({ length: B }, () => []);
+list.forEach(t => buckets[hsum(t) % B].push(t));
+let fresh = null, runId = 0;
+function renderP1(state = {}) {
+  $('#slots').innerHTML = list.map((t, i) => `<span class="slot${state.lHit === i ? ' hit' : state.lScan === i ? ' scan' : state.lSeen > i ? ' seen' : ''}${fresh === t ? ' new' : ''}"><i>${i}</i>${esc(t)}</span>`).join('');
+  $('#buckets').innerHTML = buckets.map((bs, b) => `<div class="bucket${state.bucket === b ? ' go' : ''}"><span class="bn">${b}</span>${bs.map((t, j) => `<span class="bsong${state.bucket === b && state.bHit === j ? ' hit' : state.bucket === b && state.bScan === j ? ' scan' : ''}${fresh === t ? ' new' : ''}">${esc(t)}</span>`).join('')}</div>`).join('');
+  $('#findChips').innerHTML = list.map(t => `<button class="btn" data-song="${esc(t)}">${esc(t)}</button>`).join('');
+  $('#lSteps').innerHTML = `${state.lSteps || 0}<small>steps</small>`;
+  $('#hSteps').innerHTML = `${state.hSteps || 0}<small>steps</small>`;
+  $('#lSteps').classList.toggle('win', !!state.done && state.hSteps > state.lSteps);
+  $('#hSteps').classList.toggle('win', !!state.done && state.hSteps < state.lSteps);
+}
+function hashLine(t) {
+  const s = hsum(t), b = s % B;
+  $('#hashline').innerHTML = `<span class="hc"><b>"${esc(t)}"</b></span><span class="ar">→</span><span class="hc">letter codes add up to <b>${s}</b></span><span class="ar">→</span><span class="hc"><b>${s}</b> ÷ 8 leaves <b>${b}</b></span><span class="ar">→</span><span class="hc">bucket <b>${b}</b></span>`;
+}
+function p1Note(html, kind = '') { CS.say($('#p1Note'), html, kind); $('#p1Note').classList.add('o3'); }
+function find(t) {
+  const id = ++runId;
+  const li = list.indexOf(t), b = hsum(t) % B, bj = buckets[b].indexOf(t);
+  const lTotal = li + 1, hTotal = 1 + bj + 1;
+  fresh = null;
+  hashLine(t);
+  const summary = () => {
+    const shared = buckets[b].length > 1;
+    let msg = `<strong>Found "${esc(t)}".</strong> The list checked <b>${lTotal}</b> song${lTotal > 1 ? 's' : ''} one by one. The hash table took <b>${hTotal}</b> steps: 1 to work out the bucket, then ${bj + 1} check${bj ? 's' : ''} inside bucket ${b}.`;
+    if (shared) msg += ` Bucket ${b} holds ${buckets[b].length} songs. That's a <b>collision</b>: two titles landed in the same place, so the table checks each one there.`;
+    else msg += ` With 50,000 songs the list could need 50,000 checks. The hash table would still take about 2.`;
+    p1Note(msg, 'good');
+    $('#miniScore').innerHTML = `"${esc(t)}": list <b>${lTotal}</b> steps, hash table <b>${hTotal}</b>. Details below.`; $('#miniScore').hidden = false;
+    CS.tick('p1', 'find');
+    if (shared) CS.tick('p1', 'collide');
+  };
+  const final = { lSteps: lTotal, hSteps: hTotal, lHit: li, lSeen: li, bucket: b, bHit: bj, done: true };
+  if (reduce) { renderP1(final); summary(); return; }
+  let tick = 0;
+  const step = () => {
+    if (id !== runId) return;
+    const st = { lSteps: Math.min(tick + 1, lTotal), lScan: Math.min(tick, li), lSeen: Math.min(tick, li) };
+    if (tick >= li) st.lHit = li;
+    st.hSteps = Math.min(tick + 1, hTotal); st.bucket = b;
+    if (tick >= 1) { const j = Math.min(tick - 1, bj); st.bScan = j; if (tick - 1 >= bj) st.bHit = bj; }
+    renderP1(st);
+    if (tick + 1 < Math.max(lTotal, hTotal)) { tick++; setTimeout(step, 260); }
+    else { renderP1(final); summary(); }
+  };
+  p1Note(`Searching for "${esc(t)}"…`, 'info');
+  step();
+}
+$('#findChips').addEventListener('click', e => { const b = e.target.closest('[data-song]'); if (!b) return; find(b.dataset.song); });
+$('#addForm').addEventListener('submit', e => {
+  e.preventDefault();
+  const t = $('#addIn').value.trim().replace(/\s+/g, ' ');
+  if (!t) { p1Note('Type a song title first.', 'bad'); return; }
+  if (list.includes(t)) { p1Note(`<strong>"${esc(t)}" is already here.</strong> In a hash table each key appears once. Adding it again would just replace it.`, 'bad'); return; }
+  if (list.length >= 16) { p1Note('That\'s plenty of songs for this demo. Try looking one up.', ''); return; }
+  runId++;
+  const s = hsum(t), b = s % B;
+  list.push(t); buckets[b].push(t); fresh = t;
+  $('#addIn').value = '';
+  hashLine(t);
+  renderP1({ bucket: b });
+  const others = buckets[b].filter(x => x !== t);
+  p1Note(`<strong>Added "${esc(t)}".</strong> The list put it at the end, position ${list.length - 1}. The hash table put it in bucket ${b}, because its letter codes add up to ${s}. ${others.length ? `It shares bucket ${b} with ${others.map(x => `"${esc(x)}"`).join(' and ')}. Look it up to see how the table handles that.` : 'It has the bucket to itself.'}`, 'good');
+  CS.tick('p1', 'add');
+});
+renderP1();
+
+/* ---------------- Part 2: tabs ---------------- */
+$('#shapeTabs').addEventListener('click', e => {
+  const b = e.target.closest('[data-tab]'); if (!b) return;
+  $$('#shapeTabs button').forEach(x => { const on = x === b; x.setAttribute('aria-pressed', on); x.setAttribute('aria-selected', on); });
+  ['sq', 'tree', 'graph'].forEach(k => { $('#tab-' + k).hidden = k !== b.dataset.tab; });
+  if (b.dataset.tab === 'tree') renderTree();
+  if (b.dataset.tab === 'graph') renderGraph();
+});
+
+/* stack & queue */
+const POOL = ['Paper Moons', 'Low Tide', 'Kite Season', 'Glass Garden', 'Salt & Honey', 'Orbit', 'Blue Hour', 'Wildflower'];
+const SQ = { stack: [], queue: [], n: 0, added: 0 };
+function renderSQ() {
+  $('#pile').innerHTML = SQ.stack.length ? SQ.stack.slice().reverse().map(t => `<span class="item">${esc(t)}</span>`).join('') : '<span class="empty">Empty</span>';
+  $('#qline').innerHTML = SQ.queue.length ? SQ.queue.map(t => `<span class="item">${esc(t)}</span>`).join('') : '<span class="empty">Empty</span>';
+  $('#stTop').hidden = !SQ.stack.length; $('#quFront').hidden = !SQ.queue.length;
+  $('#sqAdd').textContent = `Add "${POOL[SQ.n % POOL.length]}"`;
+  $('#sqAdd').disabled = SQ.stack.length >= 6;
+  $('#sqTake').disabled = !SQ.stack.length;
+}
+$('#sqAdd').addEventListener('click', () => {
+  const t = POOL[SQ.n++ % POOL.length];
+  SQ.stack.push(t); SQ.queue.push(t); SQ.added++;
+  $('#stTaken').innerHTML = ''; $('#quTaken').innerHTML = '';
+  CS.say($('#sqNote'), SQ.stack.length < 3 ? `Added "${esc(t)}" to both. ${3 - SQ.stack.length} more, then take one out.` : `Added "${esc(t)}". The stack puts it on top; the queue puts it at the back. Now take one out.`, 'info');
+  renderSQ();
+});
+$('#sqTake').addEventListener('click', () => {
+  const s = SQ.stack.pop(), q = SQ.queue.shift();
+  $('#stTaken').innerHTML = `Gave you <b>${esc(s)}</b>, the newest.`;
+  $('#quTaken').innerHTML = `Gave you <b>${esc(q)}</b>, the oldest.`;
+  if (SQ.added >= 3) {
+    CS.tick('p2', 'sq');
+    CS.say($('#sqNote'), `<strong>Same songs, different answers.</strong> The stack handed back "${esc(s)}", the last one in. That's how <b>undo</b> works: the newest change comes off first. The queue handed back "${esc(q)}", the first one in. That's how <b>Up next</b> works: songs play in the order you added them.`, 'good');
+  } else CS.say($('#sqNote'), 'Took one from each. Add at least three songs to see the difference clearly.', 'info');
+  renderSQ();
+});
+renderSQ();
+
+/* tree */
+const LIB = { name: 'Library', kids: [
+  { name: 'Playlists', kids: [
+    { name: 'Focus', kids: ['Glass Garden', 'Soft Focus', 'Orbit'] },
+    { name: 'Beach days', kids: ['Salt & Honey', 'Low Tide', 'Paper Moons'] },
+    { name: 'Workout', kids: ['Kite Season', 'Wildflower', 'Neon Rain'] }] },
+  { name: 'Albums', kids: [
+    { name: 'Tides', kids: ['Undertow', 'High Water'] },
+    { name: 'Orbit', kids: ['Launch', 'Zero G'] }] },
+  { name: 'Podcasts', kids: [
+    { name: 'Studio Notes', kids: ['Episode 12', 'Episode 13'] },
+    { name: 'Deep Cuts', kids: ['Episode 1', 'Episode 2'] }] }
+] };
+const T = { path: [], opens: 0, found: false, miss: null };
+function renderTree() {
+  const svg = $('#treeSvg');
+  const W = Math.max(290, Math.round(svg.getBoundingClientRect().width) || 600);
+  const lv = [[{ node: LIB, parent: -1 }]];
+  // level 1 always shows the root's children; deeper levels follow the open path
+  let cur = LIB;
+  for (let d = 0; d < 3; d++) {
+    if (d > 0) { cur = cur.kids.find(k => typeof k !== 'string' && k.name === T.path[d - 1]); if (!cur) break; }
+    if (d === 0 || T.path.length >= d) lv.push(cur.kids.map(k => typeof k === 'string' ? { name: k, song: true } : k));
+    if (T.path.length < d + 1) break;
+  }
+  const levels = lv.map((row, d) => d === 0 ? [LIB] : row);
+  const ph = 36, gapY = 74, top = 10;
+  const H = top + (levels.length - 1) * gapY + ph + 10;
+  let links = '', nodes = '';
+  const posOf = [];
+  levels.forEach((row, d) => {
+    const n = row.length, slot = W / n, pw = Math.min(150, slot - 10);
+    posOf[d] = row.map((node, i) => ({ node, x: slot * (i + .5), y: top + d * gapY, pw }));
+  });
+  posOf.forEach((row, d) => {
+    if (d === 0) return;
+    const par = d === 1 ? posOf[0][0] : posOf[d - 1].find(p => p.node.name === T.path[d - 2] && !p.node.song);
+    if (!par) return;
+    row.forEach(p => { const y1 = par.y + ph, y2 = p.y, my = (y1 + y2) / 2; links += `<path class="tlink${T.path[d - 1] === p.node.name || (p.node.song && T.found && p.node.name === 'Low Tide') ? ' on' : ''}" d="M${par.x} ${y1}C${par.x} ${my} ${p.x} ${my} ${p.x} ${y2}"/>`; });
+  });
+  posOf.forEach((row, d) => row.forEach(p => {
+    const nd = p.node;
+    const open = d === 0 || T.path[d - 1] === nd.name;
+    const cls = nd.song ? (T.found && nd.name === 'Low Tide' ? ' song hit' : T.miss === nd.name ? ' song miss' : ' song') : open ? ' open' : '';
+    const maxC = Math.max(4, Math.floor((p.pw - 12) / (W < 460 ? 6.7 : 7.6)));
+    const label = nd.name.length > maxC ? nd.name.slice(0, maxC - 1) + '…' : nd.name;
+    nodes += `<g class="tn${cls}" tabindex="0" role="button" data-d="${d}" data-name="${esc(nd.name)}" aria-label="${esc(nd.name)}${nd.song ? ', song' : open ? ', open folder' : ', folder'}"><rect x="${p.x - p.pw / 2}" y="${p.y}" width="${p.pw}" height="${ph}" rx="11"/><text x="${p.x}" y="${p.y + 23}" text-anchor="middle"${W < 460 ? ' style="font-size:12.5px"' : ''}>${esc(label)}</text></g>`;
+  }));
+  svg.setAttribute('viewBox', `0 0 ${W} ${H}`);
+  svg.innerHTML = links + nodes;
+  $('#treeCount').textContent = `Folders opened: ${T.opens}`;
+  renderJson();
+}
+function renderJson() {
+  const q = s => `<span class="s">"${esc(s)}"</span>`;
+  let out = '{\n';
+  LIB.kids.forEach((c, i) => {
+    const comma = i < LIB.kids.length - 1 ? ',' : '';
+    if (T.path[0] !== c.name) { out += `  ${q(c.name)}: { <span class="d">…</span> }${comma}\n`; return; }
+    out += `  ${q(c.name)}: {\n`;
+    c.kids.forEach((f, j) => {
+      const c2 = j < c.kids.length - 1 ? ',' : '';
+      if (T.path[1] !== f.name) { out += `    ${q(f.name)}: [ <span class="d">…</span> ]${c2}\n`; return; }
+      out += `    ${q(f.name)}: [\n` + f.kids.map((s, k) => `      ${T.found && s === 'Low Tide' ? `<span class="hl">${q(s)}</span>` : q(s)}${k < f.kids.length - 1 ? ',' : ''}`).join('\n') + `\n    ]${c2}\n`;
+    });
+    out += `  }${comma}\n`;
+  });
+  $('#treeJson').innerHTML = out + '}';
+}
+function treeClick(d, name) {
+  if (T.found) { CS.say($('#treeNote'), 'Found already. Press <b>Start over</b> to try again with fewer clicks.', 'info'); return; }
+  if (d === 0) { T.path = []; T.miss = null; renderTree(); CS.say($('#treeNote'), 'Back at the top. Three folders here: Playlists, Albums, Podcasts.', 'info'); return; }
+  // is it a song?
+  let parent = LIB;
+  for (let k = 0; k < d - 1; k++) parent = parent.kids.find(x => typeof x !== 'string' && x.name === T.path[k]);
+  const child = parent.kids.find(x => (typeof x === 'string' ? x : x.name) === name);
+  if (typeof child === 'string') {
+    if (name === 'Low Tide') {
+      T.found = true; T.miss = null;
+      CS.tick('p2', 'tree');
+      CS.say($('#treeNote'), `<strong>Found "Low Tide" after opening ${T.opens} folder${T.opens === 1 ? '' : 's'}.</strong> Path: Library › ${T.path.join(' › ')} › Low Tide. You never looked inside the other folders at all. A good hierarchy lets you skip whole branches. The JSON below has exactly the same shape.`, 'good');
+    } else { T.miss = name; CS.say($('#treeNote'), `"${esc(name)}" isn't it. "Low Tide" sounds like the beach…`, ''); }
+    renderTree(); return;
+  }
+  const already = T.path[d - 1] === name;
+  T.path = T.path.slice(0, d - 1);
+  if (!already) { T.path.push(name); T.opens++; }
+  T.miss = null;
+  renderTree();
+  if (!already) CS.say($('#treeNote'), `Opened "${esc(name)}". ${child.kids.every(k => typeof k === 'string') ? 'These are songs. Is it here?' : 'Pick a folder inside it.'}`, 'info');
+}
+$('#treeSvg').addEventListener('click', e => { const g = e.target.closest('.tn'); if (g) treeClick(+g.dataset.d, g.dataset.name); });
+$('#treeSvg').addEventListener('keydown', e => { const g = e.target.closest('.tn'); if (g && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); const d = g.dataset.d, n = g.dataset.name; treeClick(+d, n); const ng = $(`#treeSvg .tn[data-d="${d}"][data-name="${CSS.escape(n)}"]`); if (ng) ng.focus(); } });
+$('#treeReset').addEventListener('click', () => { T.path = []; T.opens = 0; T.found = false; T.miss = null; renderTree(); CS.say($('#treeNote'), 'Start at the top. Each click opens one folder.', 'info'); });
+
+/* graph */
+const ART = [['Juno Vale', .1, .14], ['Kite Club', .45, .08], ['Mira Lune', .86, .16], ['Paper Boats', .2, .5], ['Solstice', .56, .42], ['Ada Grey', .88, .56], ['Static', .1, .88], ['Velvet', .45, .84], ['Oko', .84, .9]];
+const LINKS = [[0, 1], [0, 3], [1, 2], [1, 4], [2, 5], [3, 4], [3, 6], [4, 7], [5, 8], [6, 7], [7, 8], [4, 5]];
+const NB = ART.map((_, i) => LINKS.filter(l => l.includes(i)).map(l => l[0] === i ? l[1] : l[0]));
+const GR = { a: null, b: null };
+function bfs(a, b) {
+  const prev = new Map([[a, -1]]), q = [a];
+  while (q.length) { const x = q.shift(); if (x === b) break; NB[x].forEach(y => { if (!prev.has(y)) { prev.set(y, x); q.push(y); } }); }
+  const path = []; for (let x = b; x !== -1; x = prev.get(x)) path.unshift(x);
+  return path;
+}
+function renderGraph() {
+  const svg = $('#graphSvg');
+  const W = Math.max(290, Math.round(svg.getBoundingClientRect().width) || 600);
+  const H = W < 500 ? 360 : 340, px = 52, py = 34;
+  const P = ART.map(([, x, y]) => [px + x * (W - 2 * px), py + y * (H - 2 * py - 20)]);
+  const path = GR.a !== null && GR.b !== null ? bfs(GR.a, GR.b) : [];
+  const onPath = (i, j) => path.some((x, k) => k < path.length - 1 && ((x === i && path[k + 1] === j) || (x === j && path[k + 1] === i)));
+  let s = '';
+  LINKS.forEach(([i, j]) => {
+    const A = P[i], Bp = P[j], mx = (A[0] + Bp[0]) / 2 + (A[1] - Bp[1]) * .12, my = (A[1] + Bp[1]) / 2 + (Bp[0] - A[0]) * .12;
+    const cls = onPath(i, j) ? ' path' : GR.a !== null && GR.b === null && (i === GR.a || j === GR.a) ? ' n1' : '';
+    s += `<path class="ge${cls}" d="M${A[0].toFixed(1)} ${A[1].toFixed(1)}Q${mx.toFixed(1)} ${my.toFixed(1)} ${Bp[0].toFixed(1)} ${Bp[1].toFixed(1)}"/>`;
+  });
+  ART.forEach(([name], i) => {
+    const [x, y] = P[i], c = COLS[i % 5];
+    const sel = i === GR.a || i === GR.b, inPath = path.includes(i), n1 = GR.a !== null && GR.b === null && NB[GR.a].includes(i);
+    const fill = sel || inPath ? `color-mix(in srgb, ${c} 55%, var(--paper))` : n1 ? `color-mix(in srgb, ${c} 32%, var(--paper))` : `color-mix(in srgb, ${c} 16%, var(--paper))`;
+    const ini = name.split(' ').map(w => w[0]).join('').slice(0, 2);
+    s += `<g class="gn" tabindex="0" role="button" data-i="${i}" aria-label="${esc(name)}${sel ? ', selected' : ''}"><circle cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="21" style="fill:${fill};stroke:${sel ? 'var(--ink)' : c}${sel ? ';stroke-width:3.5' : ''}"/><text class="ini" x="${x.toFixed(1)}" y="${(y + 4.5).toFixed(1)}" text-anchor="middle">${ini}</text><text class="nm" x="${x.toFixed(1)}" y="${(y + 38).toFixed(1)}" text-anchor="middle">${esc(name)}</text></g>`;
+  });
+  svg.setAttribute('viewBox', `0 0 ${W} ${H}`);
+  svg.innerHTML = s;
+}
+function graphClick(i) {
+  if (GR.a === null || (GR.a !== null && GR.b !== null)) { GR.a = i; GR.b = null; }
+  else if (i === GR.a) { GR.a = null; }
+  else GR.b = i;
+  renderGraph();
+  if (GR.a === null) { CS.say($('#graphNote'), 'Tap an artist to see who their fans also like.', 'info'); return; }
+  const A = ART[GR.a][0];
+  if (GR.b === null) {
+    const one = NB[GR.a], two = [...new Set(one.flatMap(j => NB[j]))].filter(j => j !== GR.a && !one.includes(j));
+    CS.say($('#graphNote'), `<strong>${esc(A)}</strong> links to ${one.map(j => esc(ART[j][0])).join(', ')}. Two links away: ${two.map(j => esc(ART[j][0])).join(', ')}. "Fans also like" is often just this: look one or two links out. Now tap another artist.`, 'info');
+    return;
+  }
+  const path = bfs(GR.a, GR.b), hops = path.length - 1;
+  CS.say($('#graphNote'), `<strong>${path.map(j => esc(ART[j][0])).join(' → ')}</strong>: ${hops} link${hops > 1 ? 's' : ''}. The computer finds this by exploring in rings: everyone 1 link away, then 2, and so on. ${hops >= 2 ? '' : 'These two are direct neighbours. Try two artists further apart.'}`, hops >= 2 ? 'good' : 'info');
+  if (hops >= 2) CS.tick('p2', 'graph');
+}
+$('#graphSvg').addEventListener('click', e => { const g = e.target.closest('.gn'); if (g) graphClick(+g.dataset.i); });
+$('#graphSvg').addEventListener('keydown', e => { const g = e.target.closest('.gn'); if (g && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); const i = g.dataset.i; graphClick(+i); const ng = $(`#graphSvg .gn[data-i="${i}"]`); if (ng) ng.focus(); } });
+let rT; addEventListener('resize', () => { clearTimeout(rT); rT = setTimeout(() => { if (!$('#tab-tree').hidden) renderTree(); if (!$('#tab-graph').hidden) renderGraph(); }, 120); });
+
+/* pick the structure */
+const STRUCTS = ['List', 'Hash table', 'Stack', 'Queue', 'Tree', 'Graph'];
+const JOBS = [
+  { job: 'Check whether a username is already taken, among 1 million users.', right: 'Hash table', why: {
+    'List': 'Checking names one by one: up to 1,000,000 steps for every signup.',
+    'Hash table': 'About 1 step: hash the name, look in one bucket. A Set is exactly this.',
+    'Stack': 'You can only see the top name. Checking them all: up to 1,000,000 steps.',
+    'Queue': 'You can only see the front. Up to 1,000,000 steps.',
+    'Tree': 'A sorted tree finds it in about 20 steps by halving. Good, but a hash table does it in about 1.',
+    'Graph': 'Usernames aren\'t connected to each other. There are no links to follow.' } },
+  { job: 'Undo the last edits to a playlist, newest first.', right: 'Stack', why: {
+    'List': 'A list can do it if you always take from the end, and that rule is exactly what a stack is.',
+    'Hash table': 'A hash table finds things by key. It has no idea which edit was newest.',
+    'Stack': 'Last in, first out: the newest edit is on top, so undo takes it first. 1 step each time.',
+    'Queue': 'First in, first out would undo your oldest edit first. Surprise!',
+    'Tree': 'Edits don\'t sit inside each other like folders.',
+    'Graph': 'Edits aren\'t a web of connections. They\'re a pile in time order.' } },
+  { job: 'Play songs in the order the listener added them to Up next.', right: 'Queue', why: {
+    'List': 'Close. But taking from the front of a big list can mean shifting every other item along. A queue is built for this.',
+    'Hash table': 'No order to play in. A hash table finds by key.',
+    'Stack': 'Last in, first out would play the song added most recently first.',
+    'Queue': 'First in, first out: songs play in the order they joined. 1 step to take the next.',
+    'Tree': 'Up next is a line, not folders.',
+    'Graph': 'There are no connections here, just a line.' } },
+  { job: 'Suggest artists that fans of your favourites also like.', right: 'Graph', why: {
+    'List': 'A list can\'t say who is connected to whom.',
+    'Hash table': 'Finds one artist fast, but can\'t follow connections on its own. (Graphs are often stored in one, though.)',
+    'Stack': 'A stack only knows what came last.',
+    'Queue': 'A queue only knows what came first.',
+    'Tree': 'A tree gives each item one parent. Artists connect in every direction, with loops.',
+    'Graph': 'Artists are points, shared fans are links. "Fans also like" is one or two links away.' } },
+  { job: 'Show a music library of folders inside folders.', right: 'Tree', why: {
+    'List': 'A flat list loses which folder holds what.',
+    'Hash table': 'Finds a folder by name, but loses the nesting.',
+    'Stack': 'A stack is a pile in time order, not a hierarchy.',
+    'Queue': 'A queue is a line, not a hierarchy.',
+    'Tree': 'Folders inside folders, each with one parent. You skip whole branches when you search.',
+    'Graph': 'A tree is a special kind of graph, so you\'re close. Folders have exactly one parent, which makes tree the precise fit.' } },
+  { job: 'Show this week\'s top 10 songs, in order.', right: 'List', why: {
+    'List': 'A list keeps things in order and gets the 3rd item in 1 step.',
+    'Hash table': 'Finds by key, but has no 1st, 2nd, 3rd.',
+    'Stack': 'You could only see the top one.',
+    'Queue': 'You could only see the front one.',
+    'Tree': 'There\'s no nesting here, just an order.',
+    'Graph': 'There are no connections here, just an order.' } }
+];
+const PK = { i: 0, done: 0, solved: false };
+function renderPick() {
+  const j = JOBS[PK.i];
+  $('#pickNum').textContent = `Job ${PK.i + 1} of ${JOBS.length}`;
+  $('#pickJob').textContent = j.job;
+  $('#pickOpts').innerHTML = STRUCTS.map(s => `<button class="btn" data-s="${s}">${s}</button>`).join('');
+  $('#pickProg').innerHTML = JOBS.map((_, k) => `<i class="${k < PK.done ? 'done' : k === PK.i ? 'cur' : ''}"></i>`).join('');
+  $('#pickNote').hidden = true;
+  PK.solved = false;
+}
+$('#pickOpts').addEventListener('click', e => {
+  const b = e.target.closest('[data-s]'); if (!b || b.disabled || PK.solved) return;
+  const j = JOBS[PK.i], s = b.dataset.s;
+  if (s === j.right) {
+    PK.solved = true; PK.done = Math.max(PK.done, PK.i + 1);
+    b.classList.add('right'); $$('#pickOpts .btn').forEach(x => x.disabled = true);
+    const last = PK.i === JOBS.length - 1;
+    CS.say($('#pickNote'), `<strong>${s}.</strong> ${j.why[s]}${last ? ' <b>That\'s all six.</b>' : `<div class="row" style="margin-top:10px"><button class="btn primary" id="pickNext">Next job</button></div>`}`, 'good');
+    $('#pickProg').innerHTML = JOBS.map((_, k) => `<i class="${k < PK.done ? 'done' : k === PK.i ? 'cur' : ''}"></i>`).join('');
+    if (last) CS.tick('p2', 'pick');
+  } else {
+    b.classList.add('wrong'); b.disabled = true;
+    CS.say($('#pickNote'), `<strong>Not the best fit.</strong> ${j.why[s]} Try another.`, 'bad');
+  }
+});
+$('#pickNote').addEventListener('click', e => { if (e.target.id === 'pickNext') { PK.i = Math.min(PK.i + 1, JOBS.length - 1); renderPick(); $('#pickCard').scrollIntoView({ behavior: reduce ? 'auto' : 'smooth', block: 'nearest' }); } });
+renderPick();
+
+/* ---------------- Part 3: code lab ---------------- */
+const LAB_SONGS = [['s1', 'Paper Moons', 'Juno Vale'], ['s2', 'Low Tide', 'Juno Vale'], ['s3', 'Kite Season', 'Kite Club'], ['s4', 'Glass Garden', 'Mira Lune'], ['s5', 'Salt & Honey', 'Ada Grey'], ['s6', 'Orbit', 'Kite Club']];
+const LAB_PLAYS = ['s2', 's5', 's2', 's1', 's2', 's5', 's6', 's1', 's2'];
+const WANT_COUNT = { s2: 4, s5: 2, s1: 2, s6: 1 };
+function runLab(code) {
+  let shown = null;
+  const logs = [];
+  const con = { log: (...a) => logs.push(a.map(v => typeof v === 'string' ? v : (() => { try { return JSON.stringify(v); } catch (e) { return String(v); } })()).join(' ')) };
+  const show = (a, b, c) => { shown = { songById: a, playCount: b, neverPlayed: c }; };
+  let error = null;
+  const guarded = code.replace(/\b(for|while)\s*\(([^)]*)\)\s*\{/g, m => m + ' if (++__g > 100000) throw new Error("Stopped: this loop ran more than 100,000 times. Is it infinite?");');
+  try { new Function('console', 'show', '"use strict"; let __g = 0;\n' + guarded)(con, show); } catch (e) { error = e.name + ': ' + e.message; }
+  const r = { logs, error, shown: !!shown, ok1: false, ok2: false, ok3: false };
+  let html = '';
+  if (!error && !shown) html = '<div class="dim">Keep the last line, show(songById, playCount, neverPlayed), so you can see the result.</div>';
+  if (shown) {
+    const { songById: m, playCount: pc, neverPlayed: np } = shown;
+    r.ok1 = m instanceof Map && m.size === 6 && LAB_SONGS.every(([id, t]) => m.get(id) && m.get(id).title === t);
+    r.mapSize = m instanceof Map ? m.size : -1;
+    r.ok2 = pc instanceof Map && pc.size === 4 && Object.entries(WANT_COUNT).every(([id, n]) => pc.get(id) === n);
+    r.countVals = pc instanceof Map ? [...pc.values()] : [];
+    const ids = Array.isArray(np) ? np.map(x => x && typeof x === 'object' ? x.id : x) : null;
+    r.ok3 = !!ids && ids.length === 2 && ids.includes('s3') && ids.includes('s4');
+    r.npLen = ids ? ids.length : -1;
+    html += `<div class="${r.ok1 ? 'g' : 'dim'}">songById: ${m instanceof Map ? `${m.size} song${m.size === 1 ? '' : 's'}${m.get('s5') ? `, songById.get('s5') → ${esc(m.get('s5').title)}` : ''}` : 'not a Map'}</div>`;
+    html += `<div class="${r.ok2 ? 'g' : 'dim'}">playCount: ${pc instanceof Map && pc.size ? [...pc.entries()].map(([k, v]) => `${esc(k)}: ${esc(String(v))}`).join(', ') : 'empty'}</div>`;
+    html += `<div class="${r.ok3 ? 'g' : 'dim'}">neverPlayed: ${ids ? (ids.length ? ids.map(x => esc(String(x))).join(', ') : 'none') : 'not a list'}</div>`;
+    renderApp(r, shown);
+  }
+  r.html = html;
+  return r;
+}
+function renderApp(r, sh) {
+  const title = id => (LAB_SONGS.find(s => s[0] === id) || [])[1];
+  let top = '';
+  if (r.ok2) {
+    const [id, n] = [...sh.playCount.entries()].sort((a, b) => b[1] - a[1])[0];
+    const song = r.ok1 ? sh.songById.get(id) : null;
+    top = `<div class="track-row"><span class="cover" style="background:var(--l1)">${esc((song ? song.title : title(id))[0])}</span><div><b>${esc(song ? song.title : title(id))}</b><span>${song ? esc(song.artist) + ' · ' : ''}${n} plays this week</span></div></div>`;
+  } else top = '<span class="muted small">Most played appears when play counts work.</span>';
+  const disc = r.ok3 ? `<div class="mini">${sh.neverPlayed.map(x => `<span>${esc(typeof x === 'object' ? x.title : title(x))}</span>`).join('')}</div>` : '<span class="muted small">Songs to discover appear when the Set check works.</span>';
+  $('#appPreview').innerHTML = `<span class="ph">Your top song</span>${top}<span class="ph">You haven't tried these yet</span>${disc}`;
+}
+CS.codeLab($('#lab'), {
+  part: 'p3', mission: $('#mission'), language: 'JavaScript',
+  starter: `// Hum's data. Each song is an object.
+const songs = [
+  { id: 's1', title: 'Paper Moons', artist: 'Juno Vale' },
+  { id: 's2', title: 'Low Tide', artist: 'Juno Vale' },
+  { id: 's3', title: 'Kite Season', artist: 'Kite Club' },
+  { id: 's4', title: 'Glass Garden', artist: 'Mira Lune' },
+  { id: 's5', title: 'Salt & Honey', artist: 'Ada Grey' },
+  { id: 's6', title: 'Orbit', artist: 'Kite Club' },
+];
+// What the listener played, oldest first:
+const plays = ['s2', 's5', 's2', 's1', 's2',
+               's5', 's6', 's1', 's2'];
+
+// 1) A Map from id to song, for one-step lookups.
+const songById = new Map();
+for (const song of songs) {
+  // your code
+}
+
+// 2) Count plays per song, in another Map.
+const playCount = new Map();
+for (const id of plays) {
+  // your code
+}
+
+// 3) Songs never played. A Set answers
+//    "have I seen this?" in one step.
+const played = new Set(plays);
+// your code: replace false with a check
+const neverPlayed = songs.filter(song => false);
+
+show(songById, playCount, neverPlayed);
+`,
+  run: runLab,
+  steps: [
+    { t: 'Fill the Map', how: 'Inside the first loop, store each song under its id.', hint: 'In the first loop, replace <b>// your code</b> with <b>songById.set(song.id, song);</b>', check: r => r.ok1,
+      nudge: r => r.mapSize === 0 ? 'The Map is still empty. Inside the first loop, add <b>songById.set(song.id, song);</b>' : r.mapSize > 0 ? 'Close. Store the whole song as the value: <b>songById.set(song.id, song)</b>.' : '' },
+    { t: 'Count the plays', how: 'For each id in plays, add 1 to its count in playCount.', hint: 'In the second loop: <b>playCount.set(id, (playCount.get(id) || 0) + 1);</b><br>The <b>|| 0</b> means "or 0 if this song has no count yet".', check: r => r.ok2,
+      nudge: r => r.countVals.some(v => Number.isNaN(v)) ? 'Some counts are <b>NaN</b> ("not a number"). The first time you see a song, <b>playCount.get(id)</b> is undefined, and undefined + 1 is NaN. Use <b>(playCount.get(id) || 0) + 1</b>.' : r.countVals.length && r.countVals.every(v => v === 1) ? 'Every count is 1. Add 1 to the old count instead of setting 1: <b>(playCount.get(id) || 0) + 1</b>.' : r.countVals.length === 0 ? 'playCount is empty. Inside the second loop, set a count for each id.' : '' },
+    { t: 'Find songs never played', how: 'Keep the songs whose id is NOT in the played Set.', hint: 'Change the filter to <b>songs.filter(song =&gt; !played.has(song.id))</b>. The <b>!</b> means NOT.', check: r => r.ok3,
+      nudge: r => r.npLen === 4 ? 'You kept the songs that <i>were</i> played. Flip it with <b>!</b>: <b>!played.has(song.id)</b>.' : r.npLen === 6 ? 'That keeps every song. Only keep ones where <b>played.has(song.id)</b> is false.' : '' }
+  ],
+  explainError: e => /SyntaxError/.test(e) ? 'A <b>SyntaxError</b> means a bracket or quote is off. Compare your line with the hint.' : /ReferenceError/.test(e) ? 'A <b>ReferenceError</b> means a name doesn\'t exist. Use the exact names: <b>songById</b>, <b>playCount</b>, <b>played</b>.' : /is not a function/.test(e) ? 'Something was called that isn\'t a function. Maps use <b>.set</b> and <b>.get</b>; Sets use <b>.has</b>.' : '',
+  doneTutor: '<b>Mission complete!</b> A Map for lookups, a Map for counting, a Set for "seen it?". With 50 million plays, each line would still do one step per item.'
+});
+
+/* ---------------- Part 4: steer the AI ---------------- */
+CS.steer($('#steer'), [
+  { ai: 'I keep the list of signed-in users in an array and check users.includes(name) on every request. We have about 200,000 users.',
+    opts: [['Fine, arrays are simple.', 0, '.includes() checks one by one: up to 200,000 steps on every single request.'],
+           ['Use a Set for signed-in users, so each check is one step.', 1, 'Right. "Is this in the collection?" is exactly what a Set answers in about one step.'],
+           ['Sort the array first so it looks tidier.', 0, 'Sorting alone does not make .includes() faster. It still checks one by one.']] },
+  { ai: 'For Up next, I push each song onto an array and play the next one with songs.pop().',
+    opts: [['pop() takes the newest song. Up next should be first in, first out, so take from the front like a queue.', 1, 'Exactly. The listener expects songs in the order they added them. That\'s a queue.'],
+           ['Sounds right, ship it.', 0, 'pop() makes a stack: the last song added plays first. Listeners will wonder why their queue is backwards.'],
+           ['Store the songs in a Map instead.', 0, 'A Map finds by key. Up next is about order, which a queue keeps.']] },
+  { ai: 'For your 12 app settings, I wrote a custom hash table class with resizing, plus a cache layer in front of it.',
+    opts: [['Impressive, keep it.', 0, 'More code means more bugs and more to maintain, for 12 items that were never slow.'],
+           ['Make it faster still with a database.', 0, 'That adds even more moving parts to a problem that does not exist.'],
+           ['A plain object like { theme: "dark", volume: 7 } is enough for 12 settings. Please remove the custom class and the cache.', 1, 'Good steer. The language already has a hash table built in. Pick the simplest structure that fits the job.']] },
+  { ai: 'To suggest "people you may know", I compare every user with every other user and count shared friends.',
+    opts: [['Great, thorough.', 0, 'With 1 million users that is about a trillion pairs, most of them strangers with nothing in common.'],
+           ['Treat friendships as a graph and look at friends of friends. That only visits people two links away.', 1, 'Yes. The graph shape tells you where to look, so you skip almost everyone.'],
+           ['Only suggest people with the same first name.', 0, "Fast, but it's a different feature. It will suggest strangers and miss real friends."]] }
+], { part: 'p4', counter: $('#steerCount') });
+
+/* ---------------- Part 5: quiz ---------------- */
+CS.quiz($('#quiz'), [
+  { q: 'You need to check whether an email is already registered, among millions of accounts. Which structure?', a: [['A Set or hash table', 1], ['An array', 0], ['A stack', 0]], why: 'A hash table jumps straight to the right bucket, so the check takes about one step no matter how many accounts there are.' },
+  { q: 'The browser Back button returns you to the page you visited most recently. That is a…', a: [['queue', 0], ['stack', 1], ['hash table', 0]], why: 'Last in, first out: the newest page comes off the top first. That is a stack.' },
+  { q: 'What is a collision in a hash table?', a: [['Two keys land in the same bucket', 1], ['Two people edit the same data', 0], ['The table runs out of memory', 0]], why: 'The hash function sent two keys to one bucket. The table simply checks the few items there.' },
+  { q: 'Folders inside folders, and JSON with objects inside objects, are both…', a: [['trees', 1], ['queues', 0], ['stacks', 0]], why: 'Each item sits inside exactly one parent, all the way up to one top. That is a tree.' },
+  { q: 'An AI writes songs.find(s => s.id === id) inside a loop over 100,000 plays. What is the better approach?', a: [['Build a Map from id to song once, then use .get(id)', 1], ['Sort the plays first', 0], ['Store the songs in a stack', 0]], why: '.find() inside a loop checks every song for every play. A Map built once turns each lookup into one step.' }
+], { part: 'p5', doneCard: $('#doneCard'), doneTitle: 'You can choose the shape of your data now.', doneText: 'You know when a list, hash table, stack, queue, tree or graph fits, how to use Map and Set, and how to question the structure an AI picks.' });
+})();
+</script>
+</body>
+</html>

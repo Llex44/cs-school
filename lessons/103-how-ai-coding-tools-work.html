@@ -1,0 +1,837 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>How AI coding tools work · CS School</title>
+<meta name="description" content="Course 103: tokens, next-token prediction, context windows and tools, and why an AI can be confidently wrong.">
+<link rel="icon" href="../assets/favicon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="../assets/cs-school.css">
+<style>
+/* lesson-specific styles: hero predictor, tokenizer, next-token predictor, context window, agent transcript, prompt lab */
+
+/* ---------- hero ---------- */
+.hx{display:flex; flex-direction:column; gap:16px}
+.hx-line{display:flex; flex-wrap:wrap; gap:6px; align-items:center; min-height:44px; align-content:flex-start}
+.tk{font-family:var(--f-mono); font-size:1rem; font-weight:600; line-height:1.2; padding:5px 10px; border-radius:9px; background:color-mix(in srgb, var(--c, var(--ink)) 14%, transparent); color:var(--ink); white-space:pre}
+.tk.ctx{--c:var(--ink)}
+.tk.new{animation:pop .45s cubic-bezier(.3,1.6,.5,1)}
+.hx-caret{width:3px; height:1.5em; border-radius:2px; background:var(--l2); animation:caret 1.1s steps(1) infinite}
+.hx-head{font-family:var(--f-display); font-weight:800; font-size:1rem; color:var(--ink-2); margin-bottom:-6px}
+.bars{display:flex; flex-direction:column; gap:8px}
+.bar{display:grid; grid-template-columns:7.2em minmax(0,1fr) 3.2em; gap:12px; align-items:center; font-family:var(--f-mono); font-size:.95rem}
+.bar .t{white-space:pre; font-weight:600; overflow:hidden; text-overflow:ellipsis}
+.bar .track{height:12px; border-radius:6px; background:color-mix(in srgb, var(--ink) 8%, transparent); overflow:hidden}
+.bar .fill{height:100%; border-radius:6px; background:color-mix(in srgb, var(--ink) 30%, transparent); transition:width .5s cubic-bezier(.3,1,.4,1), background .3s}
+.bar .p{text-align:right; color:var(--ink-2)}
+.bar.top .fill{background:var(--l2)}
+.bar.pick .t{color:var(--l2)}
+
+/* ---------- tokenizer ---------- */
+.tok-in{width:100%; font:inherit; font-size:1.05rem; padding:12px 14px; border:1px solid var(--hair); border-radius:12px; background:var(--glass-strong); color:var(--ink); resize:vertical; min-height:64px; box-shadow:inset 0 1px 2px rgba(18,20,23,.06)}
+.tok-in:focus{border-color:var(--l2); outline:none; box-shadow:0 0 0 3px color-mix(in srgb, var(--l2) 25%, transparent)}
+.presets{display:flex; flex-wrap:wrap; gap:8px; margin-top:12px; align-items:center}
+.tok-out{display:flex; flex-wrap:wrap; gap:5px; margin-top:16px; min-height:44px; align-items:center}
+.tok-out .tk{font-weight:500}
+.tok-out .sp{color:var(--ink-2); opacity:.7}
+.tok-out .nl{color:var(--ink-2)}
+.tok-stats{display:flex; flex-wrap:wrap; gap:8px 24px; margin-top:16px; align-items:center}
+.stat{display:flex; align-items:baseline; gap:8px}
+.stat b{font-family:var(--f-display); font-weight:900; font-size:1.6rem; line-height:1}
+.stat span{color:var(--ink-2); font-size:1rem}
+.tok-view{margin-left:auto}
+
+/* ---------- predictor ---------- */
+.gen-line{font-family:var(--f-mono); font-size:1.05rem; line-height:1.9; background:var(--glass-strong); border-radius:14px; padding:12px 16px; min-height:64px}
+.gen-line .g{background:color-mix(in srgb, var(--l2) 16%, transparent); border-radius:6px; padding:2px 3px; white-space:pre}
+.gen-line .g.new{animation:pop .4s cubic-bezier(.3,1.6,.5,1)}
+.gen-line .cur{display:inline-block; width:3px; height:1.2em; vertical-align:-.2em; margin-left:2px; border-radius:2px; background:var(--l2); animation:caret 1.1s steps(1) infinite}
+.cands{display:flex; flex-direction:column; gap:6px; margin-top:14px}
+.cand{display:grid; grid-template-columns:7.6em minmax(0,1fr) 3.4em; gap:12px; align-items:center; width:100%; text-align:left; font-family:var(--f-mono); font-size:.95rem; color:var(--ink); background:none; border:1px solid transparent; border-radius:10px; padding:6px 8px; min-height:44px; cursor:pointer}
+.cand:hover:not(:disabled){background:var(--glass-strong); border-color:var(--hair)}
+.cand:disabled{cursor:default}
+.cand .t{white-space:pre; font-weight:600}
+.cand .track{height:12px; border-radius:6px; background:color-mix(in srgb, var(--ink) 8%, transparent); overflow:hidden}
+.cand .fill{height:100%; border-radius:6px; background:color-mix(in srgb, var(--ink) 30%, transparent); transition:width .45s cubic-bezier(.3,1,.4,1)}
+.cand.top .fill{background:var(--l2)}
+.cand .p{text-align:right; color:var(--ink-2)}
+.cand.chosen{background:color-mix(in srgb, var(--l2) 14%, transparent)}
+.cands .endnote{color:var(--ink-2); font-size:1rem; padding:6px 8px}
+.temp{display:grid; grid-template-columns:auto minmax(0,1fr) 2.6em; gap:12px; align-items:center; margin-top:16px}
+.temp label{font-family:var(--f-display); font-weight:700; font-size:1rem}
+.temp output{font-family:var(--f-mono); font-weight:600; text-align:right}
+.temp-hint{font-size:.95rem; color:var(--ink-2); margin-top:4px}
+.finished{list-style:none; margin:0; padding:0; display:flex; flex-direction:column; gap:8px}
+.finished li{background:var(--glass-strong); border-radius:12px; padding:10px 14px; font-size:1rem; animation:rise .35s; display:flex; justify-content:space-between; gap:12px; align-items:baseline}
+.finished li small{font-size:.9rem; color:var(--ink-2); white-space:nowrap}
+.finished .none{background:none; padding:0; color:var(--ink-2); animation:none}
+
+/* ---------- context window ---------- */
+.adds{display:grid; grid-template-columns:1fr 1fr; gap:8px}
+.adds .btn{justify-content:space-between; text-align:left; font-size:.95rem}
+.adds .btn small{font-family:var(--f-mono); font-weight:600; font-size:.9rem; color:var(--ink-2)}
+.adds .btn i, .cw-row i, .gone span i{flex:none; width:9px; height:9px; border-radius:50%; background:var(--c); display:inline-block}
+.adds .btn span{display:flex; align-items:center; gap:8px}
+.meter-wrap{display:flex; flex-direction:column; gap:8px}
+.meter-top{display:flex; justify-content:space-between; gap:10px; align-items:baseline; font-size:1rem}
+.meter-top b{font-family:var(--f-display); font-weight:900; font-size:1.3rem}
+.cw-meter{display:flex; height:16px; border-radius:8px; overflow:hidden; background:color-mix(in srgb, var(--ink) 8%, transparent)}
+.cw-meter span{height:100%; background:var(--c); transition:width .4s; box-shadow:inset -2px 0 0 var(--paper)}
+.cw-list{display:flex; flex-direction:column; gap:6px; margin-top:14px}
+.cw-row{display:grid; grid-template-columns:12px minmax(0,1fr) auto; gap:10px; align-items:center; background:var(--glass-strong); border-radius:12px; padding:9px 12px; font-size:1rem}
+.cw-row.new{animation:rise .35s}
+.cw-row b{font-weight:600; overflow-wrap:anywhere}
+.cw-row code{background:none; padding:0; font-size:.9rem; color:var(--ink-2); white-space:nowrap}
+.cw-row em{font-style:normal; font-family:var(--f-display); font-weight:700; font-size:.9rem; color:var(--ink-2)}
+.gone-wrap{margin-top:16px}
+.gone-wrap h4{font-family:var(--f-display); font-weight:800; font-size:1.05rem; margin:0 0 8px}
+.gone{display:flex; flex-wrap:wrap; gap:6px}
+.gone span{display:inline-flex; align-items:center; gap:7px; font-size:.95rem; padding:4px 11px; border-radius:99px; background:var(--bad-bg); color:var(--ink-2); text-decoration:line-through; text-decoration-thickness:1.5px}
+.gone span.new{animation:shake .4s}
+.gone .none{background:none; padding:0; text-decoration:none; color:var(--ink-2)}
+.asks{display:flex; flex-wrap:wrap; gap:8px}
+.answer .chat{margin:0}
+.answer pre{margin:6px 0 0; font-family:var(--f-mono); font-size:.9rem; white-space:pre-wrap; background:var(--term); color:var(--term-ink); border-radius:8px; padding:8px 10px}
+.chat-gap{align-self:center; font-family:var(--f-display); font-weight:700; font-size:.95rem; color:var(--ink-2); padding:2px 12px; border-radius:99px; background:color-mix(in srgb, var(--ink) 6%, transparent)}
+
+/* ---------- agent transcript ---------- */
+.agent{display:flex; flex-direction:column; gap:10px}
+.ag{display:grid; grid-template-columns:9.5em minmax(0,1fr); gap:12px 16px; align-items:start; background:var(--glass-strong); border-radius:14px; padding:12px 14px; animation:rise .35s}
+.ag .kind{display:inline-flex; align-items:center; gap:8px; font-family:var(--f-display); font-weight:800; font-size:.95rem}
+.ag .kind i{width:10px; height:10px; border-radius:50%; background:var(--c)}
+.ag pre{margin:0; font-family:var(--f-mono); font-size:.9rem; white-space:pre-wrap; overflow-wrap:anywhere; background:var(--term); color:var(--term-ink); border-radius:8px; padding:8px 10px}
+.ag pre .r{color:#FF9A8A} .ag pre .g{color:#8BF0A8} .ag pre .d{color:var(--term-dim)}
+.ag .why{grid-column:2; font-size:.95rem; color:var(--ink-2)}
+.ag .body{display:flex; flex-direction:column; gap:6px}
+
+/* ---------- prompt lab ---------- */
+#lab .cl-lines{display:none}
+#lab textarea{font-family:var(--f-body); font-size:17px; line-height:1.55; white-space:pre-wrap; min-height:200px}
+.files{display:flex; flex-direction:column; gap:6px}
+.file{display:grid; grid-template-columns:minmax(0,auto) minmax(0,1fr); gap:12px; align-items:baseline; background:var(--glass-strong); border-radius:10px; padding:8px 12px}
+.file code{background:none; padding:0; font-size:.92rem; font-weight:600}
+.file span{font-size:.95rem; color:var(--ink-2)}
+.check4{display:flex; flex-direction:column; gap:8px}
+.c4{display:grid; grid-template-columns:28px minmax(0,1fr); gap:12px; align-items:start; background:var(--glass-strong); border-radius:12px; padding:10px 12px; transition:background .3s}
+.c4 .ck{width:28px; height:28px; border-radius:50%; display:grid; place-items:center; font-family:var(--f-display); font-weight:800; font-size:.9rem; background:color-mix(in srgb, var(--ink) 8%, transparent); color:var(--ink-2)}
+.c4.on{background:var(--good-bg)}
+.c4.on .ck{background:var(--good); color:var(--paper)}
+.c4 b{font-family:var(--f-display); font-weight:800; display:block}
+.c4 span{font-size:.95rem; color:var(--ink-2)}
+.cl-out .ai .miss{display:block; margin-top:6px; color:#FFD7A8}
+#lab .cl-out{max-height:none}
+
+@media (max-width:900px){
+  .pg{align-items:stretch}
+}
+@media (max-width:640px){
+  .adds{grid-template-columns:minmax(0,1fr)}
+  .hx-line{min-height:88px}
+  .ag{grid-template-columns:minmax(0,1fr); gap:6px}
+  .ag .why{grid-column:1}
+  .tok-view{margin-left:0}
+  .temp{grid-template-columns:minmax(0,1fr) 2.6em}
+  .temp label{grid-column:1 / 3}
+  .file{grid-template-columns:minmax(0,1fr); gap:0}
+}
+</style>
+</head>
+<body>
+<main id="top">
+  <section class="wrap hero">
+    <div>
+      <div class="kicker">Intro · Course 103 · How AI coding tools work</div>
+      <h1>Your AI is a brilliant guesser with a short memory.</h1>
+      <p class="lede">Under the chat box is a model that predicts the next small piece of text, over and over, using only what fits in its window. Once you see that, its speed, its blind spots and its confident mistakes all make sense, and you'll know what to feed it.</p>
+      <ul class="facts">
+        <li>About 15 minutes</li>
+        <li>5 parts</li>
+        <li>Prompt lab</li>
+        <li>No coding experience needed</li>
+      </ul>
+      <div class="row hero-cta"><a class="btn primary" href="#p1">Start the lesson</a></div>
+    </div>
+    <figure style="margin:0">
+      <div class="hero-visual glass">
+        <div class="hx" role="img" aria-label="An animation of a language model writing code one token at a time. Above, the text so far as a row of token pills. Below, bars show the probability of each possible next token; the most likely one is added to the row.">
+          <div class="hx-line" id="hxLine" aria-hidden="true"></div>
+          <div class="hx-head" aria-hidden="true">Most likely next token</div>
+          <div class="bars" id="hxBars" aria-hidden="true"></div>
+        </div>
+        <div class="legend"><span><i style="background:var(--ink-2)"></i>Text so far</span><span><i style="background:var(--l2)"></i>Predicted, one token at a time</span></div>
+      </div>
+      <div class="hero-caption glass" aria-hidden="true"><span id="heroCapA">next</span><span id="heroCap">" quantity" · 64%</span></div>
+    </figure>
+  </section>
+
+  <div class="wrap">
+  <!-- PART 1 -->
+  <section class="part" id="p1">
+    <span class="bullet glass" data-p="p1">1</span>
+    <div class="part-head">
+      <div class="kicker">Part 1 of 5</div>
+      <h2>One token at a time</h2>
+      <p>An AI coding tool is built on a <b>language model</b>. It doesn't look up answers. It reads your text as small pieces called <b>tokens</b>, then writes its reply by predicting one likely token after another.</p>
+    </div>
+
+    <div class="chat" aria-label="Example conversation">
+      <div class="msg me"><span class="who">You</span>Add a sold-out badge to the cake cards.</div>
+      <div class="msg ai"><span class="who">AI assistant</span>Done! I added the badge to CakeCard.jsx and styled it in cakes.css.</div>
+      <div class="msg me"><span class="who">You</span>That took five seconds. Did you look that up somewhere?</div>
+      <div class="msg ai"><span class="who">AI assistant</span>No. I wrote it one small piece at a time, each time predicting what most likely comes next, based on our chat and the files I've read.</div>
+    </div>
+
+    <div class="task glass" data-part="p1">
+      <h3>Your task</h3>
+      <ol>
+        <li data-t="tok"><span>Type something into the tokenizer and watch it split into tokens.</span></li>
+        <li data-t="split"><span>Find a word that becomes more than one token.</span></li>
+        <li data-t="finish"><span>Let the AI finish the sentence below, one token at a time.</span></li>
+        <li data-t="again"><span>Turn up the randomness and finish it again, with a different ending.</span></li>
+      </ol>
+    </div>
+
+    <div class="ctl glass">
+      <label class="ctl-title" for="tokIn">Tokenizer: how the AI sees your text</label>
+      <textarea class="tok-in" id="tokIn" rows="2" spellcheck="false">Add a sold-out badge to the cake cards.</textarea>
+      <div class="presets"><span class="muted small">Try:</span>
+        <button class="btn" type="button" data-pre="0">A request</button>
+        <button class="btn" type="button" data-pre="1">Code</button>
+        <button class="btn" type="button" data-pre="2">Rare words</button>
+        <button class="btn" type="button" data-pre="3">Numbers</button>
+      </div>
+      <div class="tok-out" id="tokOut" aria-live="polite"></div>
+      <div class="tok-stats">
+        <div class="stat"><b id="stChars">0</b><span>characters</span></div>
+        <div class="stat"><b id="stWords">0</b><span>words</span></div>
+        <div class="stat"><b id="stToks">0</b><span>tokens</span></div>
+        <div class="seg-control tok-view" role="group" aria-label="Show tokens as">
+          <button type="button" data-view="text" aria-pressed="true">Text</button>
+          <button type="button" data-view="ids" aria-pressed="false">Token numbers</button>
+        </div>
+      </div>
+    </div>
+    <div class="note info" id="tokNote" aria-live="polite" style="margin-top:16px"><strong>Each colored chip is one token.</strong> A dot stands for a space. Common words are usually one token, often with the space in front of them included.</div>
+
+    <div class="stack" style="margin-top:48px">
+      <h3>Now predict: finish the sentence</h3>
+      <p class="muted">The model sees <i>Bea's Bakery opens every day at</i> and scores every possible next token. Pick tokens yourself, or let it choose.</p>
+    </div>
+    <div class="pg" style="margin-top:20px">
+      <div class="pg-col">
+        <div class="o1 ctl glass">
+          <h3 class="ctl-title">Finish the sentence</h3>
+          <div class="gen-line" id="genLine" aria-live="polite"></div>
+          <div class="cands" id="cands"></div>
+          <div class="row" style="margin-top:14px">
+            <button class="btn primary" type="button" id="nextTok">Next token</button>
+            <button class="btn" type="button" id="finishTok">Finish it</button>
+            <button class="btn" type="button" id="restartTok">Start over</button>
+          </div>
+          <div class="temp"><label for="temp">Randomness (temperature)</label><input class="range" type="range" id="temp" min="0" max="1.5" step="0.1" value="0"><output id="tempOut" for="temp">0</output></div>
+          <p class="temp-hint" id="tempHint">At 0 the model always takes the top token, so it gives the same answer every time.</p>
+        </div>
+      </div>
+      <div class="pg-col">
+        <div class="o2 note info" id="genNote" aria-live="polite"><strong>Your move.</strong> Press <b>Next token</b>, or tap any row to pick that token yourself.</div>
+        <div class="o3 ctl glass">
+          <h3 class="ctl-title">Finished sentences</h3>
+          <ol class="finished" id="finished"><li class="none">None yet.</li></ol>
+        </div>
+      </div>
+    </div>
+
+    <div class="stack" style="margin-top:56px">
+      <h3>What's really going on</h3>
+      <dl class="terms">
+        <div class="glass"><dt>Tokens, not words</dt><dd>A token is a common chunk of text: a word, part of a word, or a symbol. In English one token is roughly three quarters of a word. Prices and limits for AI tools are counted in tokens.</dd></div>
+        <div class="glass"><dt>Predict, add, repeat</dt><dd>At each step the model scores every token in its vocabulary (tens of thousands of them), one is picked and added to the text, and it goes again. A whole file is thousands of these steps.</dd></div>
+        <div class="glass"><dt>Patterns, not facts</dt><dd>The scores come from training on enormous amounts of text and code. The model learned what usually follows what. It has no list of true facts to check, so a fluent answer isn't necessarily a correct one.</dd></div>
+        <div class="glass"><dt>A little randomness</dt><dd>Tools usually sample with some randomness (temperature) so answers aren't robotic. That's why asking the same thing twice can give two different answers.</dd></div>
+      </dl>
+      <details class="deeper glass">
+        <summary>Under the hood: what this toy leaves out <small>optional</small></summary>
+        <div>
+          <p>This is a simplification. A real model weighs the <i>entire</i> text so far, using billions of learned numbers, to score its whole vocabulary at every step. Chat models are then trained further to follow instructions and hold a conversation. The core loop is real, though: predict one token, add it, repeat.</p>
+          <p>The tokenizer here uses a small made-up vocabulary, so its splits and numbers are illustrative. Every real model family has its own tokenizer, and the same sentence can be a different number of tokens in each.</p>
+          <p>Some models "think" before answering: they write out reasoning tokens first, then the answer. It's the same token-by-token prediction, with more room to work things out.</p>
+        </div>
+      </details>
+    </div>
+  </section>
+
+  <!-- PART 2 -->
+  <section class="part" id="p2">
+    <span class="bullet glass" data-p="p2">2</span>
+    <div class="part-head">
+      <div class="kicker">Part 2 of 5</div>
+      <h2>What the AI can see</h2>
+      <p>The model has no memory of its own. Each reply is predicted from what's in its <b>context window</b> right now: the tool's instructions, your conversation, and any files or command output it has been given. The window is large, but it has a limit.</p>
+    </div>
+
+    <div class="chat" aria-label="Example conversation">
+      <div class="msg me"><span class="who">You</span>Rule for this project: every price must include 8% sales tax.</div>
+      <div class="chat-gap">3 hours and 60 messages later</div>
+      <div class="msg ai"><span class="who">AI assistant</span>Here's the checkout total: <code>const total = subtotal;</code></div>
+      <div class="msg me"><span class="who">You</span>Where's the tax? I told you this morning!</div>
+    </div>
+
+    <div class="task glass" data-part="p2">
+      <h3>Your task</h3>
+      <ol>
+        <li data-t="fill"><span>Add things to the conversation until something falls out of the window.</span></li>
+        <li data-t="forgot"><span>Ask the AI a question whose answer fell out. Watch it guess.</span></li>
+        <li data-t="fresh"><span>Start a new chat, add only what the question needs, and ask again.</span></li>
+        <li data-t="agent"><span>Further down: step through an agent at work until its tests pass.</span></li>
+      </ol>
+    </div>
+
+    <div class="pg">
+      <div class="pg-col">
+        <div class="o1 ctl glass">
+          <h3 class="ctl-title">Add to the conversation</h3>
+          <p class="ctl-sub">Files you share, logs you paste and messages you send all take up room.</p>
+          <div class="adds" id="adds"></div>
+        </div>
+        <div class="o3 ctl glass">
+          <h3 class="ctl-title">Ask the AI</h3>
+          <div class="asks">
+            <button class="btn" type="button" data-q="hours">When does Bea's open?</button>
+            <button class="btn" type="button" data-q="tax">Write the checkout total</button>
+            <button class="btn" type="button" id="newChat">Start a new chat</button>
+          </div>
+        </div>
+        <div class="o4 answer stack" id="answer" style="gap:12px" aria-live="polite"></div>
+      </div>
+      <div class="pg-col">
+        <div class="o2 ctl glass">
+          <h3 class="ctl-title">Context window</h3>
+          <div class="meter-wrap">
+            <div class="meter-top"><span><b id="cwUsed">0</b> of 12,000 tokens</span><span class="muted" id="cwCount"></span></div>
+            <div class="cw-meter" id="cwMeter" aria-hidden="true"></div>
+          </div>
+          <div class="cw-list" id="cwList"></div>
+          <div class="gone-wrap">
+            <h4>Fell out of the window</h4>
+            <div class="gone" id="cwGone"><span class="none">Nothing yet. The AI can see everything above.</span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="stack" style="margin-top:32px">
+      <dl class="terms">
+        <div class="glass"><dt>Big, but finite</dt><dd>Real windows are far bigger than this toy, often 200,000 tokens or more, hundreds of pages. But a large codebase, long error logs and a long chat still fill them.</dd></div>
+        <div class="glass"><dt>When it's full, details go</dt><dd>Tools handle a full window differently: some drop the oldest messages, some summarize them. Either way, specifics like "8% tax" can quietly disappear.</dd></div>
+        <div class="glass"><dt>Gaps get filled with guesses</dt><dd>When the answer isn't in the window, the model still predicts something likely. That's where a confident, wrong answer comes from.</dd></div>
+        <div class="glass"><dt>More isn't always better</dt><dd>Stuffing in every file crowds out what matters and gives the model more to get distracted by. Give it what the task needs.</dd></div>
+      </dl>
+    </div>
+
+    <div class="stack" style="margin-top:56px">
+      <h3>How agents get facts: tools</h3>
+      <p class="muted">An <b>agent</b> is an AI that can use <b>tools</b>: read files, search, run commands and tests. Each tool's result lands in its context window. That's how it swaps guesses for facts, including catching its own mistakes. Step through one.</p>
+      <div class="ctl glass">
+        <h3 class="ctl-title">An agent at work on Bea's menu</h3>
+        <div class="agent" id="agent"></div>
+        <div class="row" style="margin-top:14px"><button class="btn primary" type="button" id="agentNext">Next step</button><button class="btn" type="button" id="agentReset">Start over</button><span class="muted small" id="agentCount"></span></div>
+      </div>
+      <details class="deeper glass">
+        <summary>Under the hood: invented packages are a security risk <small>optional</small></summary>
+        <div>
+          <p>Models sometimes invent package names that sound right. Attackers have noticed: they publish real packages under names AIs tend to invent, filled with harmful code. This is sometimes called "slopsquatting".</p>
+          <p>So an invented package that fails to install, like the one above, is the lucky case. Before adding any package an AI suggests, check that it's the real, well-known one. You'll learn more in 204 (dependencies) and 207 (security).</p>
+        </div>
+      </details>
+    </div>
+  </section>
+
+  <!-- PART 3 -->
+  <section class="part" id="p3">
+    <span class="bullet glass" data-p="p3">3</span>
+    <div class="part-head">
+      <div class="kicker">Part 3 of 5</div>
+      <h2>Try it: pack the context</h2>
+      <p>Your prompt is the most important thing in the AI's window. A good one says what you want, where, within what limits, and how to check it. Write one, send it, and see what a literal-minded AI does with it.</p>
+    </div>
+
+    <div class="lab">
+      <div class="a-mission ctl glass">
+        <h3 class="ctl-title">Your mission</h3>
+        <p class="ctl-sub" style="margin-top:0">Bea wants the checkout to add 8% sales tax, shown on its own line. The AI will do what your prompt says, and guess the rest. Rewrite the prompt until it does exactly the job.</p>
+        <ol class="mission" id="mission"></ol>
+      </div>
+      <div class="a-work" id="lab"></div>
+      <div class="a-side ctl glass">
+        <h3 class="ctl-title">Bea's project</h3>
+        <p class="ctl-sub">The files the AI can open.</p>
+        <div class="files">
+          <div class="file"><code>index.html</code><span>The home page</span></div>
+          <div class="file"><code>menu.js</code><span>Shows the menu and prices</span></div>
+          <div class="file"><code>checkout.js</code><span>Works out the order total</span></div>
+          <div class="file"><code>styles.css</code><span>Colors and layout</span></div>
+          <div class="file"><code>checkout.test.js</code><span>Tests for the checkout, run with <code>npm test</code></span></div>
+        </div>
+      </div>
+      <div class="a-extra ctl glass">
+        <h3 class="ctl-title">Prompt checklist</h3>
+        <p class="ctl-sub">Lights up as you type.</p>
+        <div class="check4" id="check4"></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- PART 4 -->
+  <section class="part" id="p4">
+    <span class="bullet glass" data-p="p4">4</span>
+    <div class="part-head">
+      <div class="kicker">Part 4 of 5</div>
+      <h2>Steer the AI</h2>
+      <p>Now you know how the AI makes things up and forgets things. Here are four moments where that shows. Pick the reply you'd send.</p>
+    </div>
+    <p class="counter" id="steerCount"></p>
+    <div id="steer"></div>
+  </section>
+
+  <!-- PART 5 -->
+  <section class="part" id="p5">
+    <span class="bullet glass" data-p="p5">5</span>
+    <div class="part-head">
+      <div class="kicker">Part 5 of 5</div>
+      <h2>Check your understanding</h2>
+      <p>Five quick questions. Each answer explains itself.</p>
+    </div>
+    <div id="quiz"></div>
+    <div id="doneCard" aria-live="polite"></div>
+  </section>
+  </div>
+
+  <section class="after" id="terms">
+    <div class="wrap stack">
+      <h2>Key terms</h2>
+      <p class="muted">What the words mean, and what to do about them.</p>
+      <dl class="terms">
+        <div class="glass"><dt>Language model</dt><dd>The engine inside AI tools. It predicts likely next tokens, based on patterns learned from huge amounts of text and code.</dd></div>
+        <div class="glass"><dt>Token</dt><dd>A chunk of text: a word, part of a word, or a symbol. Limits and prices are counted in tokens.</dd></div>
+        <div class="glass"><dt>Temperature</dt><dd>How much randomness goes into picking each token. Higher means more varied answers.</dd></div>
+        <div class="glass"><dt>Context window</dt><dd>Everything the model can see for this reply. Big but finite. What's not in it, the model can't know.</dd></div>
+        <div class="glass"><dt>Hallucination</dt><dd>A confident answer that isn't true, like an invented function, package or column name. Ask for evidence: docs, a file, a test run.</dd></div>
+        <div class="glass"><dt>Agent and tools</dt><dd>An AI that can read files, run commands and tests. Tool results go into its context, turning guesses into facts.</dd></div>
+        <div class="glass"><dt>A good prompt</dt><dd>The goal, the relevant files, the constraints, and how to check the result.</dd></div>
+        <div class="glass"><dt>Fresh chat</dt><dd>When a session gets long or confused, start over with a short summary of the rules and files that matter.</dd></div>
+      </dl>
+    </div>
+  </section>
+</main>
+<script src="../assets/cs-school.js"></script>
+<script>
+(() => {
+const { $, $$, esc, reduce } = CS;
+
+CS.lesson({
+  id: '103',
+  parts: [
+    { id: 'p1', title: 'One token at a time' },
+    { id: 'p2', title: 'What the AI can see' },
+    { id: 'p3', title: 'Try it' },
+    { id: 'p4', title: 'Steer the AI' },
+    { id: 'p5', title: 'Check' }
+  ]
+});
+const TINTS = ['var(--l2)', 'var(--l3)', 'var(--l4)', 'var(--l5)', 'var(--l1)'];
+const show = s => s.replace(/ /g, '·');
+
+/* ================= hero: greedy prediction on a loop ================= */
+(function hero() {
+  const SEQ = [
+    { ctx: ['const', ' total', ' =', ' price', ' *'], steps: [[[' quantity', 64], [' qty', 14], [' count', 12], [' items', 7]], [[';', 88], [' +', 6], [' *', 3], [')', 2]]] },
+    { ctx: ['if', ' (', 'stamps', ' >='], steps: [[[' 10', 71], [' 9', 11], [' 5', 9], [' MAX', 6]], [[')', 94], [' &&', 4], [';', 1], [' ||', 1]], [[' {', 97], [' return', 2], [' //', 1], [' ?', 0]]] },
+    { ctx: ["Bea's", ' Bakery', ' opens', ' at'], steps: [[[' 7', 38], [' 8', 31], [' 6', 16], [' 9', 10]], [[' am', 74], [':', 17], [' in', 5], [" o'clock", 4]], [['.', 81], [' and', 14], [',', 3], ['!', 2]]] }
+  ];
+  const line = $('#hxLine'), bars = $('#hxBars'), capA = $('#heroCapA'), cap = $('#heroCap');
+  bars.innerHTML = [0, 1, 2, 3].map(() => `<div class="bar"><span class="t"></span><div class="track"><div class="fill" style="width:0"></div></div><span class="p"></span></div>`).join('');
+  const rows = $$('.bar', bars);
+  const setBars = (c, picked) => c.forEach(([t, p], i) => {
+    const r = rows[i]; $('.t', r).textContent = `"${t}"`; $('.p', r).textContent = p + '%'; $('.fill', r).style.width = p + '%';
+    r.classList.toggle('top', i === 0); r.classList.toggle('pick', !!picked && i === 0);
+  });
+  const draw = (seq, n, fresh) => {
+    line.innerHTML = seq.ctx.map(t => `<span class="tk ctx">${esc(t.trim())}</span>`).join('') +
+      seq.steps.slice(0, n).map((s, i) => `<span class="tk${fresh && i === n - 1 ? ' new' : ''}" style="--c:var(--l2)">${esc(s[0][0].trim())}</span>`).join('') + '<span class="hx-caret"></span>';
+  };
+  if (reduce) { draw(SEQ[0], 0); setBars(SEQ[0].steps[0]); capA.textContent = 'next'; cap.textContent = '" quantity" · 64%'; return; }
+  let a = 0, n = 0;
+  const tick = () => {
+    const seq = SEQ[a];
+    if (n < seq.steps.length) {
+      draw(seq, n); setBars(seq.steps[n]);
+      capA.textContent = 'next'; cap.textContent = `"${seq.steps[n][0][0]}" · ${seq.steps[n][0][1]}%`;
+      setTimeout(() => { rows[0].classList.add('pick'); setTimeout(() => { n++; draw(seq, n, true); tick2(); }, 500); }, 1300);
+    }
+  };
+  const tick2 = () => {
+    const seq = SEQ[a];
+    if (n >= seq.steps.length) {
+      capA.textContent = a === 2 ? 'hmm' : 'done';
+      cap.textContent = a === 2 ? 'confident, but nobody told it the hours' : 'one token at a time';
+      setTimeout(() => { a = (a + 1) % SEQ.length; n = 0; tick(); }, 2600);
+    } else setTimeout(tick, 250);
+  };
+  draw(SEQ[0], 0); setTimeout(tick, 700);
+})();
+
+/* ================= tokenizer (a simplified, illustrative one) ================= */
+const COMMON = new Set(('the a an and or but to of in on at for with from by is are was were be been it its this that these those i you we they he she my your our their me us them ' +
+  'add sold out badge cake cakes card cards order orders price prices total size return function const let var if else true false new old make made page site website ' +
+  'button pink color menu bakery open opens every day days am pm fresh bread each item items tax sales shop buy get set use code file files test tests run not no yes ' +
+  'can will would should could do does did have has had more most less all any some one two three four five six seven eight nine ten free please fix show list name ' +
+  'names data user users when where what why how who which there here then than so as up down about into over after before just only also very good great costs cost ' +
+  'box boxes cookie cookies coffee tea small large big little first last next time today morning night work works working hello world thanks thank for').split(' '));
+const SUB = ['believ', 'tion', 'sion', 'ment', 'ness', 'ably', 'able', 'ible', 'ants', 'ings', 'ing', 'less', 'ful', 'ous', 'ive', 'ize', 'ise', 'ity', 'est', 'ers', 'iss', 'cro', 'aky', 'un', 're', 'ly', 'ed', 'er', 'al', 'fl'];
+const COMBOS = ['===', '!==', '=>', '>=', '<=', '==', '&&', '||', '//', '...', '()', '{}', '[]'];
+function splitWord(w, lead) {
+  if (COMMON.has(w.toLowerCase())) return [lead + w];
+  const out = []; let i = 0;
+  while (i < w.length) {
+    const rest = w.slice(i), low = rest.toLowerCase();
+    if (i > 0 && COMMON.has(low) && rest.length > 2) { out.push(rest); break; }
+    const sub = SUB.filter(s => low.startsWith(s)).sort((x, y) => y.length - x.length)[0];
+    const take = sub ? sub.length : Math.min(3, rest.length);
+    out.push(rest.slice(0, take)); i += take;
+  }
+  // glue a lonely last letter onto the piece before it
+  if (out.length > 1 && out[out.length - 1].length === 1) out.splice(-2, 2, out[out.length - 2] + out[out.length - 1]);
+  out[0] = lead + out[0];
+  return out;
+}
+function tokenize(text) {
+  const toks = [];
+  const re = /('s|'t|'re|'ll|'ve|'m)(?![A-Za-z])|( ?)([A-Za-z]+)|( ?)(\d+)|( ?)([^\sA-Za-z\d]+)|(\n)|( +)/g;
+  let m, multi = null;
+  while ((m = re.exec(text))) {
+    if (m[1]) toks.push(m[1]);
+    else if (m[3]) {
+      const parts = m[3].match(/[A-Z]?[a-z]+|[A-Z]+(?![a-z])/g) || [m[3]];
+      const pieces = [];
+      parts.forEach((p, k) => pieces.push(...splitWord(p, k === 0 ? m[2] : '')));
+      if (pieces.length > 1 && !multi) multi = pieces.map(x => x.trim());
+      toks.push(...pieces);
+    } else if (m[5]) { const d = m[5].match(/\d{1,3}/g); d.forEach((x, k) => toks.push((k === 0 ? m[4] : '') + x)); }
+    else if (m[7]) {
+      let s = m[7], k = 0;
+      while (s) { const c = COMBOS.find(x => s.startsWith(x)) || s[0]; toks.push((k === 0 ? m[6] : '') + c); s = s.slice(c.length); k++; }
+    } else if (m[8]) toks.push('\n');
+    else if (m[9]) toks.push(m[9]);
+  }
+  return { toks, multi };
+}
+const tokId = t => { let h = 2166136261; for (const c of t) { h ^= c.charCodeAt(0); h = Math.imul(h, 16777619); } return (h >>> 0) % 99000 + 1000; };
+const PRESETS = ['Add a sold-out badge to the cake cards.', 'function priceFor(size) {\n  return size === "large" ? 5 : 3;\n}', "Bea's unbelievably flaky croissants", 'Order #20260927 costs $1,234.50'];
+let tokView = 'text', typed = false;
+function renderTok() {
+  const text = $('#tokIn').value;
+  const { toks, multi } = tokenize(text);
+  $('#tokOut').innerHTML = toks.length ? toks.map((t, i) => {
+    const c = TINTS[i % 5];
+    if (tokView === 'ids') return `<span class="tk" style="--c:${c}">${tokId(t)}</span>`;
+    if (t === '\n') return `<span class="tk nl" style="--c:${c}">↵</span>`;
+    return `<span class="tk" style="--c:${c}">${esc(t).replace(/ /g, '<span class="sp">·</span>')}</span>`;
+  }).join('') : '<span class="muted">Type something above.</span>';
+  $('#stChars').textContent = text.length;
+  $('#stWords').textContent = text.trim() ? text.trim().split(/\s+/).length : 0;
+  $('#stToks').textContent = toks.length;
+  return { toks, multi };
+}
+function tokChanged(fromUser) {
+  const { toks, multi } = renderTok();
+  if (!fromUser) return;
+  CS.tick('p1', 'tok');
+  const note = $('#tokNote');
+  if (multi) {
+    CS.tick('p1', 'split');
+    CS.say(note, `<strong>A word in pieces: ${multi.map(esc).join(' · ')}.</strong> Rare, long or joined-up words are built from smaller tokens. The model only ever sees the pieces, never the letters, which is one reason AI tools sometimes miscount letters or misspell rare names.`, 'good');
+  } else if (/[{}();=]/.test($('#tokIn').value)) {
+    CS.say(note, '<strong>Code is token-hungry.</strong> Brackets, dots and operators are often tokens of their own, so a line of code usually takes more tokens than a sentence of the same length.', 'info');
+  } else if (/\d{4,}/.test($('#tokIn').value)) {
+    CS.say(note, '<strong>Numbers get chopped.</strong> Long numbers are split into chunks of a few digits. That\'s one reason models can slip on arithmetic with big numbers.', 'info');
+  } else CS.say(note, `<strong>${toks.length} tokens.</strong> Common words are usually one token each. Now try a long or unusual word, or press <b>Rare words</b>.`, 'info');
+}
+$('#tokIn').addEventListener('input', () => tokChanged(true));
+$$('[data-pre]').forEach(b => b.addEventListener('click', () => { $('#tokIn').value = PRESETS[+b.dataset.pre]; tokChanged(true); }));
+$$('[data-view]').forEach(b => b.addEventListener('click', () => {
+  tokView = b.dataset.view; $$('[data-view]').forEach(x => x.setAttribute('aria-pressed', x === b ? 'true' : 'false')); renderTok();
+  if (tokView === 'ids') CS.say($('#tokNote'), '<strong>What the model really gets:</strong> a list of numbers, one per token. It never sees letters. (These numbers come from this toy\'s made-up vocabulary. Every real model has its own.)', 'info');
+}));
+renderTok();
+
+/* ================= next-token predictor ================= */
+const TREE = {
+  root: [[' 7', 38, 'num'], [' 8', 31, 'num'], [' 6', 16, 'num'], [' 9', 10, 'num'], [' noon', 5, 'noon']],
+  num: [[' am', 74, 'ampm'], [':', 17, 'colon'], [" o'clock", 5, 'ampm'], [' in', 4, 'inthe']],
+  colon: [['30', 62, 'mins'], ['00', 38, 'mins']],
+  mins: [[' am', 93, 'ampm'], [' pm', 7, 'ampm']],
+  inthe: [[' the', 100, 'the']],
+  the: [[' morning', 100, 'ampm']],
+  noon: [['.', 85, 'END'], [' sharp', 15, 'dot']],
+  ampm: [['.', 79, 'END'], [' and', 21, 'and']],
+  and: [[' closes', 86, 'closes'], [' stays', 14, 'stays']],
+  closes: [[' at', 93, 'closeat'], [' early', 7, 'early']],
+  early: [[' on', 70, 'onday'], ['.', 30, 'END']],
+  onday: [[' Sundays', 82, 'dot'], [' weekends', 18, 'dot']],
+  stays: [[' open', 100, 'open']],
+  open: [[' until', 88, 'closeat'], [' late', 12, 'dot']],
+  closeat: [[' 6', 38, 'pmend'], [' 5', 30, 'pmend'], [' 7', 20, 'pmend'], [' 4', 12, 'pmend']],
+  pmend: [[' pm', 90, 'dot'], ['.', 10, 'END']],
+  dot: [['.', 100, 'END']]
+};
+const PROMPT = "Bea's Bakery opens every day at";
+const G = { node: 'root', toks: [], sampled: false, done: new Set(), busy: false };
+const temp = () => +$('#temp').value;
+function adjusted(node) {
+  const c = TREE[node]; const T = temp();
+  if (T === 0) return c.map((x, i) => [...x, i === 0 ? 100 : 0]);
+  const w = c.map(x => Math.pow(x[1] / 100, 1 / T)); const s = w.reduce((a, b) => a + b, 0);
+  return c.map((x, i) => [...x, Math.round(w[i] / s * 100)]);
+}
+function renderGen(fresh) {
+  $('#genLine').innerHTML = esc(PROMPT) + G.toks.map((t, i) => `<span class="g${fresh && i === G.toks.length - 1 ? ' new' : ''}">${esc(t)}</span>`).join('') + (G.node === 'END' ? '' : '<span class="cur"></span>');
+  const ended = G.node === 'END';
+  $('#cands').innerHTML = ended ? '<div class="endnote">Sentence finished. Press <b>Start over</b> to write another.</div>'
+    : adjusted(G.node).map(([t, p, , a], i) => `<button class="cand${i === 0 ? ' top' : ''}" type="button" data-i="${i}" aria-label="Pick ${esc(JSON.stringify(t))}, ${a} percent"><span class="t">"${esc(t)}"</span><span class="track"><span class="fill" style="width:${a}%; display:block"></span></span><span class="p">${a}%</span></button>`).join('');
+  $('#nextTok').disabled = ended || G.busy; $('#finishTok').disabled = ended || G.busy;
+}
+function choose(i, how) {
+  const c = TREE[G.node][i];
+  G.toks.push(c[0]); G.node = c[2];
+  if (how === 'dice' && temp() > 0) G.sampled = true;
+  renderGen(true);
+  if (G.node === 'END') finishSentence();
+}
+function sample() {
+  const a = adjusted(G.node); let r = Math.random() * a.reduce((s, x) => s + x[3], 0);
+  for (let i = 0; i < a.length; i++) { r -= a[i][3]; if (r <= 0) return i; }
+  return 0;
+}
+function finishSentence() {
+  const s = PROMPT + G.toks.join('');
+  const isNew = !G.done.has(s); G.done.add(s);
+  const list = $('#finished'); const none = $('.none', list); if (none) none.remove();
+  list.insertAdjacentHTML('afterbegin', `<li><span>${esc(s)}</span><small>${G.sampled ? `temperature ${temp()}` : 'picked by hand or at 0'}</small></li>`);
+  CS.tick('p1', 'finish');
+  const truth = ' Bea actually opens at <b>10 am</b>. Notice that 10 wasn\'t even on the list: nothing the model could see mentioned the real hours.';
+  if (G.done.size >= 2 && isNew && G.sampled) {
+    CS.tick('p1', 'again');
+    CS.say($('#genNote'), `<strong>A different ending, just as confident.</strong> Same prompt, same model, different luck. With randomness turned up, less likely tokens sometimes win.${truth}`, 'good');
+  } else if (G.done.size === 1 || !isNew) {
+    CS.say($('#genNote'), `<strong>It sounds sure of itself.</strong> But the model was never told Bea's hours. It chose a number that often follows "opens every day at".${truth} ${temp() === 0 ? 'Now turn up the randomness and finish it again.' : 'Press <b>Start over</b> and try again.'}`, 'bad');
+  } else {
+    CS.say($('#genNote'), `<strong>A different ending.</strong> You steered it by hand this time. Now let the dice decide: set the randomness above 0, and use <b>Next token</b> or <b>Finish it</b>.${truth}`, 'info');
+  }
+}
+$('#cands').addEventListener('click', e => { const b = e.target.closest('.cand'); if (!b || G.busy || G.node === 'END') return; choose(+b.dataset.i, 'hand'); });
+$('#nextTok').addEventListener('click', () => { if (G.node !== 'END') choose(sample(), 'dice'); });
+$('#finishTok').addEventListener('click', () => {
+  if (G.busy) return; G.busy = true; renderGen();
+  const go = () => { if (G.node === 'END') { G.busy = false; renderGen(); return; } choose(sample(), 'dice'); $('#nextTok').disabled = $('#finishTok').disabled = true; setTimeout(go, reduce ? 0 : 450); };
+  go();
+});
+$('#restartTok').addEventListener('click', () => { if (G.busy) return; G.node = 'root'; G.toks = []; G.sampled = false; renderGen(); CS.say($('#genNote'), '<strong>Fresh start.</strong> Same prompt. Will it say the same thing?', 'info'); });
+$('#temp').addEventListener('input', () => {
+  const T = temp(); $('#tempOut').textContent = T;
+  $('#tempHint').textContent = T === 0 ? 'At 0 the model always takes the top token, so it gives the same answer every time.' : T < 1 ? 'A little randomness: usually the top token, sometimes the next ones.' : T === 1 ? 'The model\'s own probabilities, unchanged.' : 'Very random: unlikely tokens get a real chance. Answers get creative, and sloppier.';
+  renderGen();
+});
+renderGen();
+
+/* ================= context window ================= */
+const CAP = 12000;
+const KINDS = { sys: ['Tool', 'var(--ink-2)'], you: ['You', 'var(--l2)'], file: ['File', 'var(--l3)'], log: ['Log', 'var(--l1)'], ai: ['AI', 'var(--l5)'] };
+const ITEMS = {
+  sys: { label: 'Tool instructions', kind: 'sys', size: 1500, pinned: true },
+  rule: { label: 'You: "Every price must include 8% sales tax."', short: 'the 8% tax rule', btn: 'Your tax rule', kind: 'you', size: 120 },
+  about: { label: 'about.md (opening hours, address)', short: 'about.md', kind: 'file', size: 1200 },
+  pink: { label: 'You: "Make the order button pink."', short: 'the pink button chat', kind: 'you', size: 150 },
+  checkout: { label: 'checkout.js', short: 'checkout.js', kind: 'file', size: 2800 },
+  menu: { label: 'menu.js', short: 'menu.js', kind: 'file', size: 2200 },
+  styles: { label: 'styles.css', short: 'styles.css', kind: 'file', size: 3600 },
+  log: { label: 'A pasted error log', short: 'the error log', btn: 'A long error log', kind: 'log', size: 4800 },
+  footer: { label: 'You: "Now fix the footer spacing."', short: 'the footer chat', btn: 'Chat about the footer', kind: 'you', size: 600 }
+};
+const ADDABLE = ['log', 'styles', 'checkout', 'menu', 'footer', 'rule', 'about'];
+const CW = { items: [], gone: [], n: 0, fresh: false, freshAt: -1 };
+const fmtK = n => n >= 1000 ? (n / 1000).toFixed(1).replace(/\.0$/, '') + 'k' : String(n);
+const used = () => CW.items.reduce((s, x) => s + x.size, 0);
+function push(key, extra = {}) {
+  const base = ITEMS[key] || {};
+  CW.items.push({ key, id: ++CW.n, ...base, ...extra, isNew: true });
+  const out = [];
+  while (used() > CAP) {
+    const i = CW.items.findIndex(x => !x.pinned);
+    if (i < 0) break;
+    const [x] = CW.items.splice(i, 1); out.push(x);
+  }
+  out.forEach(x => { x.isNew = true; CW.gone.push(x); });
+  return out;
+}
+function renderCW() {
+  $('#cwUsed').textContent = used().toLocaleString('en-US');
+  $('#cwCount').textContent = `${CW.items.length} item${CW.items.length === 1 ? '' : 's'}`;
+  $('#cwMeter').innerHTML = CW.items.map(x => `<span style="width:${x.size / CAP * 100}%; --c:${KINDS[x.kind][1]}"></span>`).join('');
+  $('#cwList').innerHTML = CW.items.map(x => `<div class="cw-row${x.isNew ? ' new' : ''}"><i style="--c:${KINDS[x.kind][1]}"></i><b>${esc(x.label)}${x.pinned ? ' <em>always kept</em>' : ''}</b><code>${fmtK(x.size)}</code></div>`).join('');
+  $('#cwGone').innerHTML = CW.gone.length ? CW.gone.map(x => `<span class="${x.isNew ? 'new' : ''}"><i style="--c:${KINDS[x.kind][1]}"></i>${esc(x.short || x.label)}</span>`).join('') : '<span class="none">Nothing yet. The AI can see everything above.</span>';
+  CW.items.concat(CW.gone).forEach(x => { x.isNew = false; });
+  $$('#adds [data-add]').forEach(b => { b.disabled = CW.items.some(x => x.key === b.dataset.add); });
+}
+$('#adds').innerHTML = ADDABLE.map(k => { const x = ITEMS[k]; return `<button class="btn" type="button" data-add="${k}"><span><i style="--c:${KINDS[x.kind][1]}"></i>${esc(x.btn || x.short)}</span><small>${fmtK(x.size)}</small></button>`; }).join('');
+function resetCW(fresh) {
+  CW.items = []; CW.gone = []; push('sys');
+  if (!fresh) { push('rule'); push('about'); push('pink'); }
+  CW.items.forEach(x => { x.isNew = false; });
+  CW.fresh = fresh;
+}
+$('#adds').addEventListener('click', e => {
+  const b = e.target.closest('[data-add]'); if (!b || b.disabled) return;
+  const out = push(b.dataset.add);
+  renderCW();
+  if (out.length) {
+    CS.tick('p2', 'fill');
+    say2(`<strong>${out.length === 1 ? 'Something' : out.length + ' things'} fell out:</strong> ${out.map(x => esc(x.short || x.label)).join(', ')}. The window was full, so the oldest part of the conversation went first. The AI won't mention it. It simply can't see it anymore. Now ask it something.`, 'bad');
+  } else say2(`<strong>Added ${esc(ITEMS[b.dataset.add].short)}.</strong> ${fmtK(used())} of 12k tokens used. ${used() > 9000 ? 'Nearly full.' : 'Keep going until something falls out.'}`, 'info');
+});
+function say2(html, kind) {
+  let n = $('#cwNote'); if (!n) { $('#answer').insertAdjacentHTML('beforeend', '<div class="note" id="cwNote"></div>'); n = $('#cwNote'); }
+  CS.say(n, html, kind);
+}
+const has = k => CW.items.some(x => x.key === k);
+const lost = k => CW.gone.some(x => x.key === k);
+$$('[data-q]').forEach(b => b.addEventListener('click', () => {
+  const q = b.dataset.q; let ans, ok, why;
+  if (q === 'hours') {
+    ok = has('about');
+    ans = ok ? "Bea's opens at <b>10 am</b> every day, and closes at 4 pm. (From about.md.)" : "Bea's Bakery opens every day at <b>7 am</b>.";
+    why = ok ? '<strong>Right, because it could see about.md.</strong> The answer came from the window, not from a guess.' : `<strong>Confident, and wrong.</strong> ${lost('about') ? 'about.md fell out of the window' : 'about.md isn\'t in the window'}, so the model predicted a typical bakery time. Nothing in its reply tells you it guessed.`;
+  } else {
+    ok = has('rule');
+    const file = has('checkout');
+    ans = (ok ? '<pre>const total = subtotal * 1.08; // includes 8% sales tax</pre>' : '<pre>const total = subtotal;</pre>') + (file ? '' : '<span class="muted small">I haven\'t seen checkout.js, so I assumed the variable is called <code>subtotal</code>.</span>');
+    why = ok ? `<strong>Tax included, because the rule is in the window.</strong>${file ? '' : ' Notice it also said it guessed the variable name. Adding checkout.js would remove that guess.'}` : `<strong>No tax.</strong> ${lost('rule') ? 'Your rule fell out of the window' : 'Your tax rule isn\'t in the window'}, so the AI wrote the most common pattern. It didn't decide to ignore you. It can't see the rule.`;
+  }
+  $('#answer').innerHTML = `<div class="chat" aria-label="Answer"><div class="msg me"><span class="who">You</span>${esc(b.textContent)}</div><div class="msg ai"><span class="who">AI assistant</span>${ans}</div></div>`;
+  say2(why + (ok && CW.fresh ? ' A short, focused chat beats a long, cluttered one.' : ok ? '' : ' Try <b>Start a new chat</b> and add back just what this question needs.'), ok ? 'good' : 'bad');
+  if (!ok && (lost('about') || lost('rule'))) CS.tick('p2', 'forgot');
+  if (ok && CW.fresh) CS.tick('p2', 'fresh');
+  const out = push('q', { label: `You asked, the AI answered`, short: 'an earlier question', kind: 'ai', size: 300 });
+  renderCW();
+  if (out.length) say2(why + ` <span class="muted">(Even this question and answer took up room, pushing out ${out.map(x => esc(x.short || x.label)).join(', ')}.)</span>`, ok ? 'good' : 'bad');
+}));
+$('#newChat').addEventListener('click', () => {
+  resetCW(true); renderCW();
+  $('#answer').innerHTML = '';
+  say2('<strong>New chat.</strong> Only the tool\'s instructions are left. Add just what your next question needs, then ask.', 'info');
+});
+resetCW(false); renderCW();
+say2('<strong>Everything fits right now.</strong> Ask a question and the AI gets it right. Then fill the window.', 'info');
+
+/* ================= agent transcript ================= */
+const AK = { you: ['You', 'var(--l2)'], write: ['Writes code', 'var(--l5)'], run: ['Runs a command', 'var(--l4)'], result: ['Result', 'var(--l1)'], think: ['Thinks', 'var(--ink-2)'], read: ['Reads a file', 'var(--l3)'], ok: ['Result', 'var(--good)'], done: ['Reports back', 'var(--l2)'] };
+const AGENT = [
+  ['you', 'Show the prices on the menu with two decimals, like $3.50.', ''],
+  ['write', '<pre><span class="d">// menu.js</span>\nimport { formatPrice } from "bakery-price-kit";</pre>', 'The name sounds perfectly real. The model predicted it. Nothing has checked it yet.'],
+  ['run', '<pre>npm install bakery-price-kit</pre>', 'The agent uses a tool: it runs a command, like you did in 101.'],
+  ['result', '<pre><span class="r">npm error 404 Not Found - GET https://registry.npmjs.org/bakery-price-kit\nnpm error 404  \'bakery-price-kit@*\' is not in this registry.</span></pre>', 'The package doesn\'t exist. This error now sits in the context window, so the model can see the truth.'],
+  ['think', 'That package doesn\'t exist. JavaScript can already do this with toFixed(2). Let me look at how menu.js shows prices.', 'A fact in the window changed the prediction.'],
+  ['read', '<pre><span class="d">// menu.js, line 14</span>\nli.textContent = item.name + " $" + item.price;</pre>', 'Reading the real file replaces guessing with facts: now it knows the exact names.'],
+  ['write', '<pre>li.textContent = item.name + " $" + item.price<span class="g">.toFixed(2)</span>;</pre>', 'A one-line change, no new package.'],
+  ['run', '<pre>npm test</pre>', 'Checking its own work with another tool.'],
+  ['ok', '<pre><span class="g">Tests: 4 passed, 4 total</span></pre>', ''],
+  ['done', 'Prices now show two decimals (3.5 becomes $3.50). No new packages. All 4 tests pass.', 'A good agent ends with evidence, not just "done".']
+];
+let agentN = 0;
+function renderAgent() {
+  $('#agent').innerHTML = AGENT.slice(0, agentN).map(([k, body, why], i) => `<div class="ag"${i < agentN - 1 ? ' style="animation:none"' : ''}><span class="kind" style="--c:${AK[k][1]}"><i></i>${AK[k][0]}</span><div class="body">${body.startsWith('<pre') ? body : `<span>${body}</span>`}</div>${why ? `<span class="why">${why}</span>` : ''}</div>`).join('') || '<p class="muted">Press <b>Next step</b> to watch the agent work.</p>';
+  $('#agentNext').disabled = agentN >= AGENT.length;
+  $('#agentCount').textContent = agentN ? `Step ${agentN} of ${AGENT.length}` : '';
+  if (agentN >= AGENT.length) CS.tick('p2', 'agent');
+}
+$('#agentNext').addEventListener('click', () => { if (agentN < AGENT.length) { agentN++; renderAgent(); } });
+$('#agentReset').addEventListener('click', () => { agentN = 0; renderAgent(); });
+renderAgent();
+
+/* ================= Part 3: prompt lab ================= */
+const CHECKS = [
+  { k: 'goal', t: 'The goal', d: 'What should change, specifically: 8% sales tax on its own line.', test: s => /\btax/i.test(s) && /\b8\s*(%|percent|per cent)|\beight percent|0?\.08\b|1\.08\b/i.test(s) },
+  { k: 'file', t: 'The relevant file', d: 'Where the change goes, so it doesn\'t guess.', test: s => /checkout\.js/i.test(s) },
+  { k: 'limit', t: 'A constraint', d: 'What not to do, or what must stay the same.', test: s => /\b(don'?t|do not|only|without|no new|avoid|keep|must not|never|leave|no other|nothing else|no extra|no packages?)\b/i.test(s) },
+  { k: 'verify', t: 'How to check it', d: 'Tests to run, or an example with the right answer.', test: s => /\b(npm test|run (the )?tests?|tests? pass|test it|verify|confirm|make sure|check (that|it|the)|should (show|be|equal|display|give)|for example|e\.g\.|expect(ed)?)\b|\$\s?\d/i.test(s) }
+];
+$('#check4').innerHTML = CHECKS.map((c, i) => `<div class="c4" data-c="${c.k}"><span class="ck">${i + 1}</span><div><b>${c.t}</b><span>${c.d}</span></div></div>`).join('');
+const scan = s => Object.fromEntries(CHECKS.map(c => [c.k, c.test(s)]));
+function paintChecklist(s) { const r = scan(s); CHECKS.forEach((c, i) => { const el = $(`[data-c="${c.k}"]`); el.classList.toggle('on', r[c.k]); $('.ck', el).textContent = r[c.k] ? '✓' : i + 1; }); return r; }
+function aiReply(code) {
+  const s = code.trim(); const r = scan(s);
+  if (s.split(/\s+/).length < 3) return { r, html: '<div class="ai"><b>AI assistant:</b> Happy to help! Could you tell me a bit more about what you\'d like?</div>' };
+  let msg, miss = [];
+  if (!r.goal) { msg = 'I refactored the checkout: renamed some variables for clarity and switched it to async/await. Let me know if you need anything else!'; miss.push('It did <i>something</i>, but not what Bea wanted, because the prompt never said. Mention 8% sales tax.'); }
+  else if (!r.file) { msg = 'I searched the project and added 8% tax to the prices in <b>menu.js</b> and <b>index.html</b>, since both show prices.'; miss.push('Tax is now added on the menu too, so customers pay it twice. It had to guess where the change goes. Name the file.'); }
+  else if (!r.limit) { msg = 'Done! I installed <b>tax-calculator-pro</b> and used it in checkout.js. While I was in there, I also tidied up styles.css and renamed a few functions.'; miss.push('A new package and changes you didn\'t ask for. Nothing told it to stay small. Add a constraint.'); }
+  else if (!r.verify) { msg = 'Done! Tax should now be added correctly in checkout.js.'; miss.push('"Should" is a guess, not a result. Ask it to run the tests or check an example.'); }
+  else msg = 'Updated <b>checkout.js</b> only: added an 8% tax line and included it in the total. No new packages. Ran <b>npm test</b>: 5 passed, including a new test where a $10.00 order shows $0.80 tax and a $10.80 total.';
+  const tally = CHECKS.map(c => `${r[c.k] ? '✓' : '✗'} ${c.k === 'limit' ? 'constraint' : c.k === 'verify' ? 'check' : c.k}`).join('   ');
+  return { r, html: `<div class="dim">${tally}</div><div class="ai"><b>AI assistant:</b> ${msg}${miss.length ? `<span class="miss">${miss[0]}</span>` : ''}</div>` };
+}
+const lab = CS.codeLab($('#lab'), {
+  part: 'p3',
+  mission: $('#mission'),
+  language: 'Prompt',
+  starter: 'fix the checkout',
+  run: code => { const { r, html } = aiReply(code); paintChecklist(code); return { code, r, logs: [], html }; },
+  steps: [
+    { t: 'Say exactly what you want', how: 'Replace "fix the checkout" with the actual goal: add 8% sales tax, shown on its own line.', hint: 'Something like: <i>Add 8% sales tax to the order total, shown on its own line.</i>', check: res => res.r.goal,
+      nudge: res => /\btax/i.test(res.code) ? 'Almost. How much tax? Say <b>8%</b>, so it doesn\'t pick a rate for you.' : 'The AI can\'t read your mind: "fix the checkout" could mean anything. Say what should change.' },
+    { t: 'Point to the right file', how: 'Say which file the change belongs in. The files are listed beside the editor.', hint: 'The order total lives in <b>checkout.js</b>. Add: <i>The change goes in checkout.js.</i>', check: res => res.r.file,
+      nudge: () => 'Which file works out the order total? Name it, so the AI doesn\'t search around and edit the wrong one.' },
+    { t: 'Add a constraint', how: 'Tell it what not to do, or what must stay the same.', hint: 'For example: <i>Only change checkout.js. Don\'t add any new packages.</i>', check: res => res.r.limit,
+      nudge: () => 'Give it a limit, like "only change checkout.js" or "don\'t add new packages".' },
+    { t: 'Say how to check it', how: 'Ask it to prove it worked: run the tests, or match an example.', hint: 'For example: <i>Run npm test when you\'re done. A $10 order should show $0.80 tax and $10.80 total.</i>', check: res => res.r.verify,
+      nudge: () => 'How will you both know it worked? Ask it to run <b>npm test</b>, or give an example with the right numbers.' }
+  ],
+  doneTutor: '<b>That\'s a prompt a teammate could act on.</b> Goal, file, constraint, check. Four short sentences, and the AI stopped guessing.'
+});
+$('#lab [data-a="run"]').textContent = 'Send to the AI';
+$('#lab [data-a="reset"]').textContent = 'Reset prompt';
+$('#lab .cl-out').innerHTML = '<span class="lbl">The AI\'s reply</span><span class="dim">Edit the prompt above, then press "Send to the AI". This AI is literal: it does what you say and guesses the rest.</span>';
+lab.textarea.addEventListener('input', () => paintChecklist(lab.textarea.value));
+paintChecklist(lab.textarea.value);
+
+/* ================= Part 4: steer the AI ================= */
+CS.steer($('#steer'), [
+  { ai: 'Use payments.chargeWithTax(order) from our payments library. It handles tax automatically, so we can delete our tax code.',
+    opts: [["Great, delete the tax code.", 0, "If that function doesn't exist, checkout breaks at the worst possible moment. A fluent answer isn't evidence."],
+           ["I can't find chargeWithTax in the library's docs. Show me where it's documented, or try calling it, before we delete anything.", 1, "Right. Invented function names are a classic confident mistake. Ask for the docs or a quick test before building on it."],
+           ["Let's write our own payment library instead.", 0, "Much more work and risk than needed. First just check whether the function is real."]] },
+  { ai: 'I\'ve updated the checkout. Prices are now shown without tax, same as the rest of the site.',
+    opts: [["Try harder to remember what I told you.", 0, "It can't choose to remember. Once your rule is out of its window, it isn't there to find."],
+           ["We agreed prices include 8% tax. This chat is long, so let's start fresh with a short summary: the tax rule, checkout.js, and how to test it.", 1, "Yes. A fresh chat with the key rules and files puts what matters back in the window, and leaves the clutter out."],
+           ["Paste the whole codebase into the chat so you remember everything.", 0, "That fills the window even faster and pushes out your rules sooner. Give it what the task needs."]] },
+  { ai: 'I\'m 100% confident this function handles every possible discount code correctly.',
+    opts: [["100%? Great, ship it.", 0, "The model's confidence is a writing style, not a measurement. It sounds equally sure when it's wrong."],
+           ["Confidence isn't evidence. Write tests for a valid code, an expired one and a made-up one, and run them.", 1, "Exactly. Tests turn \"I'm sure\" into facts you can see, including the edge cases."],
+           ["Remove discount codes to be safe.", 0, "Throwing away the feature is an overreaction. Test it instead."]] },
+  { ai: 'I can\'t see your database, but a typical orders table has a customer_email column, so I wrote the query using that.',
+    opts: [["Rename our column to match your guess.", 0, "Changing your data to fit a guess is backwards, and can break other code that uses the real name."],
+           ["Fine, it's probably right.", 0, "\"Typical\" is a guess. If the real column is called email, the query fails or returns nothing."],
+           ["Don't guess the names. Read the schema file, or list the table's columns, then write the query.", 1, "Right. When the AI says \"typical\" or \"probably\", point it at the real source: a file it can read or a command it can run."]] }
+], { part: 'p4', counter: $('#steerCount') });
+
+/* ================= Part 5: quiz ================= */
+CS.quiz($('#quiz'), [
+  { q: 'What is a token?', a: [['A password the AI uses to log in', 0], ['A small chunk of text, like a word or part of a word', 1], ['One single letter', 0]], why: 'Models read and write tokens: common chunks of text. Rare words split into several. Limits and prices are counted in tokens.' },
+  { q: 'At each step, a language model…', a: [['Looks up the answer in a database of facts', 0], ['Scores the possible next tokens and picks one', 1], ['Copies an answer from the internet', 0]], why: 'It predicts the next token, adds it, and repeats. Unless a tool fetches facts, nothing is looked up.' },
+  { q: 'Hours into a session, the AI ignores a rule you gave at the start. What most likely happened?', a: [['It disagreed with the rule', 0], ['The rule dropped out of its context window', 1], ['It got tired', 0]], why: 'Long sessions fill the window, and older parts are dropped or summarized away. Restate the rule, or start a fresh chat with a summary.' },
+  { q: 'The AI imports a package that doesn\'t exist, and sounds completely sure. Why?', a: [['It predicted a name that looks plausible, without checking', 1], ['The package was deleted this morning', 0], ['Your internet connection is down', 0]], why: 'Plausible text isn\'t checked text. Running the install or reading the docs is what catches it.' },
+  { q: 'Which prompt gives the AI the best chance?', a: [['Fix the checkout.', 0], ['Make the checkout better and add anything useful.', 0], ['In checkout.js, add 8% sales tax on its own line. Don\'t add packages. Run npm test when done.', 1]], why: 'Goal, file, constraint and a check. The first two leave the AI guessing, and the second invites it to change things you didn\'t ask for.' }
+], { part: 'p5', doneCard: $('#doneCard'), doneTitle: 'You know how your AI thinks.', doneText: 'You know it predicts tokens, sees only its context window, and fills gaps with confident guesses, so you can feed it the right context and ask for proof.' });
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,902 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Capstone: Directing the AI · CS School</title>
+<meta name="description" content="Course 214: take a product from idea to launch by steering an AI through every decision.">
+<link rel="icon" href="../assets/favicon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="../assets/cs-school.css">
+<style>
+/* lesson-specific styles: brief builder, draft phone, plan review, architecture map, pull request review, launch finale */
+.h-pop{transform-box:fill-box; transform-origin:center; animation:pop .45s cubic-bezier(.3,1.7,.5,1)}
+.h-rise{animation:rise .45s}
+.hero-caption span:first-child{font-family:var(--f-display); font-weight:800}
+
+/* brief builder */
+.bsec{border-radius:16px; padding:12px 14px 14px; background:color-mix(in srgb, var(--ink) 4%, transparent)}
+.bsec + .bsec{margin-top:10px}
+.bsec h4{margin:0 0 8px; font-family:var(--f-display); font-weight:800; font-size:1.08rem; display:flex; align-items:baseline; gap:8px; flex-wrap:wrap}
+.bsec h4 span{font-family:var(--f-body); font-weight:400; font-size:.95rem; color:var(--ink-2)}
+.bsec h4 .st{margin-left:auto; font-family:var(--f-display); font-weight:700; font-size:.85rem; border-radius:99px; padding:1px 9px; background:color-mix(in srgb, var(--ink) 8%, transparent); color:var(--ink-2)}
+.bsec h4 .st.good{background:var(--good-bg); color:var(--good)} .bsec h4 .st.weak{background:var(--tip-bg); color:var(--tip)}
+.bopts{display:flex; flex-direction:column; gap:6px}
+.bopt{text-align:left; font:inherit; font-size:1rem; line-height:1.4; color:var(--ink); background:var(--glass-strong); border:1px solid var(--hair); border-radius:10px; padding:9px 12px; cursor:pointer; min-height:44px; transition:background .15s}
+.bopt:hover:not(:disabled){background:var(--paper)}
+.bopt:disabled{cursor:not-allowed; opacity:.62}
+.bopt[aria-pressed="true"]{background:var(--ink); color:var(--paper); border-color:var(--ink)}
+.prompt-line{font-size:1rem; background:var(--glass-strong); border-radius:12px; padding:10px 12px; margin-bottom:12px}
+.prompt-line b{font-family:var(--f-display)}
+.send-row{display:flex; align-items:center; gap:12px; flex-wrap:wrap; margin-top:14px}
+.send-row .muted{font-size:1rem}
+
+/* the AI's draft */
+.draft{border-radius:20px; padding:18px 20px 20px; width:100%}
+.draft-grid{display:grid; grid-template-columns:minmax(0,240px) minmax(0,1fr); gap:18px; align-items:start}
+.dphone{border-radius:28px; padding:8px; background:var(--glass-strong); border:1px solid var(--hair); box-shadow:var(--float); position:relative}
+.dscreen{border-radius:21px; overflow:hidden; background:#FFFDF8; color:#231A12; min-height:400px; display:flex; flex-direction:column; font-size:.9rem; line-height:1.35; position:relative}
+.dscreen.building::after{content:"The AI is building…"; position:absolute; inset:0; display:grid; place-items:center; background:rgba(255,253,248,.86); font-family:var(--f-display); font-weight:800; font-size:1rem; color:#5B4A3A}
+.dtop{display:flex; align-items:center; gap:6px; padding:12px 12px 8px; font-family:var(--f-display); font-weight:900; font-size:1rem}
+.dtop svg{width:18px; height:18px; flex:none}
+.dbody{flex:1; padding:0 12px 10px; display:flex; flex-direction:column; gap:7px}
+.dtitle{font-family:var(--f-display); font-weight:800; font-size:1rem}
+.ddays{display:flex; gap:4px}
+.ddays span{flex:1; text-align:center; border-radius:8px; padding:3px 0; background:#F2ECE3; font-size:.8rem; line-height:1.25}
+.ddays span.on{background:#2F6B4F; color:#FFF}
+.dslot{display:flex; justify-content:space-between; border-radius:8px; padding:6px 9px; background:#F2ECE3; font-size:.9rem}
+.dslot.on{background:#DDEEE3; font-weight:700}
+.dslot.taken{color:#9A8B7C; text-decoration:line-through}
+.dbtn{margin-top:2px; text-align:center; border-radius:99px; padding:7px; background:#2F6B4F; color:#FFF; font-family:var(--f-display); font-weight:800; font-size:.9rem}
+.dsmall{font-size:.85rem; color:#6B5C4D; text-align:center}
+.dpost{border-radius:10px; background:#F2ECE3; padding:6px}
+.dpost i{display:block; height:58px; border-radius:7px; background:linear-gradient(135deg,#E8D5BE,#D9C2A5)}
+.dpost span{display:block; margin-top:4px; font-size:.85rem}
+.dstories{display:flex; gap:6px}
+.dstories i{width:28px; height:28px; border-radius:50%; background:#E8D5BE; box-shadow:0 0 0 2px #FFFDF8, 0 0 0 3.5px #C77B4A}
+.dcard{display:flex; gap:8px; align-items:center; border-radius:10px; background:#F2ECE3; padding:6px 8px; font-size:.85rem}
+.dcard i{width:26px; height:26px; border-radius:50%; background:#D9C2A5; flex:none}
+.dsearch{border-radius:99px; background:#F2ECE3; padding:6px 10px; font-size:.85rem; color:#6B5C4D}
+.dtabs{display:flex; justify-content:space-around; gap:2px; padding:7px 6px 9px; border-top:1px solid #EFE5D8; font-size:.8rem; font-weight:700; color:#6B5C4D; flex-wrap:wrap}
+.dtabs span{white-space:nowrap}
+.dtabs .more{color:#B8321F}
+.dempty{flex:1; display:grid; place-items:center; text-align:center; padding:20px; color:#8A7A6A; font-size:.9rem}
+.dfacts{display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:8px}
+.dfact{border-radius:12px; padding:8px 9px; background:var(--glass-strong); min-width:0}
+.dfact span{display:block; font-family:var(--f-display); font-weight:700; font-size:.85rem; color:var(--ink-2)}
+.dfact b{display:block; font-family:var(--f-display); font-weight:900; font-size:1.3rem; line-height:1.2; transition:color .3s}
+.dfact.bad b{color:var(--bad)} .dfact.good b{color:var(--good)}
+.guess{margin-top:12px}
+.guess h4{margin:0 0 6px; font-family:var(--f-display); font-weight:800; font-size:1.05rem}
+.guess ul{list-style:none; margin:0; padding:0; display:flex; flex-direction:column; gap:6px}
+.guess li{display:flex; gap:10px; font-size:.95rem; line-height:1.4; animation:rise .3s}
+.guess li::before{content:""; flex:none; width:8px; height:8px; margin-top:.5em; border-radius:50%; background:var(--l4)}
+.guess li b{font-family:var(--f-display)}
+.guess li.none::before{background:var(--l3)}
+.brieftext{border-radius:16px; padding:16px 18px; font-size:1rem; white-space:pre-wrap; line-height:1.6}
+.brieftext .ph{color:var(--ink-2); font-style:italic}
+
+/* plan review */
+.plan{list-style:none; margin:0; padding:0; display:flex; flex-direction:column; gap:8px}
+.pline{display:flex; flex-direction:column; gap:4px; width:100%; text-align:left; font:inherit; color:var(--ink); background:var(--glass-strong); border:1px solid var(--hair); border-radius:14px; padding:10px 14px; cursor:pointer; min-height:44px; transition:background .2s}
+.pline:hover:not(:disabled){background:var(--paper)}
+.pline:disabled{cursor:default}
+.pline .area{display:flex; align-items:center; gap:8px; font-family:var(--f-display); font-weight:800; font-size:.95rem; color:var(--ink-2)}
+.pline .area .flag{margin-left:auto; font-size:.85rem; border-radius:99px; padding:1px 9px}
+.pline .txt{font-size:1rem; line-height:1.45}
+.pline .why{font-size:.95rem; color:var(--ink-2); line-height:1.45}
+.pline.flagged{background:var(--bad-bg)}
+.pline.flagged .flag{background:color-mix(in srgb, var(--bad) 16%, transparent); color:var(--bad)}
+.pline.revised{background:var(--good-bg)}
+.pline.revised .flag{background:color-mix(in srgb, var(--good) 16%, transparent); color:var(--good)}
+.pline.revised .txt{animation:rise .4s}
+.pline.nope{animation:shake .35s}
+.cchip{display:inline-flex; align-items:center; gap:6px; border-radius:99px; padding:0 9px; font-family:var(--f-display); font-weight:700; font-size:.85rem; background:var(--glass-strong); color:var(--ink); white-space:nowrap}
+.cchip::before{content:""; width:7px; height:7px; border-radius:50%; background:var(--l1)}
+.archbox{border-radius:20px; padding:16px 16px 12px}
+.archbox svg{display:block; width:100%; height:auto}
+.a-halo{transform-box:fill-box; transform-origin:center; animation:halo 1.6s ease-out infinite}
+@keyframes halo{0%{opacity:.5; transform:scale(.7)}100%{opacity:0; transform:scale(1.5)}}
+.plan-row{display:flex; align-items:center; gap:12px; flex-wrap:wrap; margin-top:14px}
+.plan-row span{font-family:var(--f-display); font-weight:700; color:var(--ink-2)}
+
+/* pull request review */
+.pr{border-radius:20px; padding:18px; display:flex; flex-direction:column; gap:14px}
+.pr-head h3{font-size:1.3rem; margin:6px 0 4px}
+.pr-head p{font-size:.95rem; color:var(--ink-2)}
+.pr-state{display:inline-flex; align-items:center; gap:6px; font-family:var(--f-display); font-weight:800; font-size:.85rem; border-radius:99px; padding:2px 10px; background:var(--good-bg); color:var(--good)}
+.pr-state::before{content:""; width:7px; height:7px; border-radius:50%; background:currentColor}
+.pr-state.merged{background:color-mix(in srgb, var(--l5) 18%, transparent); color:var(--l5)}
+.checks{display:flex; gap:8px; flex-wrap:wrap}
+.chk{display:inline-flex; align-items:center; gap:8px; font:inherit; font-size:.95rem; color:var(--ink); background:var(--glass-strong); border:1px solid var(--hair); border-radius:99px; padding:6px 12px; min-height:40px; cursor:pointer}
+.chk i{width:10px; height:10px; border-radius:50%; background:var(--l3); flex:none}
+.chk.warn i{background:var(--l4)} .chk.run i{background:var(--l4); animation:blink .6s infinite alternate}
+@keyframes blink{to{opacity:.25}}
+.chk[aria-expanded="true"]{background:var(--paper)}
+.chk-detail{font-size:.95rem; background:var(--tip-bg); border-radius:12px; padding:10px 14px}
+.chk-detail code{background:rgba(0,0,0,.06)}
+.dfile{border-radius:14px; overflow:hidden; background:var(--term); color:var(--term-ink); border:1px solid var(--glass-edge)}
+.dfile-h{display:flex; justify-content:space-between; gap:8px; padding:8px 12px; background:var(--term-2); font-family:var(--f-mono); font-size:.85rem; color:#C9D1DA}
+.dfile-h span:last-child{color:#8BF0A8}
+.dl{display:grid; grid-template-columns:2.6em minmax(0,1fr); width:100%; text-align:left; background:none; border:0; color:inherit; font-family:var(--f-mono); font-size:14px; line-height:1.6; padding:1px 10px 1px 0; cursor:pointer; min-height:28px}
+.dl:hover{background:rgba(255,255,255,.06)}
+.dl .no{color:#6B7582; text-align:right; padding-right:10px; user-select:none}
+.dl .cd{white-space:pre-wrap; word-break:break-word; padding-left:1.2em; text-indent:-1.2em}
+.dl .cd::before{content:"+ "; color:#5CE0B0}
+.dl.sel{background:rgba(255,197,61,.18)}
+.dl.commented{background:rgba(255,154,138,.16)}
+.dl.fixed{background:rgba(92,224,176,.16)}
+.dl .k{color:#C4A7FF} .dl .s{color:#8BF0A8} .dl .n{color:#FFC53D} .dl .f{color:#7CC4FF} .dl .c{color:#8A95A3}
+.composer{margin:4px 10px 8px; border-radius:12px; background:var(--paper); color:var(--ink); padding:10px 12px; font-family:var(--f-body); animation:rise .25s}
+.composer .lbl{font-family:var(--f-display); font-weight:800; font-size:.95rem; margin-bottom:6px}
+.composer .opts .opt{font-size:.95rem}
+.composer .say{font-size:.95rem}
+.ccomment{margin:4px 10px 8px 2.6em; border-radius:12px; background:var(--paper); color:var(--ink); padding:8px 12px; font-family:var(--f-body); font-size:.95rem; animation:rise .25s}
+.ccomment b{font-family:var(--f-display); display:block; font-size:.85rem; color:var(--ink-2)}
+.pr-actions{display:flex; gap:10px; flex-wrap:wrap; align-items:center}
+.pr-actions .muted{font-size:.95rem}
+.thread{display:flex; flex-direction:column; gap:8px}
+.thread .msg{max-width:100%}
+.checklist{list-style:none; margin:0; padding:0; display:flex; flex-direction:column; gap:10px}
+.checklist li{display:flex; gap:12px; font-size:1rem; line-height:1.4}
+.checklist li::before{content:""; flex:none; width:10px; height:10px; margin-top:.45em; border-radius:50%; background:var(--c)}
+.checklist small{display:block; color:var(--ink-2); font-size:.9rem}
+
+/* ship & launch */
+.ship{display:flex; flex-direction:column; gap:10px}
+.shiprow{display:grid; grid-template-columns:auto minmax(0,1fr) auto; gap:12px; align-items:center; border-radius:14px; padding:10px 12px; background:var(--glass-strong)}
+.shiprow b{font-family:var(--f-display); font-weight:800; display:block}
+.shiprow span.s{font-size:.95rem; color:var(--ink-2)}
+.sdot{width:12px; height:12px; border-radius:50%; background:color-mix(in srgb, var(--ink) 18%, transparent)}
+.sdot.run{background:var(--l4); animation:blink .5s infinite alternate}
+.sdot.ok{background:var(--l3)}
+.finale{display:grid; grid-template-columns:minmax(0,1fr) minmax(0,240px); gap:24px; align-items:center; margin-top:8px}
+.finale h3{font-size:clamp(1.8rem,4vw,2.6rem); font-weight:900; letter-spacing:-.015em}
+.finale p{margin-top:8px}
+.fstats{display:flex; gap:10px; flex-wrap:wrap; margin-top:14px}
+.fstat{border-radius:14px; padding:8px 14px; background:var(--glass-strong)}
+.fstat b{display:block; font-family:var(--f-display); font-weight:900; font-size:1.6rem; line-height:1.1}
+.fstat span{font-size:.9rem; color:var(--ink-2)}
+.fphone{border-radius:28px; padding:8px; background:var(--glass-strong); border:1px solid var(--hair); box-shadow:var(--float)}
+.fscreen{border-radius:21px; background:#FFFDF8; color:#231A12; min-height:320px; padding:12px; display:flex; flex-direction:column; gap:8px; overflow:hidden}
+.flive{align-self:flex-start; display:inline-flex; align-items:center; gap:6px; border-radius:99px; background:#DDEEE3; color:#1F5A3F; font-family:var(--f-display); font-weight:800; font-size:.8rem; padding:2px 10px}
+.flive::before{content:""; width:7px; height:7px; border-radius:50%; background:#2F9E6A; animation:blink .8s infinite alternate}
+.fnote{border-radius:12px; background:#F2ECE3; padding:7px 10px; font-size:.85rem; line-height:1.35; animation:rise .4s}
+.fnote b{font-family:var(--f-display)}
+
+/* recap */
+.recap{margin-top:24px; border-radius:20px; padding:24px; display:flex; flex-direction:column; gap:12px}
+.recap-grid{display:grid; grid-template-columns:repeat(5,minmax(0,1fr)); gap:10px}
+.recap-grid div{border-radius:14px; padding:10px 12px; background:var(--glass-strong)}
+.recap-grid b{display:block; font-family:var(--f-display); font-weight:900; font-size:1.3rem}
+.recap-grid span{font-size:.9rem; color:var(--ink-2)}
+.courses{display:flex; flex-wrap:wrap; gap:6px}
+
+@media (min-width:901px){ #p1 .pg-col:nth-child(2), #p2 .pg-col:nth-child(2){position:sticky; top:84px} }
+@media (min-width:901px){ #p3 .lab{grid-template-areas:"mission work" "side work" "extra extra"; grid-template-rows:auto 1fr auto} }
+@media (max-width:900px){ .finale{grid-template-columns:minmax(0,1fr)} .fphone{max-width:260px} .recap-grid{grid-template-columns:repeat(2,minmax(0,1fr))} }
+@media (max-width:640px){ .draft-grid{grid-template-columns:minmax(0,1fr)} .dphone{max-width:270px; margin:0 auto; width:100%} .dfacts{gap:6px} .dfact b{font-size:1.1rem} .dl{font-size:13px} }
+</style>
+</head>
+<body>
+<main id="top">
+  <section class="wrap hero">
+    <div>
+      <div class="kicker">Core curriculum · Course 214 · Capstone: Directing the AI</div>
+      <h1>You're the director. The AI is your crew.</h1>
+      <p class="lede">Take Muddy Paws, a small dog-walking business, from a one-line idea to a live booking app. The AI writes the code. You make every call that matters: what to build, how it fits together, whether it's safe, and when it ships.</p>
+      <ul class="facts">
+        <li>About 20 minutes</li>
+        <li>5 stages</li>
+        <li>Code review simulator</li>
+        <li>Uses everything from Core</li>
+      </ul>
+      <div class="row hero-cta"><a class="btn primary" href="#p1">Start the capstone</a></div>
+    </div>
+    <figure style="margin:0">
+      <div class="hero-visual glass">
+        <svg id="heroArt" role="img" aria-label="An animation of a project coming together: five short director's notes appear one by one, for the spec, plan, review, ship and launch stages, and a phone app for booking dog walks builds up beside them until bookings start arriving."></svg>
+        <div class="legend">
+          <span><i style="background:var(--l2)"></i>spec</span>
+          <span><i style="background:var(--l5)"></i>plan</span>
+          <span><i style="background:var(--l4)"></i>review</span>
+          <span><i style="background:var(--l3)"></i>ship</span>
+          <span><i style="background:var(--l1)"></i>launch</span>
+        </div>
+      </div>
+      <div class="hero-caption glass" aria-hidden="true"><span>You:</span><span id="heroCap">Build a booking app for Muddy Paws.</span></div>
+    </figure>
+  </section>
+
+  <div class="wrap">
+  <!-- STAGE 1 -->
+  <section class="part" id="p1">
+    <span class="bullet glass" data-p="p1">1</span>
+    <div class="part-head">
+      <div class="kicker">Part 1 of 5 · Stage 1</div>
+      <h2>Write the spec</h2>
+      <p>A <b>spec</b> (or brief) tells the AI what to build, for whom, and what not to build. Everything you leave out, the AI guesses. Its guesses tend to be bigger, more generic and more expensive than what you need.</p>
+    </div>
+
+    <div class="chat" aria-label="Example conversation">
+      <div class="msg me"><span class="who">You</span>Build an app for my friend Dana's dog-walking business.</div>
+      <div class="msg ai"><span class="who">AI assistant</span>Done! Meet DogSpace: a social network for dogs with profiles, a photo feed, chat, a shop and live GPS walk tracking.</div>
+      <div class="msg me"><span class="who">You</span>Dana just wants people to book walks…</div>
+    </div>
+
+    <div class="task glass" data-part="p1">
+      <h3>Your task</h3>
+      <ol>
+        <li data-t="vague"><span>Send the one-line prompt as it is, and see what the AI builds.</span></li>
+        <li data-t="brief"><span>Pick the strongest line for all five parts of the brief.</span></li>
+        <li data-t="resend"><span>Send the full brief and compare the AI's new draft.</span></li>
+      </ol>
+    </div>
+
+    <div class="pg">
+      <div class="pg-col">
+        <div class="o1 ctl glass" id="brief">
+          <h3 class="ctl-title">Your brief</h3>
+          <div class="prompt-line" id="promptLine"></div>
+          <div id="bsecs"></div>
+          <div class="send-row"><button class="btn primary" id="sendBtn">Send to the AI</button><span class="muted" id="briefScore"></span></div>
+        </div>
+        <div class="o3 note" id="tip1" aria-live="polite">Start by sending the one-line prompt, just as most people do.</div>
+      </div>
+      <div class="pg-col">
+        <div class="o2 draft glass" id="draft" aria-live="polite"></div>
+      </div>
+    </div>
+
+    <div class="stack" style="margin-top:56px">
+      <h3>The brief you wrote</h3>
+      <p class="muted">Paste something like this into any AI tool before it writes a line of code. It works for design too (course 213), and the users and goals come straight from course 210.</p>
+      <div class="brieftext glass" id="briefText"></div>
+      <div class="row"><button class="btn" id="copyBtn">Copy the brief</button><span class="muted small" id="copyMsg" aria-live="polite"></span></div>
+      <details class="deeper glass">
+        <summary>Under the hood: "done means…" <small>optional</small></summary>
+        <div>
+          <p>Strong specs end with <b>acceptance criteria</b>: short, checkable sentences that say when the work is finished. For example: "An owner can book and pay for a walk on a phone in under a minute." "Two owners can't book the same slot."</p>
+          <p>They're useful twice. You can check the AI's work against them, and the AI can turn each one into a test (course 208).</p>
+        </div>
+      </details>
+    </div>
+  </section>
+
+  <!-- STAGE 2 -->
+  <section class="part" id="p2">
+    <span class="bullet glass" data-p="p2">2</span>
+    <div class="part-head">
+      <div class="kicker">Part 2 of 5 · Stage 2</div>
+      <h2>Review the AI's plan</h2>
+      <p>Good AI tools propose a plan before writing code: the parts, the tools, and how they connect. Catching a bad choice here costs one sentence. Catching it after launch costs weeks. You don't need to know every tool. You need to spot the choices that don't fit.</p>
+    </div>
+
+    <div class="task glass" data-part="p2">
+      <h3>Your task</h3>
+      <ol>
+        <li data-t="flag"><span>Flag the four problems in the AI's plan. Leave the sound choices alone.</span></li>
+        <li data-t="send"><span>Send your review and check the revised plan.</span></li>
+      </ol>
+    </div>
+
+    <div class="pg">
+      <div class="pg-col">
+        <div class="o1 ctl glass">
+          <h3 class="ctl-title">The AI's plan for Muddy Paws</h3>
+          <p class="ctl-sub">Click a line to flag it as a problem. Click again to unflag.</p>
+          <ol class="plan" id="plan"></ol>
+          <div class="plan-row"><button class="btn primary" id="reviewBtn" disabled>Send my review</button><span id="flagCount" aria-live="polite"></span></div>
+        </div>
+      </div>
+      <div class="pg-col">
+        <div class="o2 archbox glass">
+          <h3 class="ctl-title">How the parts connect</h3>
+          <svg id="arch" role="img" aria-label="Architecture map: the owner's phone talks to the server, which talks to the database and to Stripe for payments. Problems in the plan show up as red rings."></svg>
+        </div>
+        <div class="o3 note" id="tip2" aria-live="polite">Read each line and ask: does this fit a small booking app for one dog walker?</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- STAGE 3 -->
+  <section class="part" id="p3">
+    <span class="bullet glass" data-p="p3">3</span>
+    <div class="part-head">
+      <div class="kicker">Part 3 of 5 · Stage 3</div>
+      <h2>Try it: review the code, then launch</h2>
+      <p>The AI built the booking feature on a branch and opened a <b>pull request</b>. You don't need to understand every line. Read it like a director: find the risky lines, ask for fixes, and ship it the safe way.</p>
+    </div>
+
+    <div class="lab">
+      <div class="a-mission ctl glass">
+        <h3 class="ctl-title">Your mission</h3>
+        <p class="ctl-sub" style="margin-top:0">Three lines in this pull request would hurt Dana's business. Find them, get them fixed, then launch.</p>
+        <ol class="mission" id="mission"></ol>
+      </div>
+      <div class="a-work">
+        <div class="pr glass" id="pr">
+          <div class="pr-head"><span class="pr-state" id="prState">Open</span><h3>Add walk booking #12</h3><p>AI assistant wants to merge <code>booking</code> into <code>main</code> · 2 new files</p></div>
+          <div class="checks" id="checks"></div>
+          <div class="chk-detail" id="chkDetail" hidden></div>
+          <div id="files"></div>
+          <div class="thread" id="thread" aria-live="polite"></div>
+          <div class="pr-actions"><button class="btn" id="reqBtn" disabled>Request changes</button><button class="btn primary" id="mergeBtn" disabled>Approve and merge</button><span class="muted" id="prHint"></span></div>
+        </div>
+      </div>
+      <div class="a-side ctl glass">
+        <h3 class="ctl-title">What a director looks for</h3>
+        <ul class="checklist">
+          <li style="--c:var(--l1)"><span>Secrets or keys written into the code<small>Courses 207 and 209</small></span></li>
+          <li style="--c:var(--l5)"><span>Anything a user types going straight into a database query<small>Course 207</small></span></li>
+          <li style="--c:var(--l4)"><span>Tests that are skipped, deleted or loosened<small>Course 208</small></span></li>
+          <li style="--c:var(--l2)"><span>New packages you didn't ask for<small>Course 204</small></span></li>
+          <li style="--c:var(--l3)"><span>Anything that doesn't match the spec<small>Stage 1</small></span></li>
+        </ul>
+      </div>
+      <div class="a-extra ctl glass" id="launchCard">
+        <h3 class="ctl-title">Ship it</h3>
+        <p class="ctl-sub" id="shipSub">Merge the pull request first. Then staging, then production.</p>
+        <div class="ship" id="ship"></div>
+        <div id="finale"></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- STAGE 4 -->
+  <section class="part" id="p4">
+    <span class="bullet glass" data-p="p4">4</span>
+    <div class="part-head">
+      <div class="kicker">Part 4 of 5 · Stage 4</div>
+      <h2>Steer the AI: launch day</h2>
+      <p>Muddy Paws is live, and the surprises start. An incident, a flood of new ideas, a security report, and a design complaint. Pick the reply you'd send.</p>
+    </div>
+    <p class="counter" id="steerCount"></p>
+    <div id="steer"></div>
+  </section>
+
+  <!-- STAGE 5 -->
+  <section class="part" id="p5">
+    <span class="bullet glass" data-p="p5">5</span>
+    <div class="part-head">
+      <div class="kicker">Part 5 of 5 · Stage 5</div>
+      <h2>Check your understanding</h2>
+      <p>Five questions that pull the whole Core curriculum together. Each answer explains itself.</p>
+    </div>
+    <div id="quiz"></div>
+    <div id="doneCard" aria-live="polite"></div>
+    <div id="recap" aria-live="polite"></div>
+  </section>
+  </div>
+
+  <section class="after" id="cheat">
+    <div class="wrap stack">
+      <h2>The director's checklist</h2>
+      <p class="muted">Every project, every AI tool, the same questions. Screenshot this one.</p>
+      <div class="table-wrap glass">
+        <table>
+          <thead><tr><th>Stage</th><th>Ask the AI</th><th>Push back when…</th><th>Course</th></tr></thead>
+          <tbody>
+            <tr><td><b>Spec</b></td><td>"Here are the users, goal, must-haves, non-goals and constraints. Ask me about anything unclear."</td><td>It starts building before it knows who the app is for.</td><td>210, 213</td></tr>
+            <tr><td><b>Plan</b></td><td>"Show me the parts and how they connect before writing code."</td><td>Secrets in the frontend, the wrong database, no tests, piles of packages.</td><td>201, 202, 204, 205, 206</td></tr>
+            <tr><td><b>Build</b></td><td>"Work on a branch and open a pull request."</td><td>It commits straight to main.</td><td>203</td></tr>
+            <tr><td><b>Review</b></td><td>"Walk me through the risky lines."</td><td>Hard-coded keys, user input in queries, skipped tests.</td><td>207, 208</td></tr>
+            <tr><td><b>Ship</b></td><td>"Staging first, then production, with a way to roll back."</td><td>It deploys straight to production on a Friday night.</td><td>209</td></tr>
+            <tr><td><b>Run</b></td><td>"Show me the logs and the metrics."</td><td>It scales up or rewrites instead of finding the cause.</td><td>208, 209</td></tr>
+            <tr><td><b>Design</b></td><td>"Check it on a phone, with a keyboard and a screen reader."</td><td>Tiny tap targets, low contrast, features nobody asked for.</td><td>210, 211, 212</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p class="muted">That's the whole Core curriculum. If you want to see the ideas underneath, like how computers decide, why some code gets slow, and how AI models learn, the theory electives start with 301.</p>
+    </div>
+  </section>
+</main>
+<script src="../assets/cs-school.js"></script>
+<script>
+(() => {
+const { $, $$, esc, reduce } = CS;
+const wait = ms => new Promise(r => setTimeout(r, reduce ? 0 : ms));
+const PAW = `<svg viewBox="0 0 24 24" aria-hidden="true"><ellipse cx="12" cy="16" rx="5.5" ry="4.5" fill="#2F6B4F"/><circle cx="5.5" cy="10" r="2.3" fill="#2F6B4F"/><circle cx="9.5" cy="6" r="2.3" fill="#2F6B4F"/><circle cx="14.5" cy="6" r="2.3" fill="#2F6B4F"/><circle cx="18.5" cy="10" r="2.3" fill="#2F6B4F"/></svg>`;
+
+CS.lesson({
+  id: '214',
+  parts: [
+    { id: 'p1', title: 'Spec' },
+    { id: 'p2', title: 'Plan' },
+    { id: 'p3', title: 'Review & launch' },
+    { id: 'p4', title: 'Launch day' },
+    { id: 'p5', title: 'Check' }
+  ],
+  onComplete: () => showRecap()
+});
+
+/* ---------------- hero: a project coming together ---------------- */
+(function hero() {
+  const svg = $('#heroArt'), cap = $('#heroCap');
+  const NOTES = [['Spec', 'Dog owners who book on phones.', 'var(--l2)'], ['Plan', 'Keep the secret key on the server.', 'var(--l5)'], ['Review', 'Why is this test skipped?', 'var(--l4)'], ['Ship', 'Staging first, then production.', 'var(--l3)'], ['Launch', "It's live. Watch the logs.", 'var(--l1)']];
+  let st = -1, fresh = -1;
+  const wire = 'color-mix(in srgb, var(--ink) 11%, transparent)';
+  function phone(x, y, w, h) {
+    const cls = k => fresh === k ? ' class="h-pop"' : '';
+    let o = `<rect x="${x}" y="${y}" width="${w}" height="${h}" rx="28" style="fill:var(--glass-strong);stroke:var(--hair)"/><rect x="${x + 8}" y="${y + 8}" width="${w - 16}" height="${h - 16}" rx="21" style="fill:var(--paper)"/>`;
+    const L = x + 20, R = x + w - 20, W = R - L;
+    let yy = y + 30;
+    if (st < 0) return o + `<rect x="${L}" y="${yy}" width="${W * .5}" height="10" rx="5" style="fill:${wire}"/>`;
+    // spec: wireframe
+    if (st < 1) {
+      o += `<g${cls(0)}><rect x="${L}" y="${yy}" width="${W * .6}" height="12" rx="6" style="fill:${wire}"/>` + [0, 1, 2].map(i => `<rect x="${L}" y="${yy + 30 + i * 22}" width="${W * (i === 1 ? .8 : 1)}" height="10" rx="5" style="fill:${wire}"/>`).join('') + `</g>`;
+      return o;
+    }
+    o += `<g${cls(1)}><g transform="translate(${L} ${yy - 4}) scale(.75)">${PAW.replace('<svg viewBox="0 0 24 24" aria-hidden="true">', '').replace('</svg>', '').replace(/fill="#2F6B4F"/g, 'style="fill:var(--l3)"')}</g><text x="${L + 24}" y="${yy + 10}" style="fill:var(--ink);font-family:var(--f-display);font-weight:900;font-size:15px">Muddy Paws</text>`;
+    const dw = (W - 4 * 5) / 5;
+    for (let i = 0; i < 5; i++) o += `<rect x="${L + i * (dw + 5)}" y="${yy + 26}" width="${dw}" height="26" rx="7" style="fill:${i === 1 ? 'var(--l3)' : wire}"/>`;
+    o += `</g>`;
+    yy += 66;
+    if (st >= 2) {
+      o += `<g${cls(2)}>` + ['9:00', '11:00', '14:00'].map((t, i) => `<rect x="${L}" y="${yy + i * 30}" width="${W}" height="24" rx="8" style="fill:${i === 1 ? 'color-mix(in srgb, var(--l3) 22%, transparent)' : wire}"/><text x="${L + 10}" y="${yy + i * 30 + 16.5}" style="fill:var(--ink);font-family:var(--f-body);font-size:13px">${t}</text>${i === 1 ? `<circle cx="${R - 12}" cy="${yy + i * 30 + 12}" r="5" style="fill:var(--l3)"/>` : ''}`).join('') + `</g>`;
+    } else o += [0, 1, 2].map(i => `<rect x="${L}" y="${yy + i * 30}" width="${W}" height="24" rx="8" style="fill:${wire}"/>`).join('');
+    yy += 98;
+    if (st >= 3) o += `<g${cls(3)}><rect x="${L}" y="${yy}" width="${W}" height="30" rx="15" style="fill:var(--ink)"/><text x="${L + W / 2}" y="${yy + 20}" text-anchor="middle" style="fill:var(--paper);font-family:var(--f-display);font-weight:800;font-size:13px">Book a walk · $25</text><rect x="${x + w - 40}" y="${y - 8}" width="52" height="24" rx="12" style="fill:var(--paper);stroke:var(--hair)"/><circle cx="${x + w - 27}" cy="${y + 4}" r="4" style="fill:var(--l3)"/><text x="${x + w - 19}" y="${y + 8.5}" style="fill:var(--ink);font-family:var(--f-display);font-weight:800;font-size:12px">Live</text></g>`;
+    else o += `<rect x="${L}" y="${yy}" width="${W}" height="30" rx="15" style="fill:${wire}"/>`;
+    if (st >= 4) {
+      o += `<g${cls(4)}>` + [['Biscuit booked', 'Tue 9:00'], ['Luna booked', 'Tue 11:00']].map(([a, b], i) => `<g transform="translate(${x - 26 + i * 12} ${y + h - 96 + i * 44})"><rect width="${w * .92}" height="36" rx="12" style="fill:var(--glass-strong);stroke:var(--hair)"/><circle cx="14" cy="18" r="4" style="fill:var(--l1)"/><text x="26" y="16" style="fill:var(--ink);font-family:var(--f-display);font-weight:800;font-size:12px">${a}</text><text x="26" y="29" style="fill:var(--ink-2);font-family:var(--f-body);font-size:11.5px">${b}</text></g>`).join('') + `</g>`;
+    }
+    return o;
+  }
+  function draw() {
+    const narrow = (svg.clientWidth || 520) < 430;
+    let out = '';
+    if (narrow) {
+      svg.setAttribute('viewBox', '0 0 300 340');
+      out += phone(64, 10, 172, 320);
+      NOTES.forEach((n, i) => { out += `<circle cx="${22}" cy="${60 + i * 50}" r="${i <= st ? 7 : 5}" style="fill:${i <= st ? n[2] : 'color-mix(in srgb, var(--ink) 15%, transparent)'}" ${fresh === i ? 'class="h-pop"' : ''}/>`; });
+    } else {
+      svg.setAttribute('viewBox', '0 0 520 340');
+      NOTES.forEach((n, i) => {
+        const y = 22 + i * 62, on = i <= st;
+        out += `<g ${fresh === i ? 'class="h-rise"' : ''} style="opacity:${on ? 1 : .35}"><rect x="0" y="${y}" width="300" height="50" rx="16" style="fill:${on ? 'var(--glass-strong)' : 'transparent'};stroke:var(--hair)"/><circle cx="20" cy="${y + 25}" r="6" style="fill:${on ? n[2] : 'color-mix(in srgb, var(--ink) 18%, transparent)'}"/><text x="36" y="${y + 20}" style="fill:var(--ink-2);font-family:var(--f-display);font-weight:800;font-size:12px">${i + 1} · ${n[0]}</text><text x="36" y="${y + 38}" style="fill:var(--ink);font-family:var(--f-body);font-size:14px">${on ? esc(n[1]) : ''}</text></g>`;
+      });
+      out += phone(330, 10, 176, 320);
+    }
+    svg.innerHTML = out;
+  }
+  addEventListener('resize', draw);
+  if (reduce) { st = 4; draw(); cap.textContent = NOTES[4][1]; return; }
+  draw();
+  let i = -1;
+  (function loop() {
+    i++;
+    if (i > NOTES.length) { i = -1; st = -1; fresh = -1; cap.textContent = 'Build a booking app for Muddy Paws.'; draw(); setTimeout(loop, 1400); return; }
+    if (i === NOTES.length) { setTimeout(loop, 3200); return; }
+    st = i; fresh = i; cap.textContent = NOTES[i][1]; draw();
+    setTimeout(loop, 1900);
+  })();
+})();
+
+/* ---------------- Stage 1: the brief ---------------- */
+const SECS = [
+  { k: 'users', t: 'Users', q: 'who is it for?', opts: [
+    ['vague', 'Everyone who loves dogs.', 'Too broad. "Everyone" gives the AI nothing to design for, so it builds something generic, like a social network.'],
+    ['good', 'Dog owners near Dana who book walks on their phones, and Dana, who manages the schedule.', 'Specific. Two kinds of users, where they are, and what device they use. Every screen can be designed for them.'],
+    ['off', 'Dog walkers across the country looking for clients.', "That's a different product: a marketplace. Dana runs one small business, not a platform."]] },
+  { k: 'goal', t: 'Goal', q: 'what does success look like?', opts: [
+    ['good', 'Owners book and pay for a walk in under a minute, and Dana stops juggling bookings by text.', 'Clear and checkable. You could time it, and Dana would feel the difference within a week.'],
+    ['vague', "Make Dana's business go viral.", '"Viral" is a hope, not something an app can promise. The AI will add sharing and invite features chasing it.'],
+    ['off', 'Replace every tool Dana uses.', 'Far too big. The AI will start on invoices and payroll before a single walk can be booked.']] },
+  { k: 'must', t: 'Must-haves', q: 'what has to be in version one?', opts: [
+    ['off', 'Booking, payments, GPS tracking, chat, a dog photo feed, loyalty points and a shop.', "Seven must-haves means nothing is a priority. This takes months, and most of it isn't what Dana needs yet."],
+    ['vague', 'Whatever a good booking app needs.', 'This hands the decision to the AI. It will fill the gap with its own guesses.'],
+    ['good', 'Book a time slot, pay by card, get a text reminder, cancel up to 24 hours before.', 'Four small, concrete features that make a complete first version. Everything else can wait.']] },
+  { k: 'non', t: 'Non-goals', q: 'what should it not do, for now?', opts: [
+    ['good', 'Not now: GPS tracking, chat, social features, an app store app, more than one walker.', 'Naming what you won\'t build is the strongest scope control there is. The AI stops adding "nice to haves".'],
+    ['vague', "Don't make it ugly.", "That's a wish about style, not a boundary. It doesn't rule out a single extra feature."],
+    ['off', 'None. Build anything that might help.', 'An open door. AI tools love to add features "just in case", and each one is more to test, pay for and fix.']] },
+  { k: 'con', t: 'Constraints', q: 'what limits must it respect?', opts: [
+    ['off', 'Use the newest, most scalable technology.', 'For a small business this buys an expensive, complicated setup. Scale is a problem you want to have later, not pay for now.'],
+    ['good', 'Launch in 3 weeks, hosting under $50 a month, works well on phones and with screen readers, Dana can manage it without code.', 'Deadline, budget, devices, accessibility and who runs it. Now the AI can make sensible trade-offs by itself.'],
+    ['vague', 'No rush, take your time.', "Without a deadline or budget, the AI can't tell a quick job from a big project. It assumes the big one."]] }
+];
+const brief = {}; let sent = 0, sentFull = false, building = false;
+const strongCount = () => SECS.filter(s => brief[s.k] === 'good').length;
+const textOf = (k, v) => { const s = SECS.find(x => x.k === k); const o = s && s.opts.find(o => o[0] === v); return o ? o[1] : null; };
+function renderBrief() {
+  const locked = sent === 0;
+  $('#brief').classList.toggle('locked', locked);
+  const filled = SECS.filter(s => brief[s.k]).length;
+  $('#promptLine').innerHTML = filled ? `<b>Your prompt:</b> Build a booking app for Muddy Paws, Dana's dog-walking business, plus ${filled} part${filled > 1 ? 's' : ''} of a brief.` : `<b>Your prompt:</b> "Build an app for my friend Dana's dog-walking business."${locked ? ' Send it as it is first.' : ''}`;
+  $('#bsecs').innerHTML = SECS.map(s => {
+    const v = brief[s.k];
+    return `<div class="bsec" role="group" aria-label="${s.t}"><h4>${s.t} <span>${s.q}</span><span class="st ${v === 'good' ? 'good' : v ? 'weak' : ''}">${v === 'good' ? 'strong' : v ? 'weak' : 'empty'}</span></h4>
+      <div class="bopts">${s.opts.map(o => `<button class="bopt" data-sec="${s.k}" data-v="${o[0]}" aria-pressed="${v === o[0]}" ${locked || building ? 'disabled' : ''}>${esc(o[1])}</button>`).join('')}</div></div>`;
+  }).join('');
+  const n = strongCount();
+  $('#briefScore').textContent = locked ? 'The brief unlocks after your first send.' : `${n} of 5 parts strong`;
+  $('#sendBtn').disabled = building;
+  $('#sendBtn').textContent = building ? 'Sending…' : sent ? 'Send the brief to the AI' : 'Send to the AI';
+  renderBriefText();
+}
+function renderBriefText() {
+  const lines = [['Users', 'users'], ['Goal', 'goal'], ['Must-haves', 'must'], ['Non-goals', 'non'], ['Constraints', 'con']];
+  $('#briefText').innerHTML = `Build a booking app for Muddy Paws, Dana's dog-walking business.\n\n` + lines.map(([t, k]) => `<b>${t}:</b> ${brief[k] ? esc(textOf(k, brief[k])) : '<span class="ph">not written yet</span>'}`).join('\n') + `\n\nAsk me about anything unclear before you start. Show me a plan before writing code.`;
+}
+$('#copyBtn').addEventListener('click', async () => {
+  const txt = $('#briefText').innerText;
+  try { await navigator.clipboard.writeText(txt); $('#copyMsg').textContent = 'Copied.'; } catch (e) { $('#copyMsg').textContent = 'Copying is blocked here. Select the text and copy it instead.'; }
+});
+function tip1(html, kind = '') { const t = $('#tip1'); t.className = 'o3 note ' + kind; t.innerHTML = html; }
+$('#bsecs').addEventListener('click', e => {
+  const b = e.target.closest('.bopt'); if (!b || b.disabled) return;
+  const s = SECS.find(x => x.k === b.dataset.sec), o = s.opts.find(x => x[0] === b.dataset.v);
+  brief[s.k] = o[0];
+  renderBrief();
+  tip1(`<strong>${o[0] === 'good' ? 'Strong.' : 'Weak.'}</strong> ${esc(o[2])}${o[0] === 'good' && strongCount() === 5 ? ' All five parts are strong. Send the brief.' : ''}`, o[0] === 'good' ? 'good' : 'bad');
+  if (strongCount() === 5) CS.tick('p1', 'brief');
+});
+function draftFor(b) {
+  const feats = [], guesses = [];
+  const add = (...f) => f.forEach(x => { if (!feats.includes(x)) feats.push(x); });
+  let name = 'DogSpace', kind = 'feed';
+  if (b.users === 'good') { name = 'Muddy Paws'; kind = 'book'; }
+  else if (b.users === 'off') { name = 'WalkerHub'; kind = 'market'; add('Walker search', 'Reviews', 'Messages'); guesses.push(['Users', 'You said walkers nationwide, so it built a marketplace. Dana has one small business.']); }
+  else { add('Dog profiles', 'Photo feed', 'Friends', 'Shop'); guesses.push(['Users', b.users ? '"Everyone who loves dogs" made it build a social network.' : 'Nobody said who it\'s for. It guessed "dog lovers" and built a social network.']); }
+  if (b.must === 'good') add('Book a walk', 'Pay by card', 'Reminders', 'Cancel');
+  else if (b.must === 'off') { add('Book a walk', 'Pay by card', 'GPS map', 'Chat', 'Photo feed', 'Points', 'Shop'); guesses.push(['Must-haves', 'Seven must-haves, so it started seven features and finished none.']); }
+  else { add('Book a walk', 'Chat', 'Photo feed'); guesses.push(['Must-haves', b.must ? '"Whatever a booking app needs" let it pick: it added chat and a photo feed.' : 'No features named, so it picked chat and a photo feed.']); }
+  if (b.goal === 'vague') { add('Share', 'Invite friends'); guesses.push(['Goal', '"Go viral" made it add sharing and invites.']); }
+  else if (b.goal === 'off') { add('Invoices', 'Payroll', 'Customer notes'); guesses.push(['Goal', '"Replace every tool" added invoices and payroll.']); }
+  else if (!b.goal) { add('Notifications', 'Badges'); guesses.push(['Goal', 'No goal, so it aimed for "engagement": notifications and badges.']); }
+  if (b.non === 'good') { ['GPS map', 'Chat', 'Photo feed', 'Friends', 'Dog profiles', 'Share', 'Invite friends', 'Points', 'Shop', 'Messages', 'Notifications', 'Badges'].forEach(f => { const i = feats.indexOf(f); if (i >= 0) feats.splice(i, 1); }); if (kind === 'feed') kind = 'book'; }
+  else { add('GPS map', 'Chat'); guesses.push(['Non-goals', b.non === 'vague' ? '"Don\'t make it ugly" set no limits. It added GPS tracking and chat, just in case.' : 'Nothing was off limits, so it added GPS tracking and chat, just in case.']); }
+  let host = 20;
+  if (b.con === 'off') { host = 400; guesses.push(['Constraints', '"Newest, most scalable" meant Kubernetes and six services, about $400 a month.']); }
+  else if (b.con !== 'good') { host = 90; guesses.push(['Constraints', b.con ? '"No rush" made it plan the big version, on pricier hosting.' : 'No budget or deadline, so it planned a big build on pricier hosting.']); }
+  if (!feats.includes('Book a walk')) feats.unshift('Book a walk');
+  const screens = feats.length + 2;
+  const weeks = Math.ceil(screens * 0.5 * (b.con === 'off' ? 1.5 : 1));
+  return { name, kind, feats, guesses, screens, weeks, host };
+}
+function phoneHTML(d) {
+  let body = '';
+  if (d.kind === 'book') {
+    body = `<div class="dtitle">Book a walk</div><div class="ddays"><span>Mon<br>14</span><span class="on">Tue<br>15</span><span>Wed<br>16</span><span>Thu<br>17</span><span>Fri<br>18</span></div>
+      <div class="dslot"><span>9:00</span><span>free</span></div><div class="dslot on"><span>11:00</span><span>selected</span></div><div class="dslot taken"><span>14:00</span><span>taken</span></div>
+      <div class="dbtn">Book and pay $25</div>${d.feats.includes('Cancel') ? '<div class="dsmall">Free cancellation up to 24 hours before</div>' : ''}${d.feats.includes('Reminders') ? '<div class="dsmall">We\'ll text you a reminder</div>' : ''}`;
+  } else if (d.kind === 'feed') {
+    body = `<div class="dstories"><i></i><i></i><i></i><i></i><i></i></div><div class="dpost"><i></i><span><b>biscuit_the_beagle</b> Park day!</span></div><div class="dpost"><i></i><span><b>luna.loves.walks</b> New harness</span></div>`;
+  } else {
+    body = `<div class="dsearch">Search 2,400 walkers near you</div>` + [['Sam R.', '4.9 · $22 a walk'], ['Priya K.', '4.8 · $25 a walk'], ['Jo M.', '4.7 · $19 a walk'], ['Alex T.', '4.9 · $30 a walk']].map(([n, s]) => `<div class="dcard"><i></i><span><b>${n}</b><br>${s}</span></div>`).join('');
+  }
+  const tabs = d.feats.slice(0, 4), more = d.feats.length - tabs.length;
+  return `<div class="dtop">${PAW}<span>${esc(d.name)}</span></div><div class="dbody">${body}</div><div class="dtabs">${tabs.map(t => `<span>${esc(t)}</span>`).join('')}${more > 0 ? `<span class="more">+${more} more</span>` : ''}</div>`;
+}
+let lastDraft = null;
+function renderDraft() {
+  const d = lastDraft;
+  const facts = d ? `<div class="dfacts"><div class="dfact ${d.screens > 6 ? 'bad' : 'good'}"><span>Screens</span><b>${d.screens}</b></div><div class="dfact ${d.weeks > 3 ? 'bad' : 'good'}"><span>Weeks</span><b>${d.weeks}</b></div><div class="dfact ${d.host > 50 ? 'bad' : 'good'}"><span>Monthly</span><b>$${d.host}</b></div></div>` : '';
+  const guess = d ? `<div class="guess"><h4>What the AI had to guess</h4><ul>${d.guesses.length ? d.guesses.map(([k, g]) => `<li><span><b>${k}.</b> ${esc(g)}</span></li>`).join('') : '<li class="none"><span>Nothing. Every big decision came from you.</span></li>'}</ul></div>` : '<p class="muted" style="margin-top:12px">The AI\'s first draft will appear here.</p>';
+  $('#draft').innerHTML = `<h3 class="ctl-title">What the AI built</h3><div class="draft-grid"><div class="dphone"><div class="dscreen${building ? ' building' : ''}">${d ? phoneHTML(d) : '<div class="dempty">Nothing built yet.</div>'}</div></div><div>${facts}${guess}</div></div>`;
+}
+$('#sendBtn').addEventListener('click', async () => {
+  if (building) return;
+  building = true; renderBrief(); renderDraft();
+  await wait(900);
+  building = false;
+  const prevDraft = lastDraft;
+  lastDraft = draftFor(brief);
+  sent++;
+  const n = strongCount();
+  if (sent === 1 && !Object.keys(brief).length) {
+    CS.tick('p1', 'vague');
+    tip1(`<strong>That's ${lastDraft.name}.</strong> ${lastDraft.screens} screens, ${lastDraft.weeks} weeks, and ${lastDraft.guesses.length} big guesses, none of them from Dana. The AI wasn't being silly. It filled every gap with the most common answer. Now the brief is unlocked: pick the strongest line for each part.`, 'bad');
+  } else if (n === 5) {
+    CS.tick('p1', 'resend');
+    tip1(`<strong>Now that's Dana's app.</strong> ${lastDraft.screens} screens instead of ${draftFor({}).screens}, ${lastDraft.weeks} weeks, $${lastDraft.host} a month, and no guesses. Same AI, same model. The only thing that changed was your brief.`, 'good');
+  } else {
+    const prevScreens = prevDraft ? prevDraft.screens : lastDraft.screens;
+    const lead = lastDraft.screens < prevScreens ? 'Smaller and closer.' : lastDraft.screens > prevScreens ? 'Bigger, not better.' : 'Still off.';
+    tip1(`<strong>${lead} ${n} of 5 parts strong.</strong> The AI still guessed ${lastDraft.guesses.length} thing${lastDraft.guesses.length > 1 ? 's' : ''}. Read the list, and strengthen those parts of the brief.`, 'info');
+  }
+  renderBrief(); renderDraft();
+  if (matchMedia('(max-width:900px)').matches) $('#draft').scrollIntoView({ behavior: reduce ? 'auto' : 'smooth', block: 'start' });
+});
+renderBrief(); renderDraft();
+
+/* ---------------- Stage 2: the plan ---------------- */
+const PLAN = [
+  { area: 'Frontend', text: 'A mobile-first web app. Owners book in the browser, no app store needed.', ok: 'Sound. Your brief said phones, and a web app skips app store review. (Courses 202 and 210)' },
+  { area: 'Payments', part: 'key', bad: true, course: '207 Security', text: 'Keep the Stripe secret key in the frontend code so checkout is quick.', why: "Anything in the frontend is sent to every visitor's browser. Anyone could read the key and charge cards or issue refunds.", fix: "The secret key stays on the server in an environment variable. The browser only gets Stripe's public key." },
+  { area: 'Database', part: 'db', bad: true, course: '205 Data', text: 'A vector database for bookings, dogs and owners.', why: 'Vector databases are for searching by meaning, like finding similar text. Bookings are rows that link together: owners, dogs, time slots.', fix: 'PostgreSQL, a relational database. Owners, dogs and bookings are linked tables, and a unique rule stops two bookings in one slot.' },
+  { area: 'Logins', text: 'Owners sign in with a one-time email link. Dana gets an admin role.', ok: 'Sound. No passwords to leak, and only Dana can see every booking. (Course 207)' },
+  { area: 'Packages', part: 'deps', bad: true, course: '204 Dependencies', text: '30 npm packages, including 3 UI kits, 2 date libraries and one that pads strings.', why: 'Every package is code you depend on, update and trust. Three UI kits and two date libraries do the same jobs twice.', fix: "8 well-kept packages: one UI kit, one date library, Stripe's official library and the essentials." },
+  { area: 'Git', text: 'A branch and a pull request for each feature, so you can review before anything reaches main.', ok: 'Sound. You see every change before it goes live. (Course 203)' },
+  { area: 'Tests', part: 'tests', bad: true, course: '208 Testing', text: 'Skip tests for now so we can launch faster.', why: "Without tests, any change the AI makes could quietly break booking or payments, and you'd hear it from customers first.", fix: 'Unit tests for prices and time slots, an integration test for booking plus payment, and one end-to-end test that books a walk.' },
+  { area: 'Hosting', text: 'One managed host with staging and production, deploys from main, one-click rollback. About $20 a month.', ok: 'Sound. Cheap and simple, with a rehearsal copy and an undo button. (Course 209)' }
+];
+const flags = new Set(); let revised = false;
+function tip2(html, kind = '') { const t = $('#tip2'); t.className = 'o3 note ' + kind; t.innerHTML = html; }
+function renderPlan(nope) {
+  $('#plan').innerHTML = PLAN.map((p, i) => {
+    const f = flags.has(i), rv = revised && p.bad;
+    return `<li><button class="pline${f && !rv ? ' flagged' : ''}${rv ? ' revised' : ''}${nope === i ? ' nope' : ''}" data-i="${i}" aria-pressed="${f}" ${revised ? 'disabled' : ''}>
+      <span class="area">${p.area}${rv ? '<span class="flag">Revised</span>' : f ? '<span class="flag">Flagged</span>' : ''}</span>
+      <span class="txt">${esc(rv ? p.fix : p.text)}</span>${f && !rv ? `<span class="why">${esc(p.why)} <span class="cchip">${p.course}</span></span>` : ''}</button></li>`;
+  }).join('');
+  const n = [...flags].length;
+  $('#flagCount').textContent = revised ? 'Review sent. The plan is revised.' : `${n} of 4 problems flagged`;
+  $('#reviewBtn').disabled = revised || n < 4;
+  drawArch();
+}
+$('#plan').addEventListener('click', e => {
+  const b = e.target.closest('.pline'); if (!b || b.disabled) return;
+  const i = +b.dataset.i, p = PLAN[i];
+  if (!p.bad) { renderPlan(i); tip2(`<strong>Leave this one.</strong> ${esc(p.ok)}`, 'info'); return; }
+  if (flags.has(i)) { flags.delete(i); renderPlan(); tip2('<strong>Unflagged.</strong>'); return; }
+  flags.add(i); renderPlan();
+  tip2(`<strong>Good catch: ${esc(p.area.toLowerCase())}.</strong> ${esc(p.why)}${flags.size === 4 ? ' That\'s all four. Send your review.' : ''}`, 'good');
+  if (flags.size === 4) CS.tick('p2', 'flag');
+});
+$('#reviewBtn').addEventListener('click', async () => {
+  if (flags.size < 4 || revised) return;
+  $('#reviewBtn').disabled = true; $('#flagCount').textContent = 'The AI is revising the plan…';
+  await wait(800);
+  revised = true; renderPlan();
+  CS.tick('p2', 'send');
+  if (matchMedia('(max-width:900px)').matches) $('.archbox').scrollIntoView({ behavior: reduce ? 'auto' : 'smooth', block: 'start' });
+  tip2('<strong>Plan revised.</strong> Look at the map: the secret key moved to the server, the database is PostgreSQL, the package count dropped and tests are in. Four sentences from you, before any code existed. Fixing the same things after launch would have taken weeks.', 'good');
+});
+function drawArch() {
+  const svg = $('#arch');
+  const narrow = (svg.clientWidth || 520) < 430;
+  const bad = k => flags.has(PLAN.findIndex(p => p.part === k));
+  const L = narrow
+    ? { W: 330, H: 456, phone: [16, 16, 104, 172], stripe: [196, 34, 118, 54], host: [8, 214, 314, 234], server: [22, 240, 164, 138], db: [264, 262, 92, 88] }
+    : { W: 540, H: 330, phone: [6, 72, 112, 184], stripe: [404, 6, 128, 56], host: [148, 92, 388, 232], server: [168, 118, 168, 138], db: [470, 146, 96, 92] };
+  const [px, py, pw, ph] = L.phone, [sx, sy, sw, sh] = L.server, [tx, ty, tw, th] = L.stripe, [hx, hy, hw, hh] = L.host;
+  const [dcx, dty, dw, dh] = L.db, dx = dcx - dw / 2, ry = 9;
+  const font = (w, s) => `font-family:var(--f-display);font-weight:${w};font-size:${s}px`;
+  const halo = (x, y, w, h, on) => on && !revised ? `<rect class="a-halo" x="${x}" y="${y}" width="${w}" height="${h}" rx="${Math.min(h / 2, 16)}" style="fill:none;stroke:var(--l1)" stroke-width="2.5"/><rect x="${x}" y="${y}" width="${w}" height="${h}" rx="${Math.min(h / 2, 16)}" style="fill:none;stroke:var(--l1)" stroke-width="2"/>` : '';
+  const link = (x1, y1, x2, y2, st = 'var(--ink-2)', extra = '', vertical = false) => {
+    const d = vertical ? `M${x1} ${y1}C${x1} ${(y1 + y2) / 2} ${x2} ${(y1 + y2) / 2} ${x2} ${y2}` : `M${x1} ${y1}C${(x1 + x2) / 2} ${y1} ${(x1 + x2) / 2} ${y2} ${x2} ${y2}`;
+    return `<path d="${d}" fill="none" style="stroke:${st}" stroke-width="2" stroke-linecap="round" ${extra}/>`;
+  };
+  let o = '';
+  o += `<rect x="${hx}" y="${hy}" width="${hw}" height="${hh}" rx="18" style="fill:color-mix(in srgb, var(--l3) 8%, transparent);stroke:var(--hair)" stroke-dasharray="5 5"/><text x="${hx + 14}" y="${hy + hh - 12}" style="fill:var(--ink-2);${font(700, 12.5)}">Host: staging + production · $20 a month</text>`;
+  // links
+  o += narrow ? link(px + pw * .6, py + ph, sx + 40, sy, undefined, '', true) : link(px + pw, py + ph * .6, sx, sy + sh / 2);
+  o += link(sx + sw, sy + sh * .45, dx, dty + dh / 2);
+  o += narrow ? link(sx + sw * .8, sy, tx + tw / 2, ty + th, undefined, '', true) : link(sx + sw * .8, sy, tx, ty + th * .65);
+  if (!revised) o += narrow ? link(px + pw, py + 100, tx, ty + th / 2, 'var(--l1)', 'stroke-dasharray="4 5"') : `<path d="M${px + pw} ${py + 100}C${px + pw + 40} ${py + 100} ${px + pw + 30} ${ty + th * .4} ${tx} ${ty + th * .4}" fill="none" style="stroke:var(--l1)" stroke-width="2" stroke-dasharray="4 5"/>`;
+  // phone
+  o += `<rect x="${px}" y="${py}" width="${pw}" height="${ph}" rx="20" style="fill:var(--glass-strong);stroke:var(--hair)"/><rect x="${px + pw / 2 - 14}" y="${py + 9}" width="28" height="5" rx="2.5" style="fill:var(--hair)"/>
+    <text x="${px + pw / 2}" y="${py + 44}" text-anchor="middle" style="fill:var(--ink);${font(800, 15)}">Phone</text><text x="${px + pw / 2}" y="${py + 62}" text-anchor="middle" style="fill:var(--ink-2);${font(700, 12.5)}">frontend</text>`;
+  // server with its two badges
+  o += `<rect x="${sx}" y="${sy}" width="${sw}" height="${sh}" rx="16" style="fill:var(--glass-strong);stroke:var(--hair)"/><text x="${sx + 14}" y="${sy + 26}" style="fill:var(--ink);${font(800, 15)}">Server</text><text x="${sx + 14}" y="${sy + 44}" style="fill:var(--ink-2);${font(700, 12.5)}">backend</text>`;
+  const pill = (x, y, txt, good) => { const w = txt.length * 7 + 24; return [`<rect x="${x}" y="${y}" width="${w}" height="24" rx="12" style="fill:${good ? 'var(--good-bg)' : 'var(--bad-bg)'}"/><circle cx="${x + 12}" cy="${y + 12}" r="3.5" style="fill:${good ? 'var(--good)' : 'var(--bad)'}"/><text x="${x + 21}" y="${y + 16.5}" style="fill:${good ? 'var(--good)' : 'var(--bad)'};${font(800, 12)}">${txt}</text>`, w]; };
+  const [p1, w1] = pill(sx + 12, sy + 58, revised ? '8 packages' : '30 packages', revised);
+  const [p2, w2] = pill(sx + 12, sy + 92, revised ? '24 tests' : 'no tests', revised);
+  o += p1 + p2 + halo(sx + 7, sy + 53, w1 + 10, 34, bad('deps')) + halo(sx + 7, sy + 87, w2 + 10, 34, bad('tests'));
+  // database
+  o += `<path d="M${dx} ${dty}V${dty + dh}A${dw / 2} ${ry} 0 0 0 ${dx + dw} ${dty + dh}V${dty}" style="fill:var(--glass-strong);stroke:var(--hair)"/><ellipse cx="${dcx}" cy="${dty}" rx="${dw / 2}" ry="${ry}" style="fill:var(--glass-strong);stroke:var(--hair)"/>
+    <text x="${dcx}" y="${dty + 38}" text-anchor="middle" style="fill:${revised ? 'var(--good)' : bad('db') ? 'var(--bad)' : 'var(--ink)'};${font(800, 13.5)}">${revised ? 'PostgreSQL' : 'Vector DB'}</text><text x="${dcx}" y="${dty + 56}" text-anchor="middle" style="fill:var(--ink-2);${font(700, 12)}">database</text>`;
+  o += halo(dx - 7, dty - ry - 7, dw + 14, dh + ry * 2 + 14, bad('db'));
+  // stripe
+  o += `<rect x="${tx}" y="${ty}" width="${tw}" height="${th}" rx="14" style="fill:var(--glass-strong);stroke:var(--hair)"/><text x="${tx + tw / 2}" y="${ty + 25}" text-anchor="middle" style="fill:var(--ink);${font(800, 14)}">Stripe</text><text x="${tx + tw / 2}" y="${ty + 42}" text-anchor="middle" style="fill:var(--ink-2);${font(700, 12)}">payments</text>`;
+  // the secret key: in the phone before the review, on the server after
+  const key = (x, y, good) => `<g transform="translate(${x} ${y})"><circle cx="8" cy="8" r="6.5" style="fill:none;stroke:${good ? 'var(--good)' : 'var(--bad)'}" stroke-width="3"/><path d="M14 8h16M25 8v6M30 8v5" style="stroke:${good ? 'var(--good)' : 'var(--bad)'}" stroke-width="3" stroke-linecap="round" fill="none"/></g>`;
+  if (revised) o += key(sx + sw - 50, sy + 14, true) + `<text x="${sx + sw - 12}" y="${sy + 44}" text-anchor="end" style="fill:var(--good);${font(700, 11.5)}">secret key</text>`;
+  else o += key(px + pw / 2 - 17, py + 84, false) + `<text x="${px + pw / 2}" y="${py + 122}" text-anchor="middle" style="fill:var(--bad);${font(700, 12)}">secret key</text>` + halo(px + 12, py + 72, pw - 24, 64, bad('key'));
+  svg.setAttribute('viewBox', `0 0 ${L.W} ${L.H}`);
+  svg.innerHTML = o;
+}
+addEventListener('resize', drawArch);
+renderPlan();
+
+/* ---------------- Stage 3: pull request review and launch ---------------- */
+const K = s => `<span class="k">${s}</span>`, Sx = s => `<span class="s">${s}</span>`, F = s => `<span class="f">${s}</span>`, N = s => `<span class="n">${s}</span>`;
+const FILES = [
+  { name: 'api/book.js', lines: [
+    [`${K('import')} { db } ${K('from')} ${Sx("'../db.js'")};`, 'Brings in the database helper. Fine.'],
+    [`${K('import')} Stripe ${K('from')} ${Sx("'stripe'")};`, "Stripe's official library for payments. A sensible dependency."],
+    ['', null],
+    [`${K('const')} stripe = ${K('new')} ${F('Stripe')}(${Sx("'sk_live_51MuddyPaws9fQx2'")});`, 'A', `${K('const')} stripe = ${K('new')} ${F('Stripe')}(process.env.PAYMENTS_KEY);`],
+    ['', null],
+    [`${K('export async function')} ${F('bookWalk')}(req, res) {`, 'The function that runs when an owner books. Fine.'],
+    [`  ${K('const')} { dogId, slot } = req.body;`, 'Reads which dog and which time slot the owner picked. Fine, as long as those values are handled safely below.'],
+    [`  ${K('const')} owner = req.user;`, 'The owner comes from the login session on the server, not from what the browser claims. Good.'],
+    [`  ${K('const')} taken = ${K('await')} db.${F('query')}(`, 'Asks the database whether the slot is taken. Read the next line carefully.'],
+    [`    ${Sx('`SELECT id FROM bookings WHERE slot = \'${slot}\'`')}`, 'B', `    ${Sx("'SELECT id FROM bookings WHERE slot = $1'")}, [slot]`],
+    ['  );', null],
+    [`  ${K('await')} stripe.charges.${F('create')}({ amount: ${N('2500')}, customer: owner.stripeId });`, 'Charges $25. Notice that nothing checks <code>taken</code> first. Look at the tests file.', [`  ${K('if')} (taken.rows.length) ${K('return')} res.${F('status')}(${N('409')}).${F('json')}({ ok: ${K('false')} });`, `  ${K('await')} stripe.charges.${F('create')}({ amount: ${N('2500')}, customer: owner.stripeId });`]],
+    [`  ${K('await')} db.${F('insert')}(${Sx("'bookings'")}, { dogId, slot, ownerId: owner.id });`, 'Saves the booking. Fine.'],
+    [`  ${K('return')} res.${F('json')}({ ok: ${K('true')} });`, 'Tells the phone it worked. Fine.'],
+    ['}', null]
+  ] },
+  { name: 'tests/book.test.js', lines: [
+    [`${F('test')}(${Sx("'books a free slot'")}, ${K('async')} () =&gt; {`, 'A test that books a free slot. Good.'],
+    [`  ${K('const')} res = ${K('await')} ${F('book')}({ dogId: ${Sx("'biscuit'")}, slot: ${Sx("'tue-09'")} });`, 'Books Biscuit for Tuesday at 9. Fine.'],
+    [`  ${F('expect')}(res.ok).${F('toBe')}(${K('true')});`, 'Checks it worked. Fine.'],
+    ['});', null],
+    ['', null],
+    [`${F('test')}.${F('skip')}(${Sx("'refuses a slot that is already taken'")}, ${K('async')} () =&gt; {`, 'C', `${F('test')}(${Sx("'refuses a slot that is already taken'")}, ${K('async')} () =&gt; {`],
+    [`  ${K('await')} ${F('book')}({ dogId: ${Sx("'biscuit'")}, slot: ${Sx("'tue-09'")} });`, 'Books a slot once…'],
+    [`  ${K('const')} res = ${K('await')} ${F('book')}({ dogId: ${Sx("'luna'")}, slot: ${Sx("'tue-09'")} });`, '…then tries to book the same slot for another dog.'],
+    [`  ${F('expect')}(res.ok).${F('toBe')}(${K('false')});`, 'Expects the second booking to be refused. That\'s exactly the right test.'],
+    ['});', null]
+  ] }
+];
+const ISSUES = {
+  A: { title: 'the live key in the code', opts: [
+    ['Can you shorten this line?', 0, 'Line length is the least of it. This line contains a live secret key.'],
+    ["This is a live secret key committed to git. Read it from an environment variable, and have Dana create a new key, since this one is exposed.", 1, 'Exactly. Anyone who can see the repository could charge cards with it. Move it out and replace it (courses 207 and 209).'],
+    ['Rename stripe to payments for clarity.', 0, "A fine nitpick, but it leaves Dana's live key sitting in the code."]] },
+  B: { title: 'the query built from user input', opts: [
+    ['Add a comment explaining this query.', 0, 'A comment won\'t stop the danger: the slot value comes straight from the browser and is pasted into the SQL.'],
+    ['Use double quotes instead of single quotes.', 0, 'Quotes are not the problem. Pasting user input into a query is.'],
+    ["Don't paste the slot into the SQL. Use a parameterized query, so a crafted value can't run its own commands.", 1, 'Right. This is called SQL injection, one of the oldest holes on the web. Placeholders keep data and commands apart (course 207).']] },
+  C: { title: 'the skipped test', opts: [
+    ["Why is this skipped? Un-skip it and make it pass. Right now two owners can book, and pay for, the same slot.", 1, 'Yes. The skipped test is exactly the bug: nothing checks the slot before charging. A skipped test is a hidden failure (course 208).'],
+    ["Fine to skip it for launch, we'll fix it later.", 0, "Double bookings on day one means two owners, one walker and a refund. The test is telling you something."],
+    ['Delete this test if it keeps failing.', 0, 'Deleting it hides the bug instead of fixing it. The test is right.']] }
+};
+const P3 = { comments: {}, open: null, requested: false, fixed: false, merged: false, staging: 'none', prod: 'none', checksOpen: false, busy: false, checksRun: false };
+const commentsDone = () => Object.keys(P3.comments).length;
+function renderMission3() {
+  const steps = [
+    ['Comment on the risky lines', `Click a line in the diff to comment. ${commentsDone()} of 3 found.`, commentsDone() === 3],
+    ['Request changes', 'Send your comments back to the AI.', P3.requested],
+    ['Approve and merge', 'When every check is green, merge into main.', P3.merged],
+    ['Ship to staging', 'Deploy, then try a booking there.', P3.staging === 'ok'],
+    ['Launch to production', 'Go live.', P3.prod === 'ok']
+  ];
+  const cur = steps.findIndex(s => !s[2]);
+  $('#mission').innerHTML = steps.map((s, i) => `<li class="${s[2] ? 'done' : i === cur ? 'cur' : ''}"><span class="ck">${s[2] ? '✓' : i + 1}</span><div><b>${s[0]}</b>${i === cur ? `<span class="how">${s[1]}</span>` : ''}</div></li>`).join('');
+}
+function renderChecks() {
+  const t = P3.checksRun ? { cls: 'run', txt: 'Tests running…' } : P3.fixed ? { cls: '', txt: 'Tests: 24 passed' } : { cls: 'warn', txt: 'Tests: 23 passed, 1 skipped' };
+  $('#checks').innerHTML = `<button class="chk${P3.checksRun ? ' run' : ''}" data-chk="build"><i></i>Build</button><button class="chk ${t.cls}" data-chk="tests" aria-expanded="${P3.checksOpen}"><i></i>${t.txt}</button><button class="chk${P3.checksRun ? ' run' : ''}" data-chk="preview"><i></i>Preview deploy</button>`;
+}
+$('#checks').addEventListener('click', e => {
+  const b = e.target.closest('.chk'); if (!b) return;
+  const d = $('#chkDetail');
+  if (b.dataset.chk === 'tests') {
+    P3.checksOpen = !P3.checksOpen; renderChecks();
+    d.hidden = !P3.checksOpen;
+    d.innerHTML = P3.fixed ? '<b>24 passed.</b> Including "refuses a slot that is already taken", which now runs.' : '<b>23 passed, 1 skipped:</b> "refuses a slot that is already taken". Green checks can hide a skipped test. Find it in the diff below.';
+  } else { d.hidden = false; P3.checksOpen = false; renderChecks(); d.innerHTML = b.dataset.chk === 'build' ? '<b>Build passed.</b> The code compiles and bundles. That says nothing about whether it\'s safe.' : '<b>Preview deploy ready.</b> A private copy of this branch you could click through, like a mini staging.'; }
+});
+function renderFiles() {
+  const plain = c => c.replace(/<[^>]+>/g, '').replace(/&gt;/g, '>');
+  $('#files').innerHTML = FILES.map((f, fi) => {
+    let no = 0;
+    const rows = f.lines.map((l, li) => {
+      const id = `${fi}-${li}`, issue = /^[ABC]$/.test(l[1]) ? l[1] : null;
+      if (P3.fixed && l[2]) {
+        // a fixed line: the new code is highlighted; any line the fix kept follows it unhighlighted
+        const [nu, ...kept] = [].concat(l[2]);
+        return [[nu, ' fixed'], ...kept.map(k => [k, ''])].map(([code, cls]) => { no++; return `<button class="dl${cls}" data-line="${id}" tabindex="-1" aria-label="Line ${no}${cls ? ', changed' : ''}: ${esc(plain(code))}"><span class="no">${no}</span><span class="cd">${code}</span></button>`; }).join('');
+      }
+      no++;
+      const code = l[0];
+      const cls = issue && P3.comments[issue] ? ' commented' : P3.open === id ? ' sel' : '';
+      let extra = '';
+      if (issue && P3.comments[issue] && !P3.fixed) extra = `<div class="ccomment"><b>Your comment</b>${esc(ISSUES[issue].opts.find(o => o[1])[0])}</div>`;
+      else if (P3.open === id && !P3.fixed) {
+        if (issue) extra = `<div class="composer" role="group" aria-label="Write a review comment"><div class="lbl">What would you say about this line?</div><div class="opts">${ISSUES[issue].opts.map((o, oi) => `<button class="opt" data-cmt="${issue}" data-o="${oi}">${esc(o[0])}</button>`).join('')}</div><div class="note" hidden aria-live="polite"></div></div>`;
+        else if (l[1]) extra = `<div class="composer"><div class="say"><b>Looks fine.</b> ${l[1]}</div></div>`;
+      }
+      return `<button class="dl${cls}" data-line="${id}" ${!l[1] || P3.fixed ? 'tabindex="-1"' : ''} aria-label="Line ${no}: ${esc(plain(code)) || 'blank'}"><span class="no">${no}</span><span class="cd">${code || ' '}</span></button>${extra}`;
+    }).join('');
+    return `<div class="dfile"><div class="dfile-h"><span>${f.name}</span><span>+${no} new</span></div>${rows}</div>`;
+  }).join('');
+}
+function renderPRActions() {
+  const n = commentsDone();
+  $('#reqBtn').disabled = P3.requested || n < 3 || P3.busy;
+  $('#reqBtn').classList.toggle('primary', !P3.requested);
+  $('#mergeBtn').classList.toggle('primary', P3.requested);
+  $('#mergeBtn').disabled = !P3.fixed || P3.merged || P3.busy || P3.checksRun;
+  $('#mergeBtn').textContent = P3.merged ? 'Merged' : 'Approve and merge';
+  $('#prHint').textContent = P3.merged ? 'Merged into main.' : P3.fixed ? (P3.checksRun ? 'Checks are running on the new commit…' : 'All checks green.') : P3.requested ? '' : `${n} of 3 risky lines commented`;
+  $('#prState').textContent = P3.merged ? 'Merged' : 'Open'; $('#prState').classList.toggle('merged', P3.merged);
+}
+function renderShip() {
+  const row = (name, st, btn, dis) => `<div class="shiprow"><span class="sdot ${st === 'ok' ? 'ok' : st === 'run' ? 'run' : ''}"></span><span><b>${name}</b><span class="s">${st === 'ok' ? (name === 'Staging' ? 'Running · a test booking worked' : 'Live at muddypaws.app') : st === 'run' ? 'Deploying…' : 'Not deployed yet'}</span></span>${btn ? `<button class="btn${name === 'Production' ? ' primary' : ''}" data-ship="${name}" ${dis ? 'disabled' : ''}>${btn}</button>` : ''}</div>`;
+  $('#ship').innerHTML = row('Staging', P3.staging, P3.staging === 'ok' ? '' : 'Deploy to staging', !P3.merged || P3.staging === 'run') + row('Production', P3.prod, P3.prod === 'ok' ? '' : 'Launch', !P3.merged || P3.prod === 'run');
+  $('#shipSub').textContent = P3.prod === 'ok' ? 'Muddy Paws is live.' : P3.merged ? 'Merged. Staging first, then production.' : 'Merge the pull request first. Then staging, then production.';
+}
+function render3() { renderMission3(); renderChecks(); renderFiles(); renderPRActions(); renderShip(); }
+function thread(who, html, me) { $('#thread').insertAdjacentHTML('beforeend', `<div class="msg ${me ? 'me' : 'ai'}"><span class="who">${who}</span>${html}</div>`); }
+$('#files').addEventListener('click', e => {
+  const c = e.target.closest('[data-cmt]');
+  if (c) {
+    const issue = c.dataset.cmt, o = ISSUES[issue].opts[+c.dataset.o];
+    const note = $('.note', c.closest('.composer'));
+    if (o[1]) { P3.comments[issue] = true; P3.open = null; render3(); return; }
+    c.classList.add('wrong'); c.disabled = true; CS.say(note, `<strong>That misses it.</strong> ${esc(o[2])}`, 'bad');
+    return;
+  }
+  const b = e.target.closest('.dl'); if (!b || P3.fixed) return;
+  const id = b.dataset.line, [fi, li] = id.split('-').map(Number), l = FILES[fi].lines[li];
+  if (!l[1]) return;
+  if (/^[ABC]$/.test(l[1]) && P3.comments[l[1]]) return;
+  P3.open = P3.open === id ? null : id; render3();
+  const again = $(`.dl[data-line="${id}"]`); if (again) again.focus({ preventScroll: true });
+});
+$('#reqBtn').addEventListener('click', async () => {
+  if (commentsDone() < 3 || P3.requested) return;
+  P3.requested = true; P3.busy = true; render3();
+  thread('You', 'Requesting changes: three comments on the diff.', true);
+  await wait(900);
+  thread('AI assistant', 'Good catches, thank you. I pushed a new commit: the key now comes from <code>PAYMENTS_KEY</code> and I\'ve flagged that Dana should replace the old one, the query uses a placeholder, the slot is checked before anyone is charged, and the skipped test now runs and passes.');
+  P3.fixed = true; P3.checksRun = true; P3.open = null; P3.busy = false; render3();
+  await wait(1400);
+  P3.checksRun = false; render3();
+  if (P3.checksOpen) $('#chkDetail').innerHTML = '<b>24 passed.</b> Including "refuses a slot that is already taken", which now runs.';
+});
+$('#mergeBtn').addEventListener('click', () => {
+  if (!P3.fixed || P3.merged) return;
+  P3.merged = true; render3();
+  thread('You', 'Approved and merged into main.', true);
+});
+$('#ship').addEventListener('click', async e => {
+  const b = e.target.closest('[data-ship]'); if (!b || b.disabled) return;
+  if (b.dataset.ship === 'Production' && P3.staging !== 'ok') { CS.toast('Staging first: try one booking there before customers do.'); $('#shipSub').textContent = 'Hold on: ship to staging first and try one booking there. It takes a minute and catches most surprises.'; return; }
+  const k = b.dataset.ship === 'Staging' ? 'staging' : 'prod';
+  P3[k] = 'run'; renderShip();
+  await wait(1100);
+  P3[k] = 'ok'; renderMission3(); renderShip();
+  if (k === 'prod') launch();
+});
+async function launch() {
+  CS.completePart('p3');
+  CS.confetti();
+  const NOTES = [['Biscuit', 'Tue 9:00'], ['Luna', 'Tue 11:00'], ['Pepper', 'Wed 9:00'], ['Mochi', 'Wed 14:00']];
+  $('#finale').innerHTML = `<div class="finale"><div><div class="kicker" style="color:var(--good)">Launched</div><h3>Muddy Paws is live.</h3><p>From one fuzzy sentence to a reviewed, tested, safely shipped app. The AI wrote the code. Every decision that mattered was yours.</p>
+    <div class="fstats"><div class="fstat"><b id="fBook">0</b><span>bookings so far</span></div><div class="fstat"><b>$20</b><span>a month to run</span></div><div class="fstat"><b>0</b><span>double bookings</span></div></div></div>
+    <div class="fphone" aria-label="Muddy Paws on a phone, with bookings arriving"><div class="fscreen"><span class="flive">Live</span><div class="dtop" style="padding:2px 0 4px">${PAW}<span>Muddy Paws</span></div><div id="fFeed" style="display:flex;flex-direction:column;gap:8px"></div></div></div></div>`;
+  for (let i = 0; i < NOTES.length; i++) {
+    await wait(700);
+    $('#fFeed').insertAdjacentHTML('beforeend', `<div class="fnote"><b>${NOTES[i][0]}</b> booked a walk · ${NOTES[i][1]}</div>`);
+    $('#fBook').textContent = i + 1;
+  }
+}
+render3();
+
+/* ---------------- Stage 4: launch day ---------------- */
+CS.steer($('#steer'), [
+  { who: 'AI assistant', ai: 'Since the 2:10 deploy, one in five bookings fails with an error. I\'ll rewrite the booking module from scratch and push it straight to production.',
+    opts: [["Yes, quickly, customers are waiting.", 0, "A rushed rewrite pushed straight to production is how one incident becomes two. It also throws away the clues."],
+           ["Roll back to this morning's version first. Then read the logs, reproduce the error with a test, and ship the smallest fix through staging.", 1, "That's the playbook: stop the damage in seconds, then debug calmly with the error, a failing test and a small fix (courses 208 and 209)."],
+           ["Turn off error logging until we find the problem.", 0, "Hiding the errors doesn't stop them. You'd lose the stack traces you need to find the cause."]] },
+  { who: 'Dana (the owner)', ai: 'Launch went great! Can we add live GPS tracking, chat with walkers and loyalty points by the weekend? The AI says it can do all three tonight.',
+    opts: [["Sure, the AI is fast.", 0, "Fast to write isn't fast to test, secure and support. Three features in one night is how a calm launch turns messy."],
+           ["No new features, ever. The app is done.", 0, "Too rigid. Dana's ideas are real signals. They just need to go through the same process."],
+           ["Let's ask your customers which one they want most, write a short spec for that one, and ship it next week through the same review.", 1, "Right. One feature at a time, chosen by users, specced, reviewed and shipped safely. Your non-goals list exists for exactly this moment."]] },
+  { who: 'AI assistant', ai: "A customer says they can see other owners' bookings, with home addresses, by changing the number in the address bar from /bookings/1042 to /bookings/1041. It's an edge case, so I'll add it to the backlog.",
+    opts: [["Fix it today: the server must only return a booking to the owner it belongs to. Add a test for it, deploy, and thank the customer.", 1, "Yes. Leaking home addresses is urgent. The check belongs on the server, a test keeps it fixed, and the reporter did you a favour (course 207)."],
+           ["Agreed, few people would try that.", 0, "Anyone can change a number in a web address, and attackers try exactly that. This exposes where people live."],
+           ["Hide the booking number from the address bar.", 0, "Hiding the number isn't protection. Other ways to guess it exist. The server has to check who is asking."]] },
+  { who: 'AI assistant', ai: 'Some owners say the time slots are hard to tap on their phones. I\'ll make the text smaller so more slots fit on the screen.',
+    opts: [["Smaller text sounds good.", 0, "That makes the problem worse: smaller targets are even harder to tap, and harder to read."],
+           ["Tell owners to use a computer instead.", 0, "Your brief said owners book on phones. The design has to work there."],
+           ["Make each slot a bigger tap target, at least 44 pixels tall, show one day at a time, and try it on a real phone.", 1, "Exactly. Big, well-spaced targets and fewer choices per screen, checked on a real device (courses 211 and 212)."]] }
+], { part: 'p4', counter: $('#steerCount') });
+
+/* ---------------- Stage 5: check ---------------- */
+CS.quiz($('#quiz'), [
+  { q: 'Which part of a spec stops the AI from adding features you never asked for?', a: [['Users', 0], ['Non-goals', 1], ['Constraints', 0]], why: 'Non-goals say what not to build, for now. Without them, AI tools fill the space with "just in case" features.' },
+  { q: "The AI's plan puts the payments secret key in the frontend. Why is that a problem?", a: [['It makes checkout slower', 0], ['Frontend code is sent to every visitor, so anyone can read the key', 1], ['Frontends can\'t store text', 0]], why: 'Everything in the frontend ends up in the browser, where developer tools can show it. Secrets belong on the server, in environment variables.' },
+  { q: 'A pull request shows all checks green: 23 tests passed, 1 skipped. What do you do?', a: [['Merge it, the checks are green', 0], ['Ask why the test is skipped, and merge only once it runs and passes', 1], ['Delete the skipped test so the count looks clean', 0]], why: 'A skipped test is a hidden failure. In Muddy Paws, it was hiding a double-booking bug.' },
+  { q: 'An hour after launch, bookings start failing. What is your first move?', a: [['Roll back to the last version that worked', 1], ['Ask the AI to rewrite the booking code', 0], ['Add more servers', 0]], why: 'Stop the damage first: a rollback takes seconds. Then read the logs, reproduce the bug with a test, and ship a small fix.' },
+  { q: 'When you build with AI, what is your job as the director?', a: [['Write every line of code yourself', 0], ['Accept what the AI proposes, since it knows best', 0], ['Decide what to build, then check the AI\'s choices against the users, the goal and the risks', 1]], why: 'The AI is fast and capable, and it fills every gap with a guess. Your job is to leave fewer gaps, and to catch the guesses that don\'t fit.' }
+], { part: 'p5', doneCard: $('#doneCard'), doneTitle: 'You can direct the AI now.', doneText: 'You took a product from idea to launch: a clear spec, a reviewed plan, a safe merge, a staged launch and a calm launch day. That is directing software.' });
+
+function showRecap() {
+  const courses = CS.COURSES.filter(c => c.level === 2 && c.id !== '214');
+  $('#recap').innerHTML = `<div class="recap glass"><div class="kicker" style="color:var(--good)">Your launch report</div><h3 style="font-size:1.5rem">Core curriculum complete.</h3>
+    <div class="recap-grid"><div><b>5 of 5</b><span>strong brief parts</span></div><div><b>4 of 4</b><span>plan problems caught</span></div><div><b>3 of 3</b><span>risky lines fixed</span></div><div><b>Live</b><span>Muddy Paws</span></div><div><b>4 of 4</b><span>launch-day calls</span></div></div>
+    <p class="muted">You used every Core course along the way:</p><div class="courses">${courses.map(c => `<a class="chip" style="--c:var(--l${(+c.id % 5) + 1})" href="${c.file}"><i></i>${c.id} ${esc(c.short)}</a>`).join('')}</div></div>`;
+}
+})();
+</script>
+</body>
+</html>

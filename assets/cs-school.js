@@ -37,7 +37,10 @@
     { id: '305', slug: 'vectors-and-embeddings', title: 'Vectors & embeddings', short: 'Embeddings', blurb: 'How AI turns meaning into points in space you can measure.', minutes: 15 },
     { id: '306', slug: 'how-neural-networks-learn', title: 'How neural networks learn', short: 'How neural nets learn', blurb: 'Weights, errors and gradient descent: a ball rolling downhill.', minutes: 15 }
   ];
-  CS.COURSES.forEach((c, i) => { c.level = +c.id[0]; c.index = i; c.file = `${c.id}-${c.slug}.html`; });
+  CS.COURSES.forEach((c, i) => {
+    c.level = +c.id[0]; c.index = i; c.file = `${c.id}-${c.slug}.html`;
+    if (c.level === 2) c.group = +c.id >= 214 ? 'Capstone' : +c.id >= 210 ? 'UX design' : 'Systems & architecture';
+  });
   CS.course = id => CS.COURSES.find(c => c.id === String(id));
 
   /* ---------------- helpers ---------------- */
@@ -323,7 +326,7 @@
     const logs = []; const fmt = v => typeof v === 'string' ? v : (() => { try { return JSON.stringify(v); } catch (e) { return String(v); } })();
     const con = { log: (...a) => logs.push(a.map(fmt).join(' ')), error: (...a) => logs.push(a.map(fmt).join(' ')) };
     let error = null, value;
-    const guarded = code.replace(/\b(for|while)\s*\(([^)]*)\)\s*\{/g, (m) => m + ' if (++__g > 100000) throw new Error("Stopped: this loop ran more than 100,000 times. Is it infinite?");');
+    const guarded = code.replace(/\b(for|while)\s*\(([^)]*)\)\s*\{/g, (m) => m + ' if (++__g > 5000000) throw new Error("Stopped: this loop ran more than 5 million times. Is it infinite?");');
     try { value = new Function('console', '"use strict"; let __g = 0;\n' + guarded)(con); } catch (e) { error = e.name + ': ' + e.message; }
     return { code, logs, error, value };
   };
@@ -353,7 +356,7 @@
       if (res.logs && res.logs.length) html += res.logs.map(l => `<div>${CS.esc(l)}</div>`).join('');
       if (res.html) html += res.html;
       if (res.error) html += `<div class="r">${CS.esc(res.error)}</div>`;
-      if (!html) html = '<span class="dim">(no output — try console.log(...) to print something)</span>';
+      if (!html) html = '<span class="dim">(No output yet. Use console.log(...) to print something.)</span>';
       print(html);
       if (res.error && cfg.explainError) { const x = cfg.explainError(res.error); if (x) tutor(x); }
       let moved = false;
@@ -381,17 +384,24 @@
     const next = (lastId && !(all[lastId] || {}).done) ? CS.course(lastId) : CS.COURSES.find(c => !(all[c.id] && all[c.id].done)) || CS.COURSES[0];
     CS.$('#overallCount').textContent = `${complete} of ${CS.COURSES.length} courses complete`;
     CS.$('#overallMeter').style.width = `${(complete / CS.COURSES.length) * 100}%`;
+    const lm = CS.$('#levelMeters');
+    if (lm) lm.innerHTML = CS.LEVELS.map(l => {
+      const cs = CS.COURSES.filter(c => c.level === l.n); const d = cs.filter(c => all[c.id] && all[c.id].done).length;
+      return `<a class="lvl-meter" href="#level-${l.n}" style="--c:${l.color}"><span class="lvl-name"><i></i>${l.name}</span><span class="lvl-count">${d} of ${cs.length}</span><span class="meter"><i style="width:${d / cs.length * 100}%"></i></span></a>`;
+    }).join('');
     const cont = CS.$('#continueBtn');
     cont.href = `lessons/${next.file}`;
     cont.textContent = (lastId && !(all[lastId] || {}).done) ? `Continue ${next.id}: ${next.short}` : (complete ? `Next: ${next.id} ${next.short}` : 'Start with 101');
     root.innerHTML = CS.LEVELS.map(l => {
       const cs = CS.COURSES.filter(c => c.level === l.n);
+      const groups = [];
+      cs.forEach(c => { const g = groups.find(x => x.name === c.group); if (g) g.list.push(c); else groups.push({ name: c.group, list: [c] }); });
       return `<section class="level" id="level-${l.n}"><div class="level-head" style="--c:${l.color}"><span class="dot"></span><h2>${l.name}</h2><span class="muted">${l.sub}</span></div>
-      <div class="course-grid">${cs.map(c => {
+      ${groups.map(g => `${g.name ? `<h3 class="group-title">${CS.esc(g.name)}</h3>` : ''}<div class="course-grid${g.list.length === 4 ? ' n4' : ''}">${g.list.map(c => {
         const r = all[c.id]; const st = CS.progress.status(c.id);
         const label = st === 'complete' ? 'Complete' : st === 'progress' ? `${r.parts.length} of ${r.total} parts` : 'Not started';
         return `<a class="course glass" href="lessons/${c.file}"><span class="num"><span>Course ${c.id}</span><span class="status ${st}">${label}</span></span><h3>${CS.esc(c.title)}</h3><p>${CS.esc(c.blurb)}</p><span class="meta"><span>${c.minutes} minutes · 5 parts</span></span></a>`;
-      }).join('')}</div></section>`;
+      }).join('')}</div>`).join('')}</section>`;
     }).join('');
   };
 })();

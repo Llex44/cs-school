@@ -1,0 +1,992 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Designing for people · CS School</title>
+<meta name="description" content="Course 210: users, goals and flows. Design starts before anything is drawn.">
+<link rel="icon" href="../assets/favicon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="../assets/cs-school.css">
+<style>
+/* lesson-specific styles: flow hero, people, feature sorter, booking funnel, problem screens, story checker */
+
+/* mini phone-screen thumbnails (hero + flow rows) */
+.th .t-ph{fill:var(--paper); stroke:color-mix(in srgb, var(--ink) 20%, transparent); stroke-width:1.2}
+.th .t-ln{fill:color-mix(in srgb, var(--ink) 16%, transparent)}
+.th .t-f{fill:color-mix(in srgb, var(--ink) 4%, transparent); stroke:color-mix(in srgb, var(--ink) 32%, transparent); stroke-width:.7}
+.th .t-str{fill:none; stroke:color-mix(in srgb, var(--ink) 38%, transparent); stroke-width:.9; stroke-linejoin:round}
+.th .t-ink{fill:var(--ink)}
+.th .t-ac{fill:var(--l2)}
+.th .t-ok{fill:var(--l3)}
+.th .t-band{fill:color-mix(in srgb, var(--l3) 30%, transparent)}
+.th .t-chk{fill:none; stroke:var(--paper); stroke-width:2.2; stroke-linecap:round; stroke-linejoin:round}
+
+/* hero */
+#heroFlow{overflow:visible}
+.hs-label{font-family:var(--f-display); font-weight:700; font-size:12.5px; fill:var(--ink-2)}
+.hs-num{font-family:var(--f-display); font-weight:800; font-size:13px; fill:var(--ink); font-variant-numeric:tabular-nums}
+.lg-num{font-family:var(--f-display); font-weight:800; color:var(--ink); font-variant-numeric:tabular-nums}
+.hs-pulse{transform-box:fill-box; transform-origin:center}
+.hs-pulse.on{animation:hsPulse .45s ease-out}
+@keyframes hsPulse{40%{transform:scale(1.12)}}
+
+/* part 1: people */
+.people{display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:20px; align-items:start}
+.person{border-radius:20px; padding:20px; display:flex; flex-direction:column; gap:16px}
+.person-head{display:flex; align-items:center; gap:14px}
+.avatar{flex:none; width:56px; height:56px; border-radius:50%; display:grid; place-items:center; font-family:var(--f-display); font-weight:900; font-size:1.45rem; line-height:1; padding-top:3px; color:var(--paper); background:var(--c); box-shadow:0 0 0 5px color-mix(in srgb, var(--c) 16%, transparent)}
+.person h3{font-size:1.35rem}
+.person .role{font-size:1rem; color:var(--ink-2); line-height:1.35; margin-top:3px}
+.device{margin-left:auto; flex:none; width:36px; height:36px; color:var(--ink-2); fill:none; stroke:currentColor; stroke-width:1.7; stroke-linecap:round; stroke-linejoin:round}
+.pfacts{margin:0; display:flex; flex-direction:column; gap:8px; font-size:1rem; line-height:1.4}
+.pfacts div{display:grid; grid-template-columns:5.3em minmax(0,1fr); gap:10px}
+.pfacts dt{font-family:var(--f-display); font-weight:700; color:var(--ink-2)}
+.pfacts dd{margin:0}
+.person .btn{align-self:flex-start}
+.pstory{display:flex; flex-direction:column; gap:12px; animation:rise .35s}
+.pstory blockquote{margin:0; font-size:1.05rem; line-height:1.5}
+.job{background:var(--glass-strong); border-radius:14px; padding:12px 14px; display:flex; flex-direction:column; gap:8px; font-size:1rem; line-height:1.35}
+.job b{display:block; font-family:var(--f-display); font-weight:800; font-size:.9rem; color:var(--ink-2); margin-bottom:1px}
+
+/* feature sorter */
+.sorter{margin-top:24px}
+.sort-grid{display:grid; grid-template-columns:minmax(0,1fr) minmax(0,1.1fr); gap:24px; align-items:start}
+.req{border-radius:16px; background:var(--glass-strong); padding:16px 18px; display:flex; flex-direction:column; gap:4px; min-height:104px; justify-content:center}
+.req .n{font-family:var(--f-display); font-weight:700; font-size:.95rem; color:var(--ink-2)}
+.req .f{font-family:var(--f-display); font-weight:800; font-size:1.45rem; line-height:1.2}
+.req.in{animation:rise .35s}
+.req.shake{animation:shake .4s}
+.send{display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:10px; margin-top:14px}
+.send .btn{justify-content:flex-start; text-align:left}
+.send .btn i{flex:none; width:12px; height:12px; border-radius:50%; background:var(--c)}
+.send .btn.nob i{background:none; box-shadow:inset 0 0 0 2px var(--ink-2)}
+.sorter .note{margin-top:14px}
+.buckets{display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:12px}
+.bucket{border-radius:14px; background:color-mix(in srgb, var(--ink) 4.5%, transparent); padding:12px 14px; min-height:112px}
+.bucket h4{font-family:var(--f-display); font-weight:800; font-size:1.02rem; display:flex; gap:8px; align-items:center}
+.bucket h4 i{width:10px; height:10px; border-radius:50%; background:var(--c)}
+.bucket h4 small{margin-left:auto; font-weight:700; color:var(--ink-2); font-size:.9rem}
+.bucket ul{list-style:none; margin:8px 0 0; padding:0; display:flex; flex-direction:column; gap:6px}
+.bucket li{font-size:.95rem; line-height:1.3; background:var(--glass-strong); border-radius:10px; padding:7px 10px; animation:rise .35s}
+.bucket.nobody li{color:var(--ink-2); text-decoration:line-through; text-decoration-thickness:1.5px}
+.bucket .empty{font-size:.95rem; color:var(--ink-2); margin-top:8px}
+
+/* jobs to be done statement */
+.jtbd{border-radius:20px; padding:22px; display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:18px}
+.jtbd div{display:flex; flex-direction:column; gap:8px}
+.jtbd p{font-family:var(--f-display); font-weight:800; font-size:1.3rem; line-height:1.25}
+.jtbd .chip{align-self:flex-start}
+
+/* part 2: flow + funnel */
+.flowpg{grid-template-columns:minmax(0,1.42fr) minmax(0,.85fr)}
+.flowpg > .pg-col.side{align-self:stretch}
+.sum{position:sticky; top:74px; border-radius:20px; padding:20px 22px; display:flex; flex-direction:column; gap:12px}
+.sum .lbl{font-family:var(--f-display); font-weight:700; color:var(--ink-2); font-size:1rem}
+.sum .big{font-family:var(--f-display); font-weight:900; font-size:3.6rem; line-height:.95; letter-spacing:-.02em; font-variant-numeric:tabular-nums; display:flex; align-items:baseline; gap:10px; flex-wrap:wrap}
+.sum .big small{font-size:1.1rem; font-weight:800; letter-spacing:0; color:var(--ink-2)}
+.meter2{position:relative; height:12px; border-radius:6px; background:color-mix(in srgb, var(--ink) 10%, transparent); margin:6px 0 26px}
+.meter2 > i{position:absolute; left:0; top:0; bottom:0; border-radius:6px; background:var(--l3); transition:width .6s cubic-bezier(.2,.8,.2,1)}
+.goal{position:absolute; top:-5px; width:22px; height:22px; margin-left:-11px; border-radius:50%; background:var(--paper); box-shadow:0 1px 5px rgba(18,20,23,.25); display:grid; place-items:center}
+.goal::after{content:""; width:8px; height:8px; border-radius:50%; background:var(--ink)}
+.goal span{position:absolute; top:26px; left:50%; transform:translateX(-50%); white-space:nowrap; font-family:var(--f-display); font-weight:700; font-size:.88rem; color:var(--ink-2)}
+.sum .leak{font-size:1rem; color:var(--ink-2)}
+.sum .leak b{color:var(--ink)}
+.sum .base{font-size:.95rem; color:var(--ink-2)}
+.sum .big.win{color:var(--good)}
+
+.flow{list-style:none; margin:0; padding:0; display:flex; flex-direction:column; gap:10px}
+.step{display:grid; grid-template-columns:44px 40px minmax(0,1fr) auto; gap:10px 14px; align-items:center; border-radius:16px; padding:12px 14px 12px 10px; background:var(--glass-strong); box-shadow:0 1px 3px rgba(18,20,23,.06)}
+.step svg.th{width:40px; height:64px; display:block}
+.step .nm{font-family:var(--f-display); font-weight:800; font-size:1.08rem; line-height:1.25; display:flex; flex-wrap:wrap; align-items:center; gap:4px 10px}
+.step .idx{font-weight:800; color:var(--ink-2); font-variant-numeric:tabular-nums; margin-right:-2px}
+.pre{font-family:var(--f-body); font-weight:700; font-size:.85rem; line-height:1.2; border-radius:99px; padding:3px 9px; background:var(--tip-bg); color:var(--tip); white-space:nowrap}
+.step .meta{font-size:.95rem; color:var(--ink-2); line-height:1.35; margin-top:2px}
+.bar{position:relative; height:8px; border-radius:4px; background:color-mix(in srgb, var(--ink) 8%, transparent); overflow:hidden; margin-top:9px}
+.bar i{position:absolute; top:0; bottom:0; transition:left .55s cubic-bezier(.2,.8,.2,1), width .55s cubic-bezier(.2,.8,.2,1)}
+.bar .k{left:0; background:var(--l2); border-radius:4px 0 0 4px}
+.bar .x{background:color-mix(in srgb, var(--l1) 60%, transparent)}
+.step .cnt{font-size:.92rem; color:var(--ink-2); margin-top:5px; font-variant-numeric:tabular-nums}
+.step .cnt b{color:var(--bad); font-weight:700}
+.mv{display:flex; flex-direction:column; gap:6px}
+.mv .btn{width:44px; padding:0; justify-content:center; min-height:42px}
+.mv svg{width:18px; height:18px; fill:none; stroke:currentColor; stroke-width:2.2; stroke-linecap:round; stroke-linejoin:round}
+.acts{display:flex; flex-direction:column; gap:6px; align-items:stretch}
+.acts .btn{padding:8px 12px; font-size:.95rem; justify-content:center; min-height:42px}
+.lockdot{width:44px; display:grid; place-items:center; color:var(--ink-2)}
+.lockdot svg{width:18px; height:18px; fill:none; stroke:currentColor; stroke-width:1.8; stroke-linecap:round; stroke-linejoin:round}
+.step.cutting{animation:cutOut .3s forwards}
+@keyframes cutOut{to{opacity:0; transform:translateX(24px)}}
+.tray{margin-top:14px; display:flex; flex-wrap:wrap; gap:8px; align-items:center; font-size:1rem; color:var(--ink-2)}
+.tray .btn{padding:6px 12px; min-height:40px; font-size:.92rem}
+.tray .btn s{text-decoration-thickness:1.5px}
+
+.states{display:flex; flex-direction:column; gap:12px}
+.state{display:grid; grid-template-columns:minmax(0,1fr) minmax(0,1.05fr); gap:14px 18px; align-items:center; background:var(--glass-strong); border-radius:16px; padding:14px 16px; box-shadow:0 1px 3px rgba(18,20,23,.06)}
+.state h4{font-family:var(--f-display); font-weight:800; font-size:1.1rem; line-height:1.25}
+.state .hits{font-size:.95rem; color:var(--ink-2); margin:3px 0 10px}
+.mini{border-radius:14px; padding:12px 14px; font-size:.95rem; line-height:1.4; background:var(--paper); box-shadow:0 1px 4px rgba(18,20,23,.1); display:flex; flex-direction:column; gap:6px; min-height:96px; justify-content:center}
+.mini .who{font-family:var(--f-display); font-weight:700; font-size:.82rem; color:var(--ink-2)}
+.mini .err{font-family:var(--f-mono); font-size:.88rem; color:var(--bad)}
+.mini .blank{height:34px; border-radius:8px; background:color-mix(in srgb, var(--ink) 5%, transparent); display:grid; place-items:center; font-size:.9rem; color:var(--ink-2)}
+.mini .go{align-self:flex-start; font-family:var(--f-display); font-weight:800; font-size:.88rem; background:var(--ink); color:var(--paper); border-radius:99px; padding:4px 12px}
+.mini.good{animation:rise .35s}
+
+/* explainers */
+.ideas{margin:0; display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:14px}
+.ideas > div{border-radius:18px; padding:16px 18px}
+.ideas dt{font-family:var(--f-display); font-weight:800; font-size:1.15rem; display:flex; align-items:center; gap:10px}
+.ideas dt i{width:10px; height:10px; border-radius:50%; background:var(--c)}
+.ideas dd{margin:4px 0 0; font-size:1rem; color:var(--ink-2)}
+
+/* part 3: story checker output (inside the always-dark code lab) */
+#lab .cl-out{max-height:none}
+#lab .cl-lines{display:none}
+#lab .cl-editor textarea{white-space:pre-wrap; overflow-wrap:break-word; min-height:280px; padding-left:18px}
+.story{display:flex; flex-direction:column; gap:7px; font-family:var(--f-body); font-size:1rem; line-height:1.45; white-space:normal}
+.story .sh{font-family:var(--f-display); font-weight:800; color:#fff; font-size:.95rem; margin-top:4px}
+.story .sl{display:grid; grid-template-columns:5.6em minmax(0,1fr); gap:10px; align-items:baseline}
+.story .tg{font-family:var(--f-display); font-weight:800; font-size:.8rem; border-radius:99px; padding:2px 8px; text-align:center; background:rgba(255,255,255,.1); color:#ECEFF3; white-space:nowrap}
+.story .ok .tg{background:rgba(139,240,168,.16); color:#8BF0A8}
+.story .no .tg{background:rgba(255,154,138,.16); color:#FF9A8A}
+.story .v{color:#ECEFF3}
+.story .miss{color:var(--term-dim); font-style:italic}
+.story .why{display:block; color:#FFC53D; font-size:.92rem}
+.story ul{margin:0; padding:0; list-style:none; display:flex; flex-direction:column; gap:5px}
+.story li{display:grid; grid-template-columns:1.2em minmax(0,1fr); gap:6px}
+.story li .m{font-weight:700}
+.story li.ok .m{color:#8BF0A8} .story li.no .m{color:#FF9A8A}
+.ex{font-size:1.05rem; line-height:1.75}
+.ex mark{color:inherit; border-radius:6px; padding:2px 4px; -webkit-box-decoration-break:clone; box-decoration-break:clone; background:color-mix(in srgb, var(--c) 20%, transparent)}
+.ex-legend{display:flex; flex-wrap:wrap; gap:8px; margin:10px 0 14px}
+.crit{list-style:none; margin:0; padding:0; display:flex; flex-direction:column; gap:8px; font-size:1rem}
+.crit li{display:grid; grid-template-columns:14px minmax(0,1fr); gap:10px; align-items:start}
+.crit li::before{content:""; width:8px; height:8px; margin-top:.55em; border-radius:50%; background:var(--ink-2)}
+.crit li.edge::before{background:var(--l1)}
+.crit .chip{margin-left:4px}
+.vague{display:flex; flex-wrap:wrap; gap:8px; margin-bottom:14px}
+.vague span{font-family:var(--f-display); font-weight:700; font-size:.95rem; border-radius:99px; padding:3px 12px; background:var(--bad-bg); color:var(--bad)}
+.swap{margin:0; display:flex; flex-direction:column; gap:6px; font-size:1rem}
+.swap div{display:grid; grid-template-columns:6.5em minmax(0,1fr); gap:10px}
+.swap dt{color:var(--ink-2); text-decoration:line-through; text-decoration-thickness:1.5px}
+.swap dd{margin:0; font-weight:700}
+
+@media (max-width:900px){
+  .people,.jtbd,.ideas,.sort-grid{grid-template-columns:minmax(0,1fr)}
+  .sum{top:64px; z-index:5; padding:12px 16px; gap:4px; background:var(--glass-strong); align-self:stretch}
+  .sum .big{font-size:2.3rem}
+  .sum .lbl,.sum .base,.sum .leak,.sum .note{display:none}
+  .meter2{margin:8px 0 22px}
+}
+@media (max-width:640px){
+  .step{grid-template-columns:40px minmax(0,1fr); grid-template-areas:"th body" "ctl ctl"; padding:12px}
+  .step svg.th{grid-area:th; align-self:start; margin-top:2px}
+  .step .body{grid-area:body}
+  .mv{grid-area:ctl; flex-direction:row; justify-self:start}
+  .acts{grid-area:ctl; flex-direction:row; justify-self:end}
+  .lockdot{display:none}
+  .state{grid-template-columns:minmax(0,1fr)}
+  .send,.buckets{grid-template-columns:minmax(0,1fr) minmax(0,1fr)}
+  .pfacts div{grid-template-columns:minmax(0,1fr); gap:0}
+}
+</style>
+</head>
+<body>
+<main id="top">
+  <section class="wrap hero">
+    <div>
+      <div class="kicker">Core curriculum · Course 210 · Designing for people</div>
+      <h1>Design starts with a person, not a screen.</h1>
+      <p class="lede">Before anything is drawn, someone decides who an app is for, what they are trying to get done, and which steps stand in their way. You'll meet three neighbors who share one garden app, fix a booking flow that loses most of them, and write a user story an AI can build from.</p>
+      <ul class="facts">
+        <li>About 15 minutes</li>
+        <li>5 parts</li>
+        <li>Flow simulator</li>
+        <li>No design experience needed</li>
+      </ul>
+      <div class="row hero-cta"><a class="btn primary" href="#p1">Start the lesson</a></div>
+    </div>
+    <figure style="margin:0">
+      <div class="hero-visual glass">
+        <svg id="heroFlow" role="img" aria-label="An animated booking flow. Dots stand for neighbors moving through app screens from left to right. At each screen some give up and fall away. Then the flow is redesigned with fewer, lighter screens, and many more dots reach the Booked screen."></svg>
+        <div class="legend"><span><i style="background:var(--l2)"></i>A neighbor trying to book</span><span><i style="background:var(--l1)"></i>Gave up</span><span><b class="lg-num">1,000</b>reach this screen</span></div>
+      </div>
+      <div class="hero-caption glass" aria-hidden="true"><span>funnel</span><span id="heroCap">First draft · 7 screens · 18 in 100 book a plot</span></div>
+    </figure>
+  </section>
+
+  <div class="wrap">
+  <!-- PART 1 -->
+  <section class="part first" id="p1">
+    <span class="bullet glass" data-p="p1">1</span>
+    <div class="part-head">
+      <div class="kicker">Part 1 of 5</div>
+      <h2>Who is this for?</h2>
+      <p>Every app is used by particular people in particular moments. Each of them is a <b>user</b>, and what they are trying to get done is their <b>job</b>. A feature only earns its place if it helps someone do their job.</p>
+    </div>
+
+    <div class="chat" aria-label="Example conversation">
+      <div class="msg me"><span class="who">You</span>Build a plot booking app for the Hollow Lane community garden.</div>
+      <div class="msg ai"><span class="who">AI assistant</span>Done! Signup has 12 fields, then a gardening quiz. There's a social feed, a harvest leaderboard and a dashboard with 9 tabs. Users will love it.</div>
+      <div class="msg me"><span class="who">You</span>Which users? Half our gardeners are parents on their phones, and some have had the same plot for years.</div>
+      <div class="msg ai"><span class="who">AI assistant</span>Good point. I designed for a "typical user". Tell me who they really are.</div>
+    </div>
+
+    <div class="task glass" data-part="p1">
+      <h3>Your task</h3>
+      <ol>
+        <li data-t="meet"><span>Meet all three neighbors: open each person's story.</span></li>
+        <li data-t="match"><span>Send every feature to the person whose job it helps.</span></li>
+        <li data-t="cut"><span>Catch the three features nobody asked for.</span></li>
+      </ol>
+    </div>
+
+    <div class="people" id="people"></div>
+
+    <div class="sorter ctl glass">
+      <h3 class="ctl-title">Who is this feature for?</h3>
+      <p class="ctl-sub">The AI's feature list, one at a time. Send each feature to the person it helps most, or to "Nobody".</p>
+      <div class="sort-grid">
+        <div>
+          <div class="req" id="req" aria-live="polite"></div>
+          <div class="send" id="send">
+            <button class="btn" data-to="maya" style="--c:var(--l1)"><i></i>Maya</button>
+            <button class="btn" data-to="harold" style="--c:var(--l2)"><i></i>Harold</button>
+            <button class="btn" data-to="priya" style="--c:var(--l3)"><i></i>Priya</button>
+            <button class="btn nob" data-to="nobody"><i></i>Nobody needs it</button>
+          </div>
+          <div class="note info" id="sortNote" aria-live="polite">Read the three stories first. The answers are in the details: the device, the time, the worry.</div>
+        </div>
+        <div class="buckets" id="buckets"></div>
+      </div>
+    </div>
+
+    <div class="stack" style="margin-top:56px">
+      <h3>What you just did has a name: jobs to be done</h3>
+      <p class="muted">People don't want a booking app. They "hire" it to make progress in their life. Maya is hiring a Saturday outside with her kids. That's why booking in a minute on her phone matters to her, and a harvest leaderboard doesn't. You can write any job in the same three parts:</p>
+      <div class="jtbd glass" aria-label="Harold's job, in three parts">
+        <div><span class="chip" style="--c:var(--l1)"><i></i>When</span><p>the new season opens</p></div>
+        <div><span class="chip" style="--c:var(--l2)"><i></i>I want to</span><p>keep the plot I've always had</p></div>
+        <div><span class="chip" style="--c:var(--l3)"><i></i>So I can</span><p>carry on with the soil I've built up</p></div>
+      </div>
+      <p>Once you know the jobs, every feature has to answer one question: <b>whose job does this help?</b> When an AI proposes a feature and the honest answer is "users in general", it is usually padding. Each extra feature is more to build, test, explain and maintain.</p>
+      <details class="deeper glass">
+        <summary>Under the hood: where personas come from <small>optional</small></summary>
+        <div>
+          <p>Maya, Harold and Priya are <b>personas</b>: short, specific portraits of a kind of user. Good personas come from real conversations, support messages and usage data, not imagination.</p>
+          <p>An AI can draft personas in seconds, but treat them as guesses to check. Watching even a handful of real people try your app tends to reveal the biggest problems quickly.</p>
+        </div>
+      </details>
+    </div>
+  </section>
+
+  <!-- PART 2 -->
+  <section class="part" id="p2">
+    <span class="bullet glass" data-p="p2">2</span>
+    <div class="part-head">
+      <div class="kicker">Part 2 of 5</div>
+      <h2>Every step in a flow costs people</h2>
+      <p>A <b>flow</b> is the path someone takes to finish a job, screen by screen. Every screen asks for a bit of time and effort, and at each one some people give up. Here's the booking flow the AI built. Imagine 1,000 neighbors open it this spring.</p>
+    </div>
+
+    <div class="task glass" data-part="p2">
+      <h3>Your task</h3>
+      <ol>
+        <li data-t="cut"><span>Cut a step nobody needs.</span></li>
+        <li data-t="simplify"><span>Shrink the 12-field signup form.</span></li>
+        <li data-t="order"><span>Let people choose a plot before they create an account.</span></li>
+        <li data-t="states"><span>Design better screens for all three things that go wrong.</span></li>
+        <li data-t="goal"><span>Get at least 6 in 10 neighbors to book a plot.</span></li>
+      </ol>
+    </div>
+
+    <div class="pg flowpg">
+      <div class="pg-col">
+        <div class="o2 ctl glass">
+          <h3 class="ctl-title">The booking flow</h3>
+          <p class="ctl-sub">The screens a neighbor sees, top to bottom. The bar shows how many arrive at each one, and how many give up there.</p>
+          <ol class="flow" id="flow" aria-label="Booking flow steps"></ol>
+          <div class="tray" id="tray" hidden></div>
+        </div>
+        <div class="o3 ctl glass">
+          <h3 class="ctl-title">When something goes wrong</h3>
+          <p class="ctl-sub">The AI only designed the happy path. These three moments show a dead end, and most people who hit one leave.</p>
+          <div class="states" id="states"></div>
+        </div>
+      </div>
+      <div class="pg-col side">
+        <div class="o1 sum glass" id="sum">
+          <div class="lbl">Out of 1,000 neighbors</div>
+          <div class="big" id="sumBig" aria-live="polite"><span id="sumN">141</span><small>book a plot</small></div>
+          <div class="meter2" aria-hidden="true"><i id="sumBar" style="width:14%"></i><span class="goal" style="left:60%"><span>Goal: 6 in 10</span></span></div>
+          <div class="leak" id="sumLeak"></div>
+          <div class="base">The AI's first draft: <b id="sumBase">141</b> of 1,000.</div>
+          <div class="note" id="flowNote" aria-live="polite">Most people give up before they ever see a plot. Find the biggest leak.</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="stack" style="margin-top:56px">
+      <h3>Four ideas you just used</h3>
+      <dl class="ideas">
+        <div class="glass" style="--c:var(--l1)"><dt><i></i>Friction</dt><dd>Anything that costs effort: a field, a decision, a code to find, a wall of text. Each bit loses a few people. Twelve fields lose a lot.</dd></div>
+        <div class="glass" style="--c:var(--l2)"><dt><i></i>Value before effort</dt><dd>Show people what they get before you ask for work. Once Maya has picked her plot, making an account feels worth it.</dd></div>
+        <div class="glass" style="--c:var(--l3)"><dt><i></i>Defaults</dt><dd>A sensible choice made in advance. Most people want this season, so pick it for them. Anyone can still change it.</dd></div>
+        <div class="glass" style="--c:var(--l4)"><dt><i></i>Error and empty states</dt><dd>The screens for when something fails or there is nothing to show. A good one says what happened and offers a next step.</dd></div>
+      </dl>
+      <details class="deeper glass">
+        <summary>Under the hood: how teams measure a real funnel <small>optional</small></summary>
+        <div>
+          <p>Apps record an <b>event</b> each time someone reaches a step, like <code>plot_selected</code> or <code>payment_succeeded</code>. Counting those events per step gives a <b>funnel</b>, the chart you just played with. The share who reach the end is the <b>conversion rate</b>.</p>
+          <p>Teams then change one step at a time and compare, often with an <b>A/B test</b>: half of visitors see the old version, half see the new one. The numbers in this lesson are illustrative, but the shape is typical: long forms and early account walls are common places for people to quit.</p>
+        </div>
+      </details>
+    </div>
+  </section>
+
+  <!-- PART 3 -->
+  <section class="part" id="p3">
+    <span class="bullet glass" data-p="p3">3</span>
+    <div class="part-head">
+      <div class="kicker">Part 3 of 5</div>
+      <h2>Try it: write a user story</h2>
+      <p>Teams and AI tools build from short written stories. A <b>user story</b> says who wants what, and why. <b>Acceptance criteria</b> list what must be true for the story to count as done, so anyone, or any AI, can check the result.</p>
+    </div>
+
+    <div class="lab">
+      <div class="a-mission ctl glass">
+        <h3 class="ctl-title">Your mission</h3>
+        <p class="ctl-sub" style="margin-top:0">The AI wrote a story for Harold's renewal. It could describe any app for anyone. Rewrite it so it could only be about Harold, then press Run.</p>
+        <ol class="mission" id="mission"></ol>
+      </div>
+      <div class="a-work" id="lab"></div>
+      <div class="a-side">
+        <div class="ctl glass">
+          <h3 class="ctl-title">A good story, taken apart</h3>
+          <p class="ctl-sub">Here is one for Maya. Yours is for Harold.</p>
+          <p class="ex"><mark style="--c:var(--l1)">As a parent booking on my phone,</mark> <mark style="--c:var(--l2)">I want to reserve a plot near the playground,</mark> <mark style="--c:var(--l3)">so that my kids can help without wandering off.</mark></p>
+          <div class="ex-legend"><span class="chip" style="--c:var(--l1)"><i></i>Who</span><span class="chip" style="--c:var(--l2)"><i></i>Wants to do</span><span class="chip" style="--c:var(--l3)"><i></i>So that</span></div>
+          <div class="label" style="margin-bottom:8px">Acceptance criteria</div>
+          <ul class="crit">
+            <li><span>Plots within 20 meters of the playground are listed first.</span></li>
+            <li><span>Booking takes 3 screens or fewer on a phone.</span></li>
+            <li class="edge"><span>If the last playground plot is taken, the app suggests the closest free plots. <span class="chip" style="--c:var(--l1)"><i></i>what can go wrong</span></span></li>
+          </ul>
+          <p class="muted" style="font-size:1rem; margin-top:14px">Notice what's missing: no buttons, colors or layouts. The story leaves the design open. The criteria say how you'll know it works.</p>
+        </div>
+        <details class="deeper glass" style="margin-top:18px">
+          <summary>Under the hood: Given, When, Then <small>optional</small></summary>
+          <div>
+            <p>Many teams write criteria in a fixed shape: <b>Given</b> Harold had plot 12 last season, <b>When</b> he renews before March 1, <b>Then</b> plot 12 is reserved for him.</p>
+            <p>Test tools can turn lines like these into automated checks. Ask an AI to "write the acceptance criteria as Given, When, Then, and add a test for each" and you get a spec and its tests together.</p>
+          </div>
+        </details>
+      </div>
+      <div class="a-extra ctl glass">
+        <h3 class="ctl-title">Words you can't test</h3>
+        <p class="ctl-sub">The checker flags these, unless a number makes them measurable.</p>
+        <div class="vague"><span>easy</span><span>simple</span><span>intuitive</span><span>user-friendly</span><span>seamless</span><span>fast</span><span>modern</span><span>nice</span><span>clean</span></div>
+        <dl class="swap">
+          <div><dt>easy</dt><dd>renews in 2 taps</dd></div>
+          <div><dt>fast</dt><dd>confirmed in under 30 seconds</dd></div>
+          <div><dt>clear</dt><dd>shows the plot number and season</dd></div>
+        </dl>
+      </div>
+    </div>
+  </section>
+
+  <!-- PART 4 -->
+  <section class="part" id="p4">
+    <span class="bullet glass" data-p="p4">4</span>
+    <div class="part-head">
+      <div class="kicker">Part 4 of 5</div>
+      <h2>Steer the AI</h2>
+      <p>AI tools design for an imaginary "typical user" unless you tell them otherwise. Here are four things one might say while building the garden app. Pick the reply you'd send.</p>
+    </div>
+    <p class="counter" id="steerCount"></p>
+    <div id="steer"></div>
+  </section>
+
+  <!-- PART 5 -->
+  <section class="part last" id="p5">
+    <span class="bullet glass" data-p="p5">5</span>
+    <div class="part-head">
+      <div class="kicker">Part 5 of 5</div>
+      <h2>Check your understanding</h2>
+      <p>Five quick questions. Each answer explains itself.</p>
+    </div>
+    <div id="quiz"></div>
+    <div id="doneCard" aria-live="polite"></div>
+  </section>
+  </div>
+
+  <section class="after" id="cheat">
+    <div class="wrap stack">
+      <h2>Cheat sheet</h2>
+      <p class="muted">The ideas from this course, and what to say to an AI about each one.</p>
+      <div class="table-wrap glass">
+        <table>
+          <thead><tr><th>Idea</th><th>In plain words</th><th>Ask the AI</th></tr></thead>
+          <tbody>
+            <tr><td><b>User and context</b></td><td>Who uses it, on what device, in what moment.</td><td>"Who do you think uses this, and where are they when they do?"</td></tr>
+            <tr><td><b>Job to be done</b></td><td>When [situation], I want to [action], so I can [outcome].</td><td>"Which person's job does this feature help?"</td></tr>
+            <tr><td><b>Flow</b></td><td>The screens someone passes through to finish a job.</td><td>"List every screen in the booking flow, in order."</td></tr>
+            <tr><td><b>Funnel and drop-off</b></td><td>How many people reach each step, and how many give up there.</td><td>"Where are people most likely to give up, and why?"</td></tr>
+            <tr><td><b>Friction</b></td><td>Anything that costs effort: fields, choices, codes, waiting.</td><td>"Cut every field we don't need to book. Ask for the rest later."</td></tr>
+            <tr><td><b>Value before effort</b></td><td>Show the reward before asking for work.</td><td>"Let people pick a plot before they create an account."</td></tr>
+            <tr><td><b>Default</b></td><td>A choice made in advance that most people want.</td><td>"Pre-select this season, and let people change it."</td></tr>
+            <tr><td><b>Error and empty states</b></td><td>What the screen says when something fails, or when there's nothing to show.</td><td>"Show me the screen when the plot was just taken, and when none are free."</td></tr>
+            <tr><td><b>User story</b></td><td>As a [who], I want [what], so that [why].</td><td>"Write a user story for each person before you build."</td></tr>
+            <tr><td><b>Acceptance criteria</b></td><td>Testable lines that say when a story is done, including failures.</td><td>"Add criteria for what happens when it goes wrong."</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+</main>
+<script src="../assets/cs-school.js"></script>
+<script>
+(() => {
+const { $, $$, esc, reduce } = CS;
+const NS = 'http://www.w3.org/2000/svg';
+const fmt = n => n.toLocaleString('en-US');
+
+CS.lesson({
+  id: '210',
+  parts: [
+    { id: 'p1', title: "Who it's for" },
+    { id: 'p2', title: 'Flows' },
+    { id: 'p3', title: 'Try it' },
+    { id: 'p4', title: 'Steer the AI' },
+    { id: 'p5', title: 'Check' }
+  ]
+});
+
+/* ---------------- shared model: the booking flow ---------------- */
+const STEP = {
+  welcome: { name: 'Welcome screen', short: 'Welcome', d: .04, meta: 'A logo, a slogan and a Get started button.' },
+  signup: { name: 'Create an account', short: 'Sign up', d: .30, ds: .08, meta: '12 fields: name, email, phone, address, birthday, gender, and more.', metaS: '3 fields: name, email, phone.', simp: 'Ask for 3 fields' },
+  verify: { name: 'Verify your email', short: 'Verify', d: .15, meta: 'Leave the app, find a 6-digit code, come back.' },
+  quiz: { name: 'Gardening quiz', short: 'Quiz', d: .18, meta: '8 questions about your gardening experience.' },
+  plot: { name: 'Choose a plot', short: 'Plot', d: .06, meta: 'A map of 40 plots. The moment people came for.' },
+  dates: { name: 'Pick your dates', short: 'Dates', d: .10, ds: .02, meta: 'Two empty calendars: start date and end date.', metaS: 'This season, April to October, is already picked.', simp: 'Pre-pick this season' },
+  rules: { name: 'Accept the rules', short: 'Rules', d: .14, ds: .03, meta: '14 pages of garden rules and a checkbox.', metaS: 'The 5 rules that matter, one tap to agree.', simp: 'Just the 5 key rules' },
+  pay: { name: 'Pay $25', short: 'Pay', d: .06, meta: '$25 for the season, by card.' },
+  done: { name: 'Booked', short: 'Booked', d: 0, meta: 'Your plot, your dates and a receipt.' }
+};
+const PROB = {
+  taken: { at: 'plot', share: .12, bad: .85, good: .10 },
+  empty: { at: 'plot', share: .10, bad: .60, good: .15 },
+  declined: { at: 'pay', share: .08, bad: .70, good: .20 }
+};
+function dropAt(key, simple, before, fixed) {
+  const s = STEP[key];
+  let d = simple && s.ds != null ? s.ds : s.d;
+  if (before) d *= 1.6;
+  for (const k in PROB) if (PROB[k].at === key) d += PROB[k].share * (fixed[k] ? PROB[k].good : PROB[k].bad);
+  return Math.min(d, .95);
+}
+function simulate(order, simple, fixed) {
+  let n = 1000; const vi = order.indexOf('plot');
+  const rows = order.map((k, i) => { const lose = Math.round(n * dropAt(k, !!simple[k], i < vi, fixed)); const r = { k, arrive: n, lose, before: i < vi }; n -= lose; return r; });
+  return { rows, booked: n };
+}
+
+/* mini phone screens, drawn in a 40 × 64 box */
+function thumb(k, simple) {
+  let s = '<rect x="1" y="1" width="38" height="62" rx="8" class="t-ph"/>';
+  const ln = (x, y, w, h = 2.6) => `<rect x="${x}" y="${y}" width="${w}" height="${h}" rx="${h / 2}" class="t-ln"/>`;
+  const btn = (y, c = 't-ink', h = 6) => `<rect x="8" y="${y}" width="24" height="${h}" rx="${h / 2}" class="${c}"/>`;
+  const field = (y, h) => `<rect x="7" y="${y}" width="26" height="${h}" rx="${Math.min(2, h / 2)}" class="t-f"/>`;
+  switch (k) {
+    case 'welcome': s += '<circle cx="20" cy="21" r="7" class="t-ok"/>' + ln(11, 34, 18) + ln(14, 39.5, 12) + btn(50); break;
+    case 'signup':
+      if (simple) { for (let i = 0; i < 3; i++) s += field(10 + i * 11, 7); s += btn(50, 't-ac'); }
+      else { for (let i = 0; i < 12; i++) s += field(5.5 + i * 4.1, 2.8); s += btn(56, 't-ac', 4); }
+      break;
+    case 'verify':
+      s += '<rect x="9" y="11" width="22" height="15" rx="2" class="t-f"/><path d="M9.6 12l10.4 8 10.4-8" class="t-str"/>';
+      for (let i = 0; i < 6; i++) s += `<rect x="${6.6 + i * 4.6}" y="34" width="3.4" height="5" rx="1" class="t-f"/>`;
+      s += btn(50); break;
+    case 'quiz':
+      for (let i = 0; i < 3; i++) s += `<circle cx="10" cy="${13 + i * 11}" r="2.4" class="t-f"/>` + ln(15, 11.7 + i * 11, 17);
+      s += ln(7, 44, 12, 2) + btn(50); break;
+    case 'plot':
+      for (let r = 0; r < 5; r++) for (let c = 0; c < 4; c++) s += `<rect x="${6.2 + c * 7.2}" y="${7 + r * 7.2}" width="6" height="6" rx="1.2" class="${r === 1 && c === 2 ? 't-ac' : 't-ln'}"/>`;
+      s += btn(51, 't-ac'); break;
+    case 'dates':
+      if (simple) {
+        s += ln(8, 6, 24, 2) + '<rect x="6.5" y="14.6" width="27" height="10.8" rx="3" class="t-band"/>';
+        for (let r = 0; r < 5; r++) for (let c = 0; c < 5; c++) s += `<rect x="${8.4 + c * 5}" y="${11 + r * 5}" width="3" height="3" rx=".8" class="${r > 0 && r < 3 ? 't-ok' : 't-ln'}"/>`;
+        s += btn(50, 't-ac');
+      } else {
+        for (let b = 0; b < 2; b++) { s += ln(8, 6 + b * 21, 14, 2); for (let r = 0; r < 3; r++) for (let c = 0; c < 5; c++) s += `<rect x="${8.4 + c * 5}" y="${11 + b * 21 + r * 4.6}" width="3" height="3" rx=".8" class="t-f"/>`; }
+        s += btn(50);
+      }
+      break;
+    case 'rules':
+      if (simple) { for (let i = 0; i < 5; i++) s += `<circle cx="9" cy="${10 + i * 7}" r="1.6" class="t-ok"/>` + ln(13, 8.8 + i * 7, 18, 2.4); s += btn(50, 't-ac'); }
+      else { const w = [26, 24, 26, 20, 26, 25, 22, 26, 24, 26, 18]; w.forEach((x, i) => { s += ln(7, 6 + i * 3.9, x, 1.8); }); s += '<rect x="7" y="51" width="4" height="4" rx="1" class="t-f"/>' + ln(13, 52, 16, 2); }
+      break;
+    case 'pay':
+      s += '<rect x="7" y="9" width="26" height="16" rx="3" class="t-ac"/><rect x="7" y="13" width="26" height="3" class="t-ph" style="stroke:none"/>';
+      s += field(30, 6) + field(38, 6) + btn(50); break;
+    case 'done':
+      s += '<circle cx="20" cy="25" r="10" class="t-ok"/><path d="M15.5 25.3l3 3 6-6.4" class="t-chk"/>' + ln(11, 42, 18) + ln(14, 47.5, 12);
+      break;
+  }
+  return s;
+}
+
+/* ---------------- hero: people flowing through the screens ---------------- */
+(function hero() {
+  const svg = $('#heroFlow');
+  const PH = [
+    { name: 'First draft', keys: ['welcome', 'signup', 'verify', 'quiz', 'plot', 'pay', 'done'], simple: {}, fixed: {} },
+    { name: 'Redesigned', keys: ['plot', 'signup', 'pay', 'done'], simple: { signup: 1 }, fixed: { taken: 1, empty: 1, declined: 1 } }
+  ];
+  PH.forEach(p => { const vi = p.keys.indexOf('plot'); p.drop = {}; p.keys.forEach((k, i) => { p.drop[k] = dropAt(k, !!p.simple[k], i < vi, p.fixed); }); p.rate = Math.round(100 * p.keys.reduce((a, k) => a * (1 - p.drop[k]), 1)); p.arrive = {}; simulate(p.keys, p.simple, p.fixed).rows.forEach(r => { p.arrive[r.k] = r.arrive; }); });
+  const ALL = PH[0].keys;
+  let W = 560, S = 1;
+  const H = 200, CY = 64;
+  svg.innerHTML = '<g class="hp"></g><g class="hsc th"></g>';
+  const gP = $('.hp', svg), gS = $('.hsc', svg);
+  const scr = {};
+  ALL.forEach(k => {
+    const g = document.createElementNS(NS, 'g');
+    g.innerHTML = `<g class="hs-pulse"><g class="hs-t"></g></g><text class="hs-label" text-anchor="middle" x="0" y="62">${STEP[k].short}</text><text class="hs-num" text-anchor="middle" x="0" y="79"></text>`;
+    gS.appendChild(g);
+    scr[k] = { g, x: 0, tx: 0, o: 0, to: 0, simple: null, pulse: $('.hs-pulse', g), t: $('.hs-t', g), num: $('.hs-num', g) };
+  });
+  const pool = Array.from({ length: 110 }, () => { const c = document.createElementNS(NS, 'circle'); c.setAttribute('r', '3.4'); c.style.display = 'none'; gP.appendChild(c); return c; });
+  const parts = [];
+  let phase = 0, phaseT = 0, spawnT = 0;
+  const cap = $('#heroCap');
+  function layout() {
+    const box = svg.getBoundingClientRect().width || 520;
+    W = box < 440 ? 440 : 560;
+    S = W < 500 ? .9 : 1;
+    svg.setAttribute('viewBox', `0 0 ${W} ${H}`);
+    setPhase(phase, true);
+  }
+  function setPhase(i, instant) {
+    phase = i; const p = PH[i]; const n = p.keys.length;
+    const x0 = 40, x1 = W - 40;
+    ALL.forEach(k => {
+      const s = scr[k]; const j = p.keys.indexOf(k);
+      if (j >= 0) { s.tx = x0 + j * (x1 - x0) / (n - 1); s.to = 1; } else s.to = 0;
+      const simple = !!p.simple[k];
+      if (s.simple !== simple) { s.simple = simple; s.t.innerHTML = thumb(k, simple); }
+      if (j >= 0) s.num.textContent = fmt(p.arrive[k]);
+      if (instant) { s.x = s.tx; s.o = s.to; }
+    });
+    cap.textContent = `${p.name} · ${n} screens · ${p.rate} in 100 book a plot`;
+  }
+  function paintScreens() {
+    ALL.forEach(k => {
+      const s = scr[k];
+      const sc = S * (0.55 + 0.45 * s.o) * 1.3;
+      s.g.setAttribute('transform', `translate(${s.x.toFixed(1)} ${CY})`);
+      s.t.setAttribute('transform', `scale(${sc.toFixed(3)}) translate(-20 -32)`);
+      s.g.setAttribute('opacity', s.o.toFixed(2));
+      s.g.style.display = s.o < .02 ? 'none' : '';
+    });
+  }
+  function spawn() {
+    const el = pool.find(c => c.style.display === 'none'); if (!el) return;
+    el.style.display = ''; el.style.fill = 'var(--l2)'; el.setAttribute('opacity', '.9');
+    parts.push({ el, x: 4, y: CY + (Math.random() - .5) * 52, vx: 58 + Math.random() * 14, vy: 0, fall: false, o: .9, seen: new Set() });
+  }
+  function tick(dt, wall) {
+    phaseT += wall == null ? dt : wall;
+    if (phaseT > 9.5) { phaseT = 0; setPhase(1 - phase); }
+    spawnT += dt;
+    while (spawnT > .1) { spawnT -= .1; spawn(); }
+    ALL.forEach(k => { const s = scr[k]; s.x += (s.tx - s.x) * Math.min(1, dt * 3.2); s.o += (s.to - s.o) * Math.min(1, dt * 3.2); });
+    const p = PH[phase];
+    for (let i = parts.length - 1; i >= 0; i--) {
+      const q = parts[i];
+      if (!q.fall) {
+        q.x += q.vx * dt;
+        for (const k of p.keys) {
+          const s = scr[k];
+          if (s.o < .5 || q.seen.has(k) || q.x < s.x) continue;
+          q.seen.add(k);
+          if (k === 'done') { q.o = 0; if (!s.pulse.classList.contains('on')) { s.pulse.classList.add('on'); setTimeout(() => s.pulse.classList.remove('on'), 460); } break; }
+          if (Math.random() < p.drop[k]) { q.fall = true; q.vy = -30 - Math.random() * 30; q.vx *= .4; q.el.style.fill = 'var(--l1)'; break; }
+        }
+      } else {
+        q.vy += 380 * dt; q.x += q.vx * dt; q.y += q.vy * dt; q.o -= dt * .9;
+      }
+      if (q.o <= 0 || q.y > H + 8 || q.x > W + 8) { q.el.style.display = 'none'; parts.splice(i, 1); continue; }
+      q.el.setAttribute('cx', q.x.toFixed(1)); q.el.setAttribute('cy', q.y.toFixed(1)); q.el.setAttribute('opacity', q.o.toFixed(2));
+    }
+    paintScreens();
+  }
+  layout();
+  let rt; addEventListener('resize', () => { clearTimeout(rt); rt = setTimeout(layout, 150); });
+  if (reduce) { setPhase(1, true); for (let i = 0; i < 520; i++) { phaseT = 0; tick(1 / 60); } return; }
+  let last = 0, visible = true, raf = 0;
+  const loop = t => { const wall = Math.min(1, (t - (last || t)) / 1000); last = t; tick(Math.min(.1, wall), wall); raf = visible ? requestAnimationFrame(loop) : 0; };
+  new IntersectionObserver(es => { visible = es[0].isIntersecting; if (visible && !raf) { last = 0; raf = requestAnimationFrame(loop); } }).observe(svg);
+})();
+
+/* ---------------- Part 1: people and features ---------------- */
+const DEVICE = {
+  phone: '<rect x="11" y="4" width="14" height="28" rx="3.5"/><path d="M16 28.5h4"/>',
+  tablet: '<rect x="5" y="5" width="26" height="26" rx="3.5"/><path d="M16.5 27.5h3"/>',
+  laptop: '<rect x="7" y="8" width="22" height="15" rx="2"/><path d="M3.5 27.5h29"/>'
+};
+const PEOPLE = {
+  maya: { name: 'Maya', age: 36, c: 'var(--l1)', dev: 'phone', role: 'Parent of two, new to gardening',
+    facts: [['Books on', 'Her phone, one-handed'], ['Has', 'Two minutes at the school gate'], ['Dreads', 'Long forms and new passwords']],
+    quote: "It's 8:40, I've got a toddler on my hip and the bell's about to go. If it asks me to invent a password, I'm gone.",
+    job: ['the kids are bored every Saturday', 'grab a plot we can share', 'get them outside and off screens'] },
+  harold: { name: 'Harold', age: 74, c: 'var(--l2)', dev: 'tablet', role: 'Has had plot 12 for nine years',
+    facts: [['Uses', 'A tablet, text set extra large'], ['Has', 'Plenty of time, little patience for tech'], ['Dreads', 'Losing plot 12']],
+    quote: "My granddaughter set up the tablet. I don't want a new account. I want plot 12 again. I've spent nine years on that soil.",
+    job: ['the new season opens', 'keep the plot I have always had', 'carry on with the soil I have built up'] },
+  priya: { name: 'Priya', age: 29, c: 'var(--l3)', dev: 'laptop', role: 'Volunteer who runs the garden',
+    facts: [['Uses', 'A laptop, Sunday evenings'], ['Has', 'About an hour a week'], ['Dreads', 'Chasing payments by text']],
+    quote: "Every spring I juggle 40 plots, a waiting list in a spreadsheet and six people who haven't paid. I want it to run itself.",
+    job: ['plots open for the season', 'fill every plot fairly and get paid', 'stop chasing people all spring'] }
+};
+$('#people').innerHTML = Object.entries(PEOPLE).map(([id, p]) => `<article class="person glass" style="--c:${p.c}">
+  <div class="person-head"><span class="avatar" aria-hidden="true">${p.name[0]}</span><div><h3>${p.name}, ${p.age}</h3><div class="role">${esc(p.role)}</div></div>
+    <svg class="device" viewBox="0 0 36 36" role="img" aria-label="Uses a ${p.dev}">${DEVICE[p.dev]}</svg></div>
+  <dl class="pfacts">${p.facts.map(([a, b]) => `<div><dt>${a}</dt><dd>${esc(b)}</dd></div>`).join('')}</dl>
+  <button class="btn" data-meet="${id}" aria-expanded="false" aria-controls="story-${id}">Read ${p.name}'s story</button>
+  <div class="pstory" id="story-${id}" hidden>
+    <blockquote>“${esc(p.quote)}”</blockquote>
+    <div class="job"><span><b>When</b>${esc(p.job[0])}</span><span><b>I want to</b>${esc(p.job[1])}</span><span><b>So I can</b>${esc(p.job[2])}</span></div>
+  </div></article>`).join('');
+const met = new Set();
+$('#people').addEventListener('click', e => {
+  const b = e.target.closest('[data-meet]'); if (!b) return;
+  const id = b.dataset.meet, st = $('#story-' + id), open = st.hidden;
+  st.hidden = !open; b.setAttribute('aria-expanded', open);
+  b.textContent = open ? 'Hide the story' : `Read ${PEOPLE[id].name}'s story`;
+  if (open) { met.add(id); if (met.size === 3) CS.tick('p1', 'meet'); }
+});
+
+const FEATURES = [
+  { f: 'Social feed with likes and comments', to: 'nobody', why: "None of the three came to socialize in an app. Feeds are common in apps, which is why AI tools add them, but this is extra screens to build and moderate for nobody's job.", hint: 'Did any of the three say they want to socialize in the app?' },
+  { f: 'Book in under a minute on a phone', to: 'maya', why: 'Maya has two minutes and one free hand. Speed on a phone is her whole job.', hint: 'Who has two minutes and one free hand?' },
+  { f: 'Renew last year\'s plot in one tap', to: 'harold', why: "Harold doesn't want to browse 40 plots. He wants plot 12 again, in as few steps as possible.", hint: 'Who wants exactly the same plot as last year?' },
+  { f: 'A waitlist that offers freed plots in order', to: 'priya', why: 'A fair, automatic waitlist replaces the spreadsheet Priya juggles every spring.', hint: 'Who is juggling a waiting list in a spreadsheet?' },
+  { f: 'Harvest leaderboard', to: 'nobody', why: 'Nobody here is trying to compete, and a ranking could put off a beginner like Maya.', hint: 'Which of the three is trying to compete? Would a beginner feel welcome?' },
+  { f: 'Filter plots near the playground', to: 'maya', why: "Maya's kids will be with her. A plot by the playground is what makes her Saturday work.", hint: 'Whose kids will be with them at the garden?' },
+  { f: "See who hasn't paid and send a reminder", to: 'priya', why: 'This is the chasing Priya hates, turned into one click.', hint: 'Who is chasing payments by text?' },
+  { f: 'Profile photo required at signup', to: 'nobody', why: "Nobody needs a photo to book a plot. A required upload is one more reason to quit, especially on a phone.", hint: 'Does anyone need a photo to book a plot?' },
+  { f: 'Large text and a phone number to call', to: 'harold', why: "Harold reads with extra-large text and trusts a real voice. It helps everyone, but his job depends on it.", hint: 'Who reads with extra-large text and would rather call?' }
+];
+const BK = [['maya', 'Maya', 'var(--l1)'], ['harold', 'Harold', 'var(--l2)'], ['priya', 'Priya', 'var(--l3)'], ['nobody', 'Nobody', 'var(--ink-2)']];
+const sorted = { maya: [], harold: [], priya: [], nobody: [] };
+let fi = 0;
+function renderReq(anim) {
+  const r = $('#req');
+  if (fi >= FEATURES.length) {
+    r.innerHTML = `<span class="n">All 9 sorted</span><span class="f">6 features to build, 3 to skip</span>`;
+    $$('#send .btn').forEach(b => { b.disabled = true; });
+  } else r.innerHTML = `<span class="n">Feature ${fi + 1} of ${FEATURES.length}</span><span class="f">${esc(FEATURES[fi].f)}</span>`;
+  if (anim && !reduce) { r.classList.remove('in'); void r.offsetWidth; r.classList.add('in'); }
+}
+function renderBuckets() {
+  $('#buckets').innerHTML = BK.map(([id, nm, c]) => `<div class="bucket${id === 'nobody' ? ' nobody' : ''}" style="--c:${c}"><h4><i></i>${nm}<small>${sorted[id].length}</small></h4>${sorted[id].length ? `<ul>${sorted[id].map(f => `<li>${esc(f)}</li>`).join('')}</ul>` : `<div class="empty">${id === 'nobody' ? 'Features to skip land here.' : 'Nothing yet.'}</div>`}</div>`).join('');
+}
+$('#send').addEventListener('click', e => {
+  const b = e.target.closest('[data-to]'); if (!b || fi >= FEATURES.length) return;
+  const F = FEATURES[fi], to = b.dataset.to, note = $('#sortNote');
+  if (to !== F.to) {
+    const r = $('#req'); r.classList.remove('shake'); void r.offsetWidth; r.classList.add('shake');
+    CS.say(note, `<strong>Not quite.</strong> ${esc(F.hint)}`, 'bad');
+    return;
+  }
+  sorted[to].push(F.f); fi++;
+  const who = to === 'nobody' ? 'Skip it.' : `That's ${PEOPLE[to].name}'s.`;
+  CS.say(note, `<strong>${who}</strong> ${esc(F.why)}`, 'good');
+  if (FEATURES.filter(x => x.to === 'nobody').every(x => sorted.nobody.includes(x.f))) CS.tick('p1', 'cut');
+  if (FEATURES.filter(x => x.to !== 'nobody').every(x => sorted[x.to].includes(x.f))) CS.tick('p1', 'match');
+  if (fi >= FEATURES.length) CS.say(note, `<strong>Sorted.</strong> ${esc(F.why)} The AI's list had 9 features. Your build list has 6, and every one of them traces back to a real person's job.`, 'good');
+  renderReq(true); renderBuckets();
+});
+renderReq(); renderBuckets();
+
+/* ---------------- Part 2: the booking flow and its funnel ---------------- */
+const F2 = {
+  order: ['welcome', 'signup', 'verify', 'quiz', 'plot', 'dates', 'rules', 'pay', 'done'],
+  cut: [], simple: {}, fixed: {}
+};
+const BASE = simulate(F2.order, {}, {}).booked;
+$('#sumBase').textContent = fmt(BASE);
+const CUT_MSG = {
+  welcome: 'A splash screen is a pause before the real thing. People came to book, so open on the plots.',
+  verify: 'Leaving the app to find a code loses people, especially on a phone. The booking receipt can confirm the email address instead.',
+  quiz: 'Nobody needed a gardening quiz to book a plot. If Priya ever wants that information, she can ask later.'
+};
+const KEEP_MSG = {
+  signup: "You still need a name and a way to reach people. Try Simplify instead.",
+  plot: "Choosing a plot is the whole job. Make everything around it lighter instead.",
+  dates: 'People still need a season. Try Simplify: a good default does the work for them.',
+  rules: 'The rules matter to Priya. Keep them, but try Simplify.',
+  pay: 'The garden needs the $25. Keep this step and make the others easier.'
+};
+const SIMP_MSG = {
+  signup: 'From 12 fields to 3: name, email, phone. Ask for anything else later, and only when a feature needs it.',
+  dates: "This season is pre-picked. Most people want it, and anyone who doesn't can still change it. That's a default.",
+  rules: 'Five rules on one screen get read. Fourteen pages get skipped, or make people leave.'
+};
+const STATES = {
+  taken: { t: 'The plot was just taken', hits: 'Happens to 12 in 100 people while they choose.',
+    bad: '<span class="err">Error 409: Conflict</span><span>Something went wrong. Please try again.</span>',
+    good: '<b>Plot 14 was just booked by someone else.</b><span>Plots 13 and 15 next door are still free.</span><span class="go">See plot 13</span>',
+    msg: 'Now the screen says what happened and offers the plots next door. Most people pick one and carry on.' },
+  empty: { t: 'No plots match', hits: 'Happens to 10 in 100 people who filter by the playground.',
+    bad: '<span class="who">Plots near the playground</span><span class="blank">No results</span>',
+    good: '<b>No free plots by the playground right now.</b><span>Plot 22 is a one-minute walk away, or join the waitlist and we\'ll text you.</span><span class="go">See plot 22</span>',
+    msg: 'An empty list is a dead end. This one explains why it is empty and offers two ways forward.' },
+  declined: { t: 'The card is declined', hits: 'Happens to 8 in 100 people at payment.',
+    bad: '<span class="err">Payment failed.</span><span>The form has been cleared. Start again.</span>',
+    good: '<b>Your bank declined this card.</b><span>Plot 14 is held for you for 10 minutes. Try another card, or pay with your phone.</span><span class="go">Try another card</span>',
+    msg: 'Their plot and details are kept, so trying another card takes seconds instead of starting over.' }
+};
+const CHEV = { up: '<svg viewBox="0 0 20 20" aria-hidden="true"><path d="M5 12.5l5-5 5 5"/></svg>', down: '<svg viewBox="0 0 20 20" aria-hidden="true"><path d="M5 7.5l5 5 5-5"/></svg>' };
+const LOCK = '<svg viewBox="0 0 20 20" aria-hidden="true"><rect x="4.5" y="9" width="11" height="8" rx="2"/><path d="M7 9V6.5a3 3 0 0 1 6 0V9"/></svg>';
+const rows = {};
+function makeRow(k) {
+  const s = STEP[k];
+  const li = document.createElement('li');
+  li.className = 'step'; li.dataset.k = k;
+  li.innerHTML = `${k === 'done' ? `<span class="lockdot" title="Always the last screen">${LOCK}</span>` : `<div class="mv">
+      <button class="btn" data-a="up" aria-label="Move ${esc(s.name)} up">${CHEV.up}</button>
+      <button class="btn" data-a="down" aria-label="Move ${esc(s.name)} down">${CHEV.down}</button></div>`}
+    <svg class="th" viewBox="0 0 40 64" aria-hidden="true"></svg>
+    <div class="body"><div class="nm"><span><span class="idx"></span> ${esc(s.name)}</span></div><div class="meta"></div>
+      <div class="bar" aria-hidden="true"><i class="k"></i><i class="x"></i></div><div class="cnt"></div></div>
+    ${k === 'done' ? '' : `<div class="acts">${s.simp ? `<button class="btn" data-a="simp" aria-pressed="false">Simplify</button>` : ''}<button class="btn danger" data-a="cut">Cut</button></div>`}`;
+  return li;
+}
+let shownN = null;
+function tweenNumber(to) {
+  const el = $('#sumN'); const from = shownN == null ? to : shownN; shownN = to;
+  if (reduce || from === to) { el.textContent = fmt(to); return; }
+  const t0 = performance.now();
+  const f = t => { const p = Math.min(1, (t - t0) / 450); const e = 1 - Math.pow(1 - p, 3); el.textContent = fmt(Math.round(from + (to - from) * e)); if (p < 1) requestAnimationFrame(f); };
+  requestAnimationFrame(f);
+}
+function flowNote(html, kind = '') { CS.say($('#flowNote'), html, kind); }
+function renderFlow() {
+  const flow = $('#flow');
+  const before = new Map();
+  $$('.step', flow).forEach(el => before.set(el.dataset.k, el.getBoundingClientRect().top));
+  const active = document.activeElement;
+  const sim = simulate(F2.order, F2.simple, F2.fixed);
+  sim.rows.forEach((r, i) => {
+    const el = rows[r.k] || (rows[r.k] = makeRow(r.k));
+    const s = STEP[r.k], simple = !!F2.simple[r.k];
+    $('.idx', el).textContent = (i + 1) + '.';
+    $('svg.th', el).innerHTML = thumb(r.k, simple);
+    $('.meta', el).textContent = simple ? s.metaS : s.meta;
+    const nm = $('.nm', el); const pre = $('.pre', nm);
+    if (r.before && !pre) nm.insertAdjacentHTML('beforeend', '<span class="pre">Before the plot</span>');
+    if (!r.before && pre) pre.remove();
+    const kept = r.arrive - r.lose;
+    $('.bar .k', el).style.width = kept / 10 + '%';
+    $('.bar .x', el).style.left = kept / 10 + '%';
+    $('.bar .x', el).style.width = r.lose / 10 + '%';
+    $('.cnt', el).innerHTML = r.k === 'done' ? `<b style="color:var(--good)">${fmt(r.arrive)} book a plot</b>` : `${fmt(r.arrive)} arrive · <b style="white-space:nowrap">${fmt(r.lose)} give up here</b>`;
+    const up = $('[data-a="up"]', el), dn = $('[data-a="down"]', el), sp = $('[data-a="simp"]', el);
+    if (up) { up.disabled = i === 0; dn.disabled = i >= F2.order.length - 2; }
+    if (sp) { sp.setAttribute('aria-pressed', simple); sp.classList.toggle('on', simple); sp.textContent = simple ? 'Simplified' : 'Simplify'; }
+    flow.appendChild(el);
+  });
+  Object.keys(rows).forEach(k => { if (!F2.order.includes(k) && rows[k].isConnected) rows[k].remove(); });
+  if (!reduce) $$('.step', flow).forEach(el => {
+    const b = before.get(el.dataset.k); if (b == null) { el.animate([{ opacity: 0, transform: 'scale(.97)' }, { opacity: 1, transform: 'none' }], { duration: 300, easing: 'ease-out' }); return; }
+    const dy = b - el.getBoundingClientRect().top;
+    if (Math.abs(dy) > 1) el.animate([{ transform: `translateY(${dy}px)` }, { transform: 'none' }], { duration: 380, easing: 'cubic-bezier(.2,.8,.2,1)' });
+  });
+  if (active && active !== document.activeElement && active.isConnected) {
+    const alt = active.disabled ? $(`[data-a="${active.dataset.a === 'up' ? 'down' : 'up'}"]`, active.closest('.step')) : active;
+    if (alt && !alt.disabled) alt.focus({ preventScroll: true });
+  }
+  const tray = $('#tray');
+  tray.hidden = !F2.cut.length;
+  tray.innerHTML = F2.cut.length ? `<span>Cut:</span>${F2.cut.map(k => `<button class="btn" data-restore="${k}"><s>${esc(STEP[k].name)}</s>&nbsp;Restore</button>`).join('')}` : '';
+  // summary
+  tweenNumber(sim.booked);
+  $('#sumBar').style.width = sim.booked / 10 + '%';
+  const leak = sim.rows.slice().sort((a, b) => b.lose - a.lose)[0];
+  $('#sumLeak').innerHTML = `Biggest leak: <b>${esc(STEP[leak.k].name)}</b>, where ${fmt(leak.lose)} people give up.`;
+  $('#sumBig').classList.toggle('win', sim.booked >= 600);
+  if (sim.booked >= 600 && !CS.ticked('p2', 'goal')) {
+    CS.tick('p2', 'goal');
+    setTimeout(() => flowNote(`<strong>Goal reached: ${fmt(sim.booked)} of 1,000.</strong> The AI's draft booked ${fmt(BASE)}. Same garden, same plots: the only thing you changed was the path.`, 'good'), 60);
+  }
+  return sim;
+}
+function move(k, dir) {
+  const o = F2.order, i = o.indexOf(k), j = i + dir;
+  if (j < 0 || j >= o.length - 1) return;
+  const next = o.slice(); [next[i], next[j]] = [next[j], next[i]];
+  if (next.indexOf('pay') < next.indexOf('plot')) { flowNote("<strong>Pay before choosing a plot?</strong> Nobody knows what they'd be paying for. Payment stays after the plot.", 'bad'); return; }
+  F2.order = next;
+  const sim = renderFlow();
+  const si = F2.order.indexOf('signup'), pi = F2.order.indexOf('plot');
+  if (si > pi && si >= 0) {
+    if (!CS.ticked('p2', 'order')) flowNote('<strong>Value before effort.</strong> Now people see their plot before you ask for an account. Once the reward is in view, the effort feels worth it, so fewer give up.', 'good');
+    CS.tick('p2', 'order');
+  } else flowNote(`<strong>Moved.</strong> ${fmt(sim.booked)} of 1,000 now book. Steps asked before people see a plot lose more, because nothing seems worth the effort yet.`);
+}
+$('#flow').addEventListener('click', e => {
+  const b = e.target.closest('[data-a]'); if (!b) return;
+  const k = b.closest('.step').dataset.k, a = b.dataset.a;
+  if (a === 'up' || a === 'down') { move(k, a === 'up' ? -1 : 1); return; }
+  if (a === 'simp') {
+    F2.simple[k] = !F2.simple[k];
+    const before = simulate(F2.order, { ...F2.simple, [k]: !F2.simple[k] }, F2.fixed).booked;
+    const sim = renderFlow();
+    if (F2.simple[k]) {
+      if (k === 'signup') CS.tick('p2', 'simplify');
+      flowNote(`<strong>+${fmt(sim.booked - before)} bookings.</strong> ${SIMP_MSG[k]}`, 'good');
+    } else flowNote(`<strong>Back to the AI's version.</strong> ${fmt(before - sim.booked)} fewer people book.`);
+    return;
+  }
+  if (a === 'cut') {
+    if (!CUT_MSG[k]) { flowNote(`<strong>Can't cut this one.</strong> ${KEEP_MSG[k]}`, 'bad'); const r = rows[k]; if (!reduce) r.animate([{ transform: 'translateX(0)' }, { transform: 'translateX(-6px)' }, { transform: 'translateX(6px)' }, { transform: 'none' }], { duration: 320 }); return; }
+    const before = simulate(F2.order, F2.simple, F2.fixed).booked;
+    const go = () => {
+      F2.order = F2.order.filter(x => x !== k); F2.cut.push(k);
+      const sim = renderFlow();
+      CS.tick('p2', 'cut');
+      flowNote(`<strong>+${fmt(sim.booked - before)} bookings.</strong> ${CUT_MSG[k]}`, 'good');
+      const nb = $('.step [data-a="cut"]', $('#flow')); if (document.activeElement === document.body && nb) nb.focus({ preventScroll: true });
+    };
+    if (reduce) go(); else { rows[k].classList.add('cutting'); setTimeout(() => { rows[k].classList.remove('cutting'); go(); }, 280); }
+  }
+});
+$('#tray').addEventListener('click', e => {
+  const b = e.target.closest('[data-restore]'); if (!b) return;
+  const k = b.dataset.restore;
+  F2.cut = F2.cut.filter(x => x !== k);
+  const home = ['welcome', 'signup', 'verify', 'quiz', 'plot', 'dates', 'rules', 'pay', 'done'];
+  const o = F2.order.slice(); let at = o.length - 1;
+  for (let i = 0; i < o.length; i++) if (home.indexOf(o[i]) > home.indexOf(k)) { at = i; break; }
+  o.splice(at, 0, k); F2.order = o;
+  renderFlow();
+  flowNote(`<strong>${esc(STEP[k].name)} is back.</strong> Watch the funnel: every screen you add is another place to give up.`);
+});
+function renderStates() {
+  $('#states').innerHTML = Object.entries(STATES).map(([k, s]) => `<div class="state"><div><h4>${s.t}</h4><p class="hits">${s.hits}</p>
+    <button class="btn" data-fix="${k}" aria-pressed="${!!F2.fixed[k]}">${F2.fixed[k] ? "Show the AI's version" : 'Design a better screen'}</button></div>
+    <div class="mini${F2.fixed[k] ? ' good' : ''}" aria-live="polite"><span class="who">${F2.fixed[k] ? 'Your screen' : "The AI's screen"}</span>${F2.fixed[k] ? s.good : s.bad}</div></div>`).join('');
+}
+$('#states').addEventListener('click', e => {
+  const b = e.target.closest('[data-fix]'); if (!b) return;
+  const k = b.dataset.fix;
+  const before = simulate(F2.order, F2.simple, F2.fixed).booked;
+  F2.fixed[k] = !F2.fixed[k];
+  renderStates();
+  const sim = renderFlow();
+  $(`[data-fix="${k}"]`).focus({ preventScroll: true });
+  if (F2.fixed[k]) {
+    flowNote(`<strong>+${fmt(sim.booked - before)} bookings.</strong> ${STATES[k].msg}`, 'good');
+    if (Object.keys(STATES).every(x => F2.fixed[x])) CS.tick('p2', 'states');
+  } else flowNote(`<strong>The dead end is back.</strong> ${fmt(before - sim.booked)} fewer people book when the screen doesn't say what to do next.`);
+});
+renderStates();
+renderFlow();
+
+/* ---------------- Part 3: user story lab ---------------- */
+const GENERIC = /^(?:(?:a|an|the|any|every)\s+)?(user|users|customer|customers|person|people|someone|somebody|member|members|visitor|visitors|human|client|clients|i|me)$/i;
+const BROAD = /^(?:(?:a|an|the)\s+)?(gardener|gardeners|neighbou?r|neighbou?rs)$/i;
+const UI = /\b(button|buttons|screen|page|dropdown|drop-down|modal|popup|pop-up|tab|toggle|checkbox|icon|link|banner|widget|menu)\b/i;
+const VAGUE = /\b(easy|easier|easily|simple|simpler|simply|intuitive|user[- ]friendly|seamless(?:ly)?|fast|faster|quick|quickly|nice|nicer|modern|clean|better|good|great|smooth(?:ly)?|convenient)\b/i;
+const EDGE = /\b(taken|expire[sd]?|expiry|declined?|fails?|failed|failure|error|full|waitlist|waiting list|no longer|not available|unavailable|missed|misses|deadline|late|cannot|can't|isn't|is not|doesn't|does not|wrong|lost|forgets?|forgot|offline|someone else|nobody|no one)\b/i;
+const STOP = new Set('i me my it its is was be am are the a an and or of to for in on at with that this so can could will would should more much very really get gets have has had use using app them they their there he his him she her we our you your just than then all any'.split(' '));
+const words = s => (s.match(/[\w'’-]+/g) || []).length;
+function parseStory(src) {
+  const lines = src.split('\n').map(l => l.trim()).filter(l => l && !l.startsWith('#'));
+  const isCrit = l => /^([-*•]|\d+[.)]|given\b)/i.test(l);
+  const crit = lines.filter(isCrit).map(l => l.replace(/^([-*•]|\d+[.)])\s*/, '').trim()).filter(Boolean);
+  const body = lines.filter(l => !isCrit(l)).join(' ').replace(/[‘’]/g, "'");
+  const sentence = body.split(/acceptance criteria:?/i)[0].split(/(?<=[.!?])\s+/).find(s => /\bas\b[\s\S]*\bi\s+(want|need|would like)\b/i.test(s)) || '';
+  const out = { crit, who: '', want: '', why: '', found: !!sentence };
+  const m = sentence.match(/\bas\s+(.+?)\s*,?\s+i\s+(?:want|need|would like)\s+(?:to\s+)?(.+?)\s*,?\s+so\s+(?:that\s+)?(.+?)\s*[.!]?\s*$/i)
+    || sentence.match(/\bas\s+(.+?)\s*,?\s+i\s+(?:want|need|would like)\s+(?:to\s+)?(.+?)\s*[.!]?\s*$/i);
+  if (m) { out.who = (m[1] || '').trim(); out.want = (m[2] || '').trim(); out.why = (m[3] || '').trim(); }
+  const vg = s => { const v = s.match(VAGUE); return v && !/\d/.test(s) ? v[0] : null; };
+  out.whyOK = words(out.why) >= 4 && out.why.toLowerCase().replace(new RegExp(VAGUE.source, 'gi'), ' ').split(/[^\w']+/).filter(w => w.length > 2 && !STOP.has(w)).length >= 2;
+  out.whoOK = !!out.who && !GENERIC.test(out.who) && !BROAD.test(out.who);
+  out.wantOK = words(out.want) >= 3 && !UI.test(out.want) && !vg(out.want);
+  out.items = crit.map(c => ({ c, vague: vg(c), short: words(c) < 4, edge: EDGE.test(c) }));
+  out.good = out.items.filter(x => !x.vague && !x.short);
+  out.critOK = out.good.length >= 2 && !out.items.some(x => x.vague);
+  out.edgeOK = out.good.some(x => x.edge);
+  return out;
+}
+function storyHTML(p) {
+  const line = (tag, ok, val, why) => `<div class="sl ${ok ? 'ok' : 'no'}"><span class="tg">${tag}</span><span>${val ? `<span class="v">${esc(val)}</span>` : '<span class="miss">missing</span>'}${!ok && why ? `<span class="why">${why}</span>` : ''}</span></div>`;
+  let h = '<div class="story"><div class="sh">Story card</div>';
+  if (!p.found) h += '<div class="sl no"><span class="tg">Story</span><span><span class="miss">not found</span><span class="why">Keep the shape: As a …, I want …, so that …</span></span></div>';
+  else {
+    h += line('Who', p.whoOK, p.who, GENERIC.test(p.who) ? 'Could be anyone.' : BROAD.test(p.who) ? 'Every user here is one of these.' : '');
+    h += line('Wants to', p.wantOK, p.want, UI.test(p.want) ? 'Names a piece of UI, not a goal.' : VAGUE.test(p.want) ? 'Vague.' : words(p.want) < 3 ? 'Say a little more.' : '');
+    h += line('So that', p.whyOK, p.why, p.why ? 'Say the real reason it matters to them.' : '');
+  }
+  h += `<div class="sh">Acceptance criteria · ${p.good.length} testable</div>`;
+  h += p.items.length ? '<ul>' + p.items.map(x => `<li class="${x.vague || x.short ? 'no' : 'ok'}"><span class="m">${x.vague || x.short ? '!' : '✓'}</span><span><span class="v">${esc(x.c)}</span>${x.vague ? `<span class="why">"${esc(x.vague)}" can't be tested. What would you measure?</span>` : x.short ? '<span class="why">Too short to test.</span>' : x.edge ? '<span class="why" style="color:#7CC4FF">Covers something going wrong.</span>' : ''}</span></li>`).join('') + '</ul>' : '<div class="miss">No criteria yet. Start each one on its own line with "-".</div>';
+  return h + '</div>';
+}
+CS.codeLab($('#lab'), {
+  part: 'p3', mission: $('#mission'), language: 'User story',
+  starter: `# Harold has had plot 12 for nine years.\n# He wants the same plot next season, without a new account.\n# Rewrite the story and criteria below, then press Run.\n\nAs a user, I want a renew button, so that it is easy.\n\nAcceptance criteria:\n- It should be easy to use.\n`,
+  run: code => { const p = parseStory(code); return { p, html: storyHTML(p) }; },
+  steps: [
+    { t: 'Name who it is for', how: 'Replace "a user" with who Harold is to this garden.', hint: 'Try <b>As a returning gardener</b> or <b>As a gardener renewing my plot</b>. Specific enough that it could only mean people like Harold.',
+      check: r => r.p.whoOK, nudge: r => !r.p.found ? 'I can\'t find the story. Keep the shape: <b>As a …, I want …, so that …</b>' : BROAD.test(r.p.who) ? `Every user of this app is a ${esc(r.p.who.replace(/^(a|an|the)\s+/i, ''))}. What makes Harold different from Maya? Try <b>a returning gardener</b>.` : '"User" could be anyone, and an AI will design for anyone. Who is Harold to this garden?' },
+    { t: 'Say what they want to do', how: 'Describe the goal, not a button.', hint: 'What does Harold want to do? Something like <b>I want to keep my plot for next season</b>.',
+      check: r => r.p.wantOK, nudge: r => UI.test(r.p.want) ? `"${esc(r.p.want)}" picks the design before you know the need. Maybe a reminder email would work better than a button. Describe what Harold wants to do.` : 'Say what Harold wants to do in a few words, like <b>keep my plot for next season</b>.' },
+    { t: 'Say why it matters to him', how: 'After "so that", give Harold\'s real reason.', hint: 'Why does Harold care about plot 12? Think about the nine years of soil. For example: <b>so that I don\'t lose the soil I\'ve built up</b>.',
+      check: r => r.p.whyOK, nudge: r => r.p.why ? `"${esc(r.p.why)}" is about the app, not about Harold. What does he get out of it?` : 'Add <b>so that …</b> with Harold\'s reason.' },
+    { t: 'Write criteria you could test', how: 'At least two lines starting with "-". Each one something you could check yes or no.', hint: 'For example: <b>- Harold sees plot 12 already selected when he opens the app</b> and <b>- Renewing takes no more than 2 taps</b>.',
+      check: r => r.p.critOK, nudge: r => r.p.items.some(x => x.vague) ? 'Replace the vague words with something you could check, like a number of taps or what the screen shows.' : `You have ${r.p.good.length} testable line${r.p.good.length === 1 ? '' : 's'}. Add ${2 - r.p.good.length} more, each starting with "-".` },
+    { t: 'Cover what can go wrong', how: 'Add one criterion for when something fails.', hint: 'What if Harold misses the renewal deadline, or plot 12 has already been taken? Example: <b>- If the renewal deadline has passed, Harold is offered plot 12 first when it frees up</b>.',
+      check: r => r.p.edgeOK, nudge: () => 'Every criterion describes the happy path. Add one for a failure: a missed deadline, a taken plot, or a declined payment.' }
+  ],
+  doneTutor: '<b>Mission complete!</b> That story says who, what and why without choosing a design, and the criteria tell an AI, or a tester, exactly when it is done, including when things go wrong.'
+});
+$('#lab .cl-out').innerHTML = '<span class="lbl">Story check</span><span class="dim">Press Run to check your story.</span>';
+$('#lab [data-a="reset"]').textContent = 'Start over';
+
+/* ---------------- Part 4: steer the AI ---------------- */
+CS.steer($('#steer'), [
+  { ai: "I've added a signup form with 12 fields: name, email, phone, address, birthday, gender, experience level, favorite crops, how you heard about us, newsletter, emergency contact and a profile photo. More data means better insights!",
+    opts: [["Great. Add a progress bar so the long form feels shorter.", 0, "A progress bar doesn't remove any work. In part 2, the 12-field form alone lost hundreds of people before they saw a plot."],
+           ["Make all 12 fields optional, so people can skip the ones they don't like.", 0, "It still looks like a wall of work, many people fill optional fields anyway, and you collect data nobody has a use for."],
+           ["Only ask for what booking needs: name, email, phone. Add the rest later, when a feature needs it.", 1, "Right. Each field should trace back to someone's job. Everything else is friction."]] },
+  { ai: "I built the booking page as a dense table with sortable columns, keyboard shortcuts and bulk actions. It's very efficient.",
+    opts: [["Keep the table, and add a short tutorial that walks people through the shortcuts on their first visit.", 0, "A tutorial teaches people to use a design that doesn't fit them. Maya has two minutes on a phone."],
+           ["Who is this for? Most people book once a year on a phone. Give them a short list, and keep the table for Priya.", 1, "Yes. The AI designed for a power user like itself. Different people with different jobs can need different screens."],
+           ["Make the columns wider so it's easier to read.", 0, "That polishes the wrong design. The problem is who it was designed for, not the column width."]] },
+  { ai: "The booking flow is finished: choose a plot, pay, confirmed. Ready to ship?",
+    opts: [["Ship it. We'll watch the support inbox and fix problems as people report them.", 0, "The happy path is only part of the design. In part 2, the missing error screens cost more than a hundred bookings."],
+           ["Add one friendly 'Oops, something went wrong, please try again' message that covers every error.", 0, "Friendly or not, a general message tells nobody what happened or what to do next, so people leave."],
+           ["What does each screen show if the plot was just taken, none are free, or a card is declined?", 1, "Exactly. Asking for error and empty states by name is one of the most useful reviews you can give an AI's design."]] },
+  { ai: "Sure! I'll build a modern, intuitive plot booking app with all the features users expect.",
+    opts: [["Before you build, tell me who you think the users are and what each is trying to do. I'll correct you.", 1, "Great steer. Making the AI state its assumptions about users lets you catch a wrong one before it becomes 20 screens."],
+           ["Make it modern and intuitive, with dark mode, smooth animations and a clean, minimal look.", 0, "Adjectives aren't people. Neither of you knows yet what 'intuitive' means for Harold on his tablet."],
+           ["Copy how the big booking sites do it. They've already tested what works.", 0, "Their users and jobs are different. Copying their flow copies their assumptions, like having an account before you browse."]] }
+], { part: 'p4', counter: $('#steerCount') });
+
+/* ---------------- Part 5: quiz ---------------- */
+CS.quiz($('#quiz'), [
+  { q: 'What is a "job to be done"?', a: [['A task on the development team\'s to-do list', 0], ['The progress a person is trying to make in their situation', 1], ['A feature on the product roadmap', 0]], why: 'A job is about the person: when [situation], I want to [action], so I can [outcome]. Features are only ways of doing the job.' },
+  { q: 'Only 14 in 100 people finish your signup flow. What do you look at first?', a: [['Which step loses the most people, and whether that step is needed', 1], ['The color of the buttons', 0], ['Adding more features to keep people interested', 0]], why: 'The funnel tells you where people give up. Fix or cut the biggest leak before polishing anything else.' },
+  { q: 'Why ask people to create an account after they choose a plot?', a: [['It makes the database simpler', 0], ['People have seen what they get, so the effort feels worth it', 1], ['Accounts are not needed at all', 0]], why: 'Value before effort. Once Maya has picked her plot, a short form feels like the last step, not a barrier.' },
+  { q: 'Which of these is an empty state?', a: [['The plot list when no plots match a search', 1], ['An error message when a payment fails', 0], ['A form field without a label', 0]], why: 'An empty state is what shows when there is nothing to show. A good one explains why and offers a next step. A failed payment is an error state.' },
+  { q: 'Which user story is the most useful?', a: [['As a user, I want a better app, so that it is easy.', 0], ['As a returning gardener, I want to keep last year\'s plot, so that I don\'t lose the soil I\'ve built up.', 1], ['As a developer, I want to add a renew button, so that the code is clean.', 0]], why: 'It names a specific person, a goal rather than a button, and the real reason it matters to them.' }
+], { part: 'p5', doneCard: $('#doneCard'), doneTitle: 'You design for people now.', doneText: 'You can describe who an app is for and what they are trying to do, spot the steps where people give up, and write stories an AI can build from.' });
+})();
+</script>
+</body>
+</html>

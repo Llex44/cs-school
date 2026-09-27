@@ -1,0 +1,1107 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Anatomy of an app · CS School</title>
+<meta name="description" content="Course 202: frontend, backend, database and hosting, taken apart layer by layer.">
+<link rel="icon" href="../assets/favicon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="../assets/cs-school.css">
+<style>
+/* lesson-specific styles: isometric layer cake, layer inspector, job sorter, order journey, devtools mock, browser/server sorter, project map */
+:root{--row:color-mix(in srgb, var(--ink) 5%, transparent)}
+.pg-col > *{align-self:stretch}
+.cake-card{border-radius:20px; padding:14px 10px; align-self:stretch}
+.cake-card svg,.hero-visual svg{display:block; width:100%; height:auto}
+.slab{cursor:pointer; transition:opacity .3s}
+.slab.dim{opacity:.3}
+.cake-label{font-family:var(--f-display); font-weight:800; font-size:23px}
+.range-row{display:flex; justify-content:space-between; font-size:.95rem; color:var(--ink-2); margin-top:4px}
+.layer-btns{display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-top:18px}
+.layer-btns .btn{justify-content:flex-start}
+.layer-btns .btn i{width:10px; height:10px; border-radius:50%; background:var(--c); flex:none}
+.layer-btns .btn[aria-pressed="true"]{background:var(--ink); color:var(--paper); border-color:var(--ink)}
+.layer-btns .btn .seen{margin-left:auto; font-size:.9rem; color:var(--good)}
+.layer-btns .btn[aria-pressed="true"] .seen{color:var(--paper)}
+.insp{display:flex; flex-direction:column; gap:12px}
+.insp .ctl-title{margin:0}
+.insp p{font-size:1rem}
+.insp dl{margin:0; display:flex; flex-direction:column; gap:8px}
+.insp dt{font-family:var(--f-display); font-weight:800; font-size:.95rem}
+.insp dd{margin:0; font-size:1rem; color:var(--ink-2)}
+.insp .code{font-size:.9rem; padding:12px 14px}
+.insp .empty{color:var(--ink-2); font-size:1rem}
+.insp .note.info{background:var(--row)}
+/* jobs */
+.jobs,.pile{display:flex; flex-direction:column; gap:10px; border-radius:20px; padding:14px}
+.job{display:grid; grid-template-columns:minmax(0,1fr) auto; gap:8px 16px; align-items:center; padding:12px 14px; border-radius:14px; background:var(--row); transition:background .3s}
+.job > b{font-family:var(--f-display); font-weight:800; font-size:1.02rem; line-height:1.3}
+.job .pick{display:flex; gap:6px; flex-wrap:wrap}
+.job .pick .btn{min-height:44px; padding:6px 12px; font-size:.95rem}
+.job .pick .btn i{width:9px; height:9px; border-radius:50%; background:var(--c)}
+.job .fb{grid-column:1/-1; font-size:.95rem; color:var(--ink-2)}
+.job .fb:empty{display:none}
+.job.ok{background:var(--good-bg)}
+.job.ok .fb{color:var(--good)}
+.job.no .fb{color:var(--bad)}
+.job.shake{animation:shake .4s}
+.says td:first-child{font-family:var(--f-display); font-weight:700}
+/* journey */
+.journey{position:relative; border-radius:20px; padding:18px}
+.zones{display:grid; grid-template-columns:minmax(0,1fr) 96px minmax(0,2fr); align-items:stretch}
+.zone{--c:var(--l2); border-radius:16px; padding:14px; background:var(--glass-strong); transition:box-shadow .35s, transform .35s, background .35s; min-width:0}
+.zone.on{background:color-mix(in srgb, var(--c) 15%, var(--glass-strong)); box-shadow:0 10px 40px -6px color-mix(in srgb, var(--c) 40%, transparent); transform:translateY(-3px)}
+.zone-head{display:flex; flex-direction:column; align-items:flex-start; gap:6px; margin-bottom:12px}
+.zone-head b{font-family:var(--f-display); font-weight:800; font-size:1.05rem; line-height:1.2}
+.net{display:flex; align-items:center; justify-content:center; position:relative}
+.net::before{content:""; position:absolute; left:10px; right:10px; top:50%; height:3px; border-radius:2px; background:repeating-linear-gradient(90deg, var(--ink-2) 0 6px, transparent 6px 12px); opacity:.5}
+.net span{position:relative; transform:translateY(-20px); font-family:var(--f-display); font-weight:700; font-size:.9rem; color:var(--ink-2)}
+.host-wrap{--c:var(--l4); border-radius:18px; padding:12px; background:color-mix(in srgb, var(--l4) 13%, transparent); display:grid; grid-template-columns:minmax(0,1fr) minmax(0,1fr); grid-template-rows:auto 1fr; gap:12px; transition:box-shadow .35s, background .35s}
+.host-wrap.on{background:color-mix(in srgb, var(--l4) 26%, transparent); box-shadow:0 10px 40px -8px color-mix(in srgb, var(--l4) 40%, transparent)}
+.host-head{grid-column:1/-1; display:flex; flex-wrap:wrap; gap:8px 10px; align-items:center}
+.host-head b{font-family:var(--f-mono); font-weight:600; font-size:.95rem}
+.device{width:168px; max-width:100%; margin:0 auto; border-radius:26px; padding:9px 8px; background:#15171B; box-shadow:0 14px 28px -14px rgba(0,0,0,.55)}
+.screen{border-radius:18px; background:#FFF6EC; color:#3A2616; min-height:212px; padding:14px 12px; font-size:.9rem; line-height:1.35; display:flex; flex-direction:column; gap:6px; justify-content:center}
+.screen .cake-pic{height:58px; border-radius:10px; background:#F6DDC4; display:grid; place-items:center}
+.screen .cake-pic svg{height:48px; width:auto}
+.screen b{font-family:var(--f-display); font-weight:800; font-size:.95rem}
+.screen .buy{margin-top:4px; background:#C2255C; color:#fff; font-family:var(--f-display); font-weight:800; text-align:center; border-radius:99px; padding:7px 8px}
+.screen .spin{width:34px; height:34px; margin:0 auto 6px; border-radius:50%; border:3px solid #E9D6C3; border-top-color:#C2255C; animation:spin .9s linear infinite}
+.screen .tick{width:40px; height:40px; margin:0 auto 4px; border-radius:50%; background:#2B8A3E; color:#fff; display:grid; place-items:center; font-weight:900; font-size:1.3rem}
+.screen .ctr{text-align:center}
+@keyframes spin{to{transform:rotate(360deg)}}
+.checks{list-style:none; margin:0; padding:0; display:flex; flex-direction:column; gap:6px; font-size:.95rem}
+.checks li{display:flex; gap:8px; animation:rise .35s}
+.checks li::before{content:"✓"; color:var(--good); font-weight:900}
+.checks .idle{color:var(--ink-2)}
+.checks .idle::before{content:""}
+.mini-table{width:100%; min-width:0; border-collapse:collapse; font-family:var(--f-mono); font-size:.9rem}
+.mini-table th,.mini-table td{padding:4px 6px; border-bottom:1px solid var(--hair)}
+.mini-table th{background:none; font-family:var(--f-mono); font-weight:600; color:var(--ink-2)}
+.mini-table tr.new td{animation:flash 1.4s; font-weight:600}
+.packet{position:absolute; left:0; top:0; width:18px; height:18px; margin:-9px 0 0 -9px; border-radius:50%; background:var(--l2); box-shadow:0 0 0 7px color-mix(in srgb, var(--l2) 24%, transparent); transition:transform .8s cubic-bezier(.5,0,.3,1), opacity .3s; pointer-events:none; z-index:3; opacity:0}
+.packet.show{opacity:1}
+.jcontrols{margin:18px 0}
+.stepcard{border-radius:20px; padding:20px; display:grid; grid-template-columns:minmax(0,1fr) minmax(0,1.15fr); gap:22px; align-items:start}
+.stepcard h3{margin:6px 0 10px; font-size:1.3rem}
+.stepcard p{font-size:1rem}
+.stepcard .who{margin-top:12px; padding:10px 14px; border-radius:12px; background:var(--row); font-size:1rem}
+.stepcard .who b{font-family:var(--f-display)}
+.stepcard .fname{font-family:var(--f-mono); font-size:.9rem; color:var(--ink-2); margin-bottom:6px}
+.stepcard .code{font-size:.9rem}
+/* devtools */
+.devtools{background:var(--term); color:var(--term-ink); border-radius:16px; overflow:hidden; box-shadow:var(--float); font-family:var(--f-mono); font-size:.95rem}
+.dt-bar{display:flex; gap:4px; padding:8px 10px; background:var(--term-2); font-family:var(--f-display); font-weight:700; font-size:.9rem; color:var(--term-dim)}
+.dt-bar span{padding:4px 10px; border-radius:8px}
+.dt-bar span.on{background:#2A303A; color:#fff}
+.dt-body{padding:14px 16px; line-height:1.7; white-space:pre-wrap; word-break:break-word}
+.dt-body .p{color:#7CC4FF} .dt-body .k{color:#C4A7FF} .dt-body .s{color:#8BF0A8} .dt-body .d{color:var(--term-dim)}
+.dt-body input{font:inherit; width:6.5em; background:#2A303A; color:#FFC53D; border:1px solid #56606D; border-radius:6px; padding:2px 6px; min-height:34px}
+.dt-body input:focus{outline:2px solid #FFC53D; outline-offset:1px}
+.dt-actions{display:flex; gap:8px; flex-wrap:wrap; padding:0 16px 16px}
+.dt-actions .btn{background:transparent; color:#ECEFF3; border-color:#56606D; box-shadow:none; font-size:.95rem}
+.dt-actions .btn:hover{background:#262C36}
+.dt-actions .btn.primary{background:#ECEFF3; color:#121417; border-color:#ECEFF3}
+.receipt{margin-top:14px; border-radius:14px; padding:12px 16px; font-family:var(--f-mono); font-size:.95rem; min-height:48px}
+.receipt .bad{color:var(--bad); font-weight:600} .receipt .good{color:var(--good); font-weight:600}
+.backend-seg{display:flex; flex-wrap:wrap}
+/* browser vs server sorter */
+.item{display:grid; grid-template-columns:minmax(0,1fr) auto; gap:8px 14px; align-items:center; padding:12px 14px; border-radius:14px; background:var(--row)}
+.item > b{font-family:var(--f-display); font-weight:800; line-height:1.3}
+.item .fb{grid-column:1/-1; font-size:.95rem; color:var(--bad)}
+.item .fb:empty{display:none}
+.item.shake{animation:shake .4s}
+.buckets{display:grid; grid-template-columns:1fr 1fr; gap:18px; margin-top:18px}
+.bucket{border-radius:18px; padding:16px 18px; min-height:150px}
+.bucket h4{font-family:var(--f-display); font-weight:800; font-size:1.15rem; margin:0}
+.bucket .sub2{font-size:.95rem; color:var(--ink-2); margin:2px 0 10px}
+.bucket ul{list-style:none; margin:0; padding:0; display:flex; flex-direction:column; gap:6px}
+.bucket li{padding:8px 12px; border-radius:10px; background:var(--row); font-size:1rem; animation:rise .35s}
+.bucket li small{display:block; font-size:.9rem; color:var(--ink-2)}
+.bucket.browser li{background:color-mix(in srgb, var(--l2) 12%, var(--glass-strong))}
+.bucket.server li{background:color-mix(in srgb, var(--l5) 12%, var(--glass-strong))}
+/* project map + tree */
+.pmap{display:flex; flex-direction:column; gap:10px}
+.prow{border-radius:12px; padding:10px 12px; background:var(--row); display:flex; flex-direction:column; gap:8px}
+.prow code{background:none; padding:0; font-size:.9rem; word-break:break-all}
+.prow .pick{display:flex; flex-wrap:wrap; gap:6px}
+.prow .pick .btn{min-height:40px; padding:4px 10px; font-size:.9rem}
+.prow .pick .btn i{width:8px; height:8px; border-radius:50%; background:var(--c)}
+.prow .lock{font-size:.95rem; color:var(--ink-2)}
+.prow.ok{background:var(--good-bg)}
+.prow .res{font-size:.95rem; color:var(--good); font-family:var(--f-display); font-weight:800}
+.prow .why{font-size:.95rem; color:var(--bad)}
+.prow.shake{animation:shake .4s}
+.tree{font-family:var(--f-mono); font-size:.9rem; line-height:1.65; white-space:pre; overflow-x:auto; background:var(--row); border-radius:12px; padding:12px 14px}
+.tree .dir{color:var(--l2); font-weight:600}
+.tree .here{color:var(--tip); font-family:var(--f-display); font-weight:800}
+.tree .dim{color:var(--ink-2)}
+.tree i{display:inline-block; width:8px; height:8px; border-radius:50%; margin-left:6px; vertical-align:1px; background:var(--c)}
+@media (max-width:900px){
+  .stepcard{grid-template-columns:minmax(0,1fr)}
+}
+@media (max-width:760px){
+  .zones{grid-template-columns:minmax(0,1fr); grid-template-rows:auto 44px auto}
+  .net::before{left:50%; right:auto; top:4px; bottom:4px; width:3px; height:auto; background:repeating-linear-gradient(180deg, var(--ink-2) 0 6px, transparent 6px 12px)}
+  .net span{transform:translateX(52px)}
+  .z-browser{display:grid; grid-template-columns:auto minmax(0,1fr); gap:14px; align-items:center}
+  .z-browser .zone-head{margin:0}
+  .device{width:150px}
+  .screen{min-height:190px}
+}
+@media (max-width:640px){
+  .stepcard .code{white-space:pre-wrap; word-break:break-word}
+  .job{grid-template-columns:minmax(0,1fr)}
+  .item{grid-template-columns:minmax(0,1fr)}
+  .buckets{grid-template-columns:minmax(0,1fr)}
+  .layer-btns .btn{padding:8px 10px}
+  .journey{padding:12px}
+  .host-wrap{padding:10px; gap:10px; grid-template-columns:minmax(0,1fr)}
+  .zone{padding:12px 10px}
+  .z-browser{grid-template-columns:minmax(0,1fr)}
+  .device{width:170px}
+}
+</style>
+</head>
+<body>
+<main id="top">
+  <section class="wrap hero">
+    <div>
+      <div class="kicker">Core curriculum · Course 202 · Anatomy of an app</div>
+      <h1>Every app is a layer cake. Customers only see the top.</h1>
+      <p class="lede">The page you tap is just the top layer. Under it sit your server's code, the database that remembers everything, and the hosting that keeps it online. Learn to tell the layers apart, and you'll know where every piece of code belongs, and where secrets must never go.</p>
+      <ul class="facts">
+        <li>About 15 minutes</li>
+        <li>5 parts</li>
+        <li>Practice terminal</li>
+        <li>No coding experience needed</li>
+      </ul>
+      <div class="row hero-cta"><a class="btn primary" href="#p1">Start the lesson</a></div>
+    </div>
+    <figure style="margin:0">
+      <div class="hero-visual glass">
+        <svg id="heroCake" viewBox="0 0 540 520" role="img" aria-label="An animated layer cake: the bakery website separates into four layers, frontend, backend, database and hosting, and a request travels down through them and back up."></svg>
+        <div class="legend"><span><i style="background:var(--l2)"></i>Frontend</span><span><i style="background:var(--l5)"></i>Backend</span><span><i style="background:var(--l3)"></i>Database</span><span><i style="background:var(--l4)"></i>Hosting</span></div>
+      </div>
+      <div class="hero-caption glass" aria-hidden="true"><span id="heroWhere">browser</span><span id="heroCap">GET rosiesbakery.com</span></div>
+    </figure>
+  </section>
+
+  <div class="wrap">
+  <!-- PART 1 -->
+  <section class="part" id="p1">
+    <span class="bullet glass" data-p="p1">1</span>
+    <div class="part-head">
+      <div class="kicker">Part 1 of 5</div>
+      <h2>Take it apart</h2>
+      <p>Rosie's bakery site looks like one thing, but it's built in <b>layers</b>. Each layer runs in a different place and does a different job.</p>
+    </div>
+
+    <div class="chat" aria-label="Example conversation">
+      <div class="msg me"><span class="who">You</span>Add a "favorite cakes" button, so customers can save the ones they like.</div>
+      <div class="msg ai"><span class="who">AI assistant</span>Sure. That touches three layers: a heart button in the frontend, a new API route in the backend, and a favorites table in the database. OK to go ahead?</div>
+      <div class="msg me"><span class="who">You</span>Three layers? I thought it was one website.</div>
+    </div>
+
+    <div class="task glass" data-part="p1">
+      <h3>Your task</h3>
+      <ol>
+        <li data-t="explode"><span>Slide Rosie's app apart into its layers.</span></li>
+        <li data-t="layers"><span>Open all four layers to see what each one does.</span></li>
+        <li data-t="sort"><span>Match each job to the layer that does it.</span></li>
+      </ol>
+    </div>
+
+    <div class="pg">
+      <div class="pg-col">
+        <div class="o1 ctl glass">
+          <label class="ctl-title" for="apart">Take it apart</label>
+          <input class="range" type="range" id="apart" min="0" max="100" value="0">
+          <div class="range-row" aria-hidden="true"><span>One website</span><span>Four layers</span></div>
+          <div class="layer-btns" id="layerBtns"></div>
+        </div>
+        <div class="o3 ctl glass insp" id="insp" aria-live="polite"></div>
+      </div>
+      <div class="pg-col">
+        <div class="o2 cake-card glass"><svg id="cake" viewBox="0 0 540 520" role="img" aria-label="Rosie's app as a stack of four layers. Use the slider to separate them and the buttons to inspect each one."></svg></div>
+      </div>
+    </div>
+
+    <div class="sub stack">
+      <h3>Which layer does each job?</h3>
+      <p class="muted">Pick the layer for each job at Rosie's. Each answer explains itself.</p>
+      <div class="jobs glass" id="jobs"></div>
+    </div>
+
+    <div class="sub stack">
+      <h3>When the AI names a layer</h3>
+      <p>AI tools describe their work in layers. Now you can tell what's about to change.</p>
+      <div class="table-wrap glass">
+        <table class="says">
+          <thead><tr><th>When the AI says…</th><th>It's changing</th></tr></thead>
+          <tbody>
+            <tr><td>"I'll update the component, page or styles."</td><td><span class="chip" style="--c:var(--l2)"><i></i>Frontend</span> what customers see</td></tr>
+            <tr><td>"I'll add an API route, endpoint or server action."</td><td><span class="chip" style="--c:var(--l5)"><i></i>Backend</span> the rules on your server</td></tr>
+            <tr><td>"I'll write a migration or update the schema."</td><td><span class="chip" style="--c:var(--l3)"><i></i>Database</span> the shape of what's stored</td></tr>
+            <tr><td>"I'll deploy, set an environment variable, or add a domain."</td><td><span class="chip" style="--c:var(--l4)"><i></i>Hosting</span> where and how it runs</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <details class="deeper glass">
+        <summary>Under the hood: full-stack frameworks <small>optional</small></summary>
+        <div>
+          <p>Next.js, Remix, Nuxt and SvelteKit are <b>full-stack</b> frameworks: frontend and backend live in one project and go online together. The layers are still there. You tell them apart by folder (in Next.js, <code>app/api/</code> is backend) and by markers inside files, like <code>'use client'</code>.</p>
+          <p>Other projects keep them apart, in folders like <code>client/</code> and <code>server/</code>, or even in separate repositories. You'll explore a real-looking Next.js project in part 3.</p>
+        </div>
+      </details>
+    </div>
+  </section>
+
+  <!-- PART 2 -->
+  <section class="part" id="p2">
+    <span class="bullet glass" data-p="p2">2</span>
+    <div class="part-head">
+      <div class="kicker">Part 2 of 5</div>
+      <h2>Follow one order</h2>
+      <p>Frontend code runs on the customer's device. Backend code runs on your server. Follow an order from the tap to the database and back, and notice what each side is trusted to do.</p>
+    </div>
+
+    <div class="task glass" data-part="p2">
+      <h3>Your task</h3>
+      <ol>
+        <li data-t="follow"><span>Follow an order through all six steps.</span></li>
+        <li data-t="cheat"><span>Play a sneaky customer: change the price in the browser, and try it on both kinds of backend.</span></li>
+        <li data-t="sort"><span>Put each item where it belongs: in the browser or on the server.</span></li>
+      </ol>
+    </div>
+
+    <div class="journey glass" id="journey">
+      <div class="zones">
+        <div class="zone z-browser" data-z="browser" style="--c:var(--l2)">
+          <div class="zone-head"><span class="chip" style="--c:var(--l2)"><i></i>Frontend</span><b>Customer's browser</b></div>
+          <div class="device" aria-hidden="true"><div class="screen" id="screen"></div></div>
+        </div>
+        <div class="net" aria-hidden="true"><span>internet</span></div>
+        <div class="host-wrap" data-z="host">
+          <div class="host-head"><span class="chip" style="--c:var(--l4)"><i></i>Hosting</span><b>rosiesbakery.com</b></div>
+          <div class="zone z-server" data-z="server" style="--c:var(--l5)">
+            <div class="zone-head"><span class="chip" style="--c:var(--l5)"><i></i>Backend</span><b>Your server</b></div>
+            <ul class="checks" id="checks"></ul>
+          </div>
+          <div class="zone z-db" data-z="db" style="--c:var(--l3)">
+            <div class="zone-head"><span class="chip" style="--c:var(--l3)"><i></i>Database</span><b>orders table</b></div>
+            <table class="mini-table" id="ordersTable"></table>
+          </div>
+        </div>
+      </div>
+      <div class="packet" id="packet" aria-hidden="true"></div>
+    </div>
+    <div class="row jcontrols">
+      <button class="btn primary" id="jNext">Start the order</button>
+      <button class="btn" id="jBack" disabled>Back</button>
+    </div>
+    <div class="stepcard glass" id="stepcard" aria-live="polite">
+      <div>
+        <div class="kicker" id="scKicker">Ready</div>
+        <h3 id="scTitle">A customer is about to order a lemon drizzle cake.</h3>
+        <p id="scText">Press <b>Start the order</b> and follow it, one step at a time, through every layer.</p>
+        <p class="who" id="scWho" hidden></p>
+      </div>
+      <div><div class="fname" id="scFile"></div><div class="code" id="scCode">// The code that runs at each step appears here.</div></div>
+    </div>
+
+    <div class="sub stack">
+      <h3>Anyone can edit the browser</h3>
+      <p class="muted">Every browser has developer tools, one keypress away. With them, a customer can read and change anything the frontend sends. Try it: change the price below, send the order, then switch the backend and try again.</p>
+      <div class="pg">
+        <div class="pg-col">
+          <div class="o1 ctl glass">
+            <h4 class="ctl-title" id="beLabel">How does the backend get the price?</h4>
+            <div class="seg-control backend-seg" role="group" aria-labelledby="beLabel">
+              <button type="button" data-be="trust" aria-pressed="true">Trusts the browser</button>
+              <button type="button" data-be="lookup" aria-pressed="false">Looks it up itself</button>
+            </div>
+            <p class="ctl-sub" style="margin:12px 0 0" id="beSub"></p>
+          </div>
+          <div class="o3 note" id="cheatNote" aria-live="polite" hidden></div>
+        </div>
+        <div class="pg-col">
+          <div class="o2">
+            <div class="devtools">
+              <div class="dt-bar" aria-hidden="true"><span>Elements</span><span class="on">Console</span><span>Network</span></div>
+              <div class="dt-body"><span class="p">&gt;</span> order <span class="d">// what the checkout page is about to send</span>
+{ <span class="k">cake</span>: <span class="s">"Lemon drizzle"</span>,
+  <span class="k">pickup</span>: <span class="s">"Sat 10:00"</span>,
+  <span class="k">price</span>: <label class="vh" for="priceIn">Price the browser sends</label><input id="priceIn" type="text" inputmode="decimal" autocomplete="off" value="18.50"> }</div>
+              <div class="dt-actions"><button class="btn" id="cheapBtn">Make it 0.01</button><button class="btn primary" id="sendBtn">Send this order</button></div>
+            </div>
+            <div class="receipt glass" id="receiptBox" aria-live="polite"><span class="muted">The backend's answer appears here.</span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="sub stack">
+      <h3>Browser or server?</h3>
+      <p class="muted">For each item, decide where it should live. Remember: anything in the browser can be read by anyone.</p>
+      <div class="pile glass" id="pile"></div>
+      <div class="buckets">
+        <div class="bucket browser glass"><h4>In the browser</h4><p class="sub2">Anyone can read it</p><ul id="bBrowser"></ul></div>
+        <div class="bucket server glass"><h4>On the server</h4><p class="sub2">Only you can read it</p><ul id="bServer"></ul></div>
+      </div>
+      <p><b>Why secrets can't live in the frontend.</b> Everything the frontend uses is downloaded to the customer's device. They can press View source, open the developer tools, or watch the network, and read all of it. Squashing the code into one unreadable-looking line ("minifying") doesn't hide it. If a secret key is in the browser, it's public.</p>
+      <details class="deeper glass">
+        <summary>Under the hood: environment variables <small>optional</small></summary>
+        <div>
+          <p>Secrets live in <b>environment variables</b>: settings stored on the server, outside your code. On your laptop they sit in a file like <code>.env.local</code>. In production you type them into your hosting dashboard.</p>
+          <p>In Next.js, a variable whose name starts with <code>NEXT_PUBLIC_</code> is copied into the browser code on purpose, so never give a secret that prefix. Vite uses <code>VITE_</code> the same way. Course <a href="207-security-essentials.html">207 Security essentials</a> goes further.</p>
+        </div>
+      </details>
+      <details class="deeper glass">
+        <summary>Under the hood: domains, DNS and CDNs <small>optional</small></summary>
+        <div>
+          <p>A <b>domain</b> like rosiesbakery.com is a name you rent each year. <b>DNS</b>, the internet's phone book, turns that name into the address of your host's computers.</p>
+          <p>A <b>CDN</b> (content delivery network) keeps copies of your frontend files, like pages, photos and code, in data centers around the world, so a customer in Sydney doesn't wait for a server in London. Course <a href="209-shipping-and-running-software.html">209 Shipping &amp; running software</a> covers going live.</p>
+        </div>
+      </details>
+    </div>
+  </section>
+
+  <!-- PART 3 -->
+  <section class="part" id="p3">
+    <span class="bullet glass" data-p="p3">3</span>
+    <div class="part-head">
+      <div class="kicker">Part 3 of 5</div>
+      <h2>Try it: explore a real project</h2>
+      <p>When an AI builds an app, it hands you a folder of files. Learn to find your way around it, and you'll know which layer every file belongs to. This practice terminal is safe. Nothing here can break.</p>
+    </div>
+
+    <div class="lab">
+      <div class="a-mission ctl glass">
+        <h3 class="ctl-title">Your mission</h3>
+        <p class="ctl-sub" style="margin-top:0">An AI just built Rosie's site with Next.js. Look around the project, read the key files, then label each one with its layer.</p>
+        <ol class="mission" id="mission"></ol>
+      </div>
+      <div class="a-work" id="term"></div>
+      <div class="a-side">
+        <div class="ctl glass">
+          <h3 class="ctl-title">Project map</h3>
+          <p class="ctl-sub">Label each file once you've read it with <code>cat</code>.</p>
+          <div class="pmap" id="pmap"></div>
+        </div>
+      </div>
+      <div class="a-extra stack" style="gap:18px">
+        <div class="ctl glass">
+          <h3 class="ctl-title">Project tree</h3>
+          <div class="tree" id="tree"></div>
+        </div>
+        <details class="deeper glass">
+          <summary>Under the hood: why page.tsx can run in two places <small>optional</small></summary>
+          <div>
+            <p>In Next.js, page files are drawn on the server first by default, so the page arrives ready to show. Only files marked <code>'use client'</code>, and the files they import, are also sent to the browser to handle clicks and typing.</p>
+            <p>A rule of thumb that works: anything that draws the page is frontend, anything under <code>app/api/</code> is backend, and secrets only ever appear in backend code.</p>
+          </div>
+        </details>
+      </div>
+    </div>
+  </section>
+
+  <!-- PART 4 -->
+  <section class="part" id="p4">
+    <span class="bullet glass" data-p="p4">4</span>
+    <div class="part-head">
+      <div class="kicker">Part 4 of 5</div>
+      <h2>Steer the AI</h2>
+      <p>AI tools sometimes put code in the wrong layer, because it's quicker. Here are four things one might say about Rosie's app. Pick the reply you'd send.</p>
+    </div>
+    <p class="counter" id="steerCount"></p>
+    <div id="steer"></div>
+  </section>
+
+  <!-- PART 5 -->
+  <section class="part" id="p5">
+    <span class="bullet glass" data-p="p5">5</span>
+    <div class="part-head">
+      <div class="kicker">Part 5 of 5</div>
+      <h2>Check your understanding</h2>
+      <p>Five quick questions. Each answer explains itself.</p>
+    </div>
+    <div id="quiz"></div>
+    <div id="doneCard" aria-live="polite"></div>
+  </section>
+  </div>
+
+  <section class="after" id="cheat">
+    <div class="wrap stack">
+      <h2>Cheat sheet</h2>
+      <p class="muted">The four layers, where they run, and the question to ask the AI about each.</p>
+      <div class="table-wrap glass">
+        <table>
+          <thead><tr><th>Layer</th><th>Runs where</th><th>Typical files and tools</th><th>Ask the AI</th></tr></thead>
+          <tbody>
+            <tr><td><b>Frontend</b></td><td>In each visitor's browser</td><td><code>page.tsx</code>, <code>components/</code>, CSS · React, Vue, Svelte</td><td>"Is anything in this frontend code secret, or trusted?"</td></tr>
+            <tr><td><b>Backend</b></td><td>On your server</td><td><code>app/api/…/route.ts</code>, <code>server/</code> · Node.js, Python</td><td>"Does the server check this itself, or trust the browser?"</td></tr>
+            <tr><td><b>Database</b></td><td>On a database server</td><td><code>schema.prisma</code>, <code>migrations/</code> · Postgres, MySQL</td><td>"Which table holds this, and who can read it?"</td></tr>
+            <tr><td><b>Hosting</b></td><td>In a data center, and near users via a CDN</td><td>Domain and DNS settings · Vercel, Netlify, Render, AWS</td><td>"Where will this run, and what will it cost?"</td></tr>
+            <tr><td><b>Config &amp; secrets</b></td><td>On the server, outside the code</td><td><code>.env.local</code>, <code>package.json</code>, <code>next.config.js</code></td><td>"Is this key in an environment variable, and kept out of git?"</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+</main>
+<script src="../assets/cs-school.js"></script>
+<script>
+(() => {
+const { $, $$, esc, reduce } = CS;
+
+CS.lesson({
+  id: '202',
+  parts: [
+    { id: 'p1', title: 'Take it apart' },
+    { id: 'p2', title: 'Follow one order' },
+    { id: 'p3', title: 'Try it' },
+    { id: 'p4', title: 'Steer the AI' },
+    { id: 'p5', title: 'Check' }
+  ]
+});
+
+/* ---------------- isometric layer cake ---------------- */
+const C30 = 0.866;
+const LAYERS = [
+  { id: 'front', name: 'Frontend', c: 'var(--l2)', S: 176, T: 18 },
+  { id: 'back', name: 'Backend', c: 'var(--l5)', S: 176, T: 18 },
+  { id: 'db', name: 'Database', c: 'var(--l3)', S: 176, T: 18 },
+  { id: 'host', name: 'Hosting', c: 'var(--l4)', S: 206, T: 12 }
+];
+const tint = (c, p) => `color-mix(in srgb, ${c} ${p}%, var(--paper))`;
+function faceArt(id, S, c) {
+  if (id === 'front') return `<rect x="12" y="12" width="${S - 24}" height="${S - 24}" rx="12" style="fill:var(--paper)"/>
+    <rect x="12" y="12" width="${S - 24}" height="26" rx="10" style="fill:${c}" opacity=".85"/>
+    <circle cx="${S * .3}" cy="${S * .5}" r="17" style="fill:var(--l1)" opacity=".8"/><circle cx="${S * .52}" cy="${S * .5}" r="17" style="fill:var(--l4)" opacity=".85"/><circle cx="${S * .74}" cy="${S * .5}" r="17" style="fill:var(--l5)" opacity=".75"/>
+    <rect x="${S * .3}" y="${S * .72}" width="${S * .44}" height="20" rx="10" style="fill:${c}"/>`;
+  if (id === 'back') {
+    const rows = [[0, 96], [16, 70], [16, 112], [32, 58], [16, 90], [0, 40], [0, 104]];
+    return rows.map(([ind, w], i) => `<rect x="${24 + ind}" y="${24 + i * 19}" width="${w}" height="8" rx="4" style="fill:${c}" opacity="${i % 3 === 1 ? .45 : .7}"/>`).join('');
+  }
+  if (id === 'db') {
+    let s = `<rect x="16" y="16" width="${S - 32}" height="${S - 32}" rx="10" style="fill:var(--paper)"/><rect x="16" y="16" width="${S - 32}" height="28" rx="9" style="fill:${c}" opacity=".75"/>`;
+    for (let r = 1; r < 6; r++) s += `<line x1="16" x2="${S - 16}" y1="${44 + r * 21}" y2="${44 + r * 21}" style="stroke:${c}" stroke-width="1.6" opacity=".45"/>`;
+    [S * .38, S * .64].forEach(x => { s += `<line x1="${x}" x2="${x}" y1="44" y2="${S - 16}" style="stroke:${c}" stroke-width="1.6" opacity=".45"/>`; });
+    return s;
+  }
+  let s = '';
+  for (let i = 0; i < 3; i++) for (let j = 0; j < 3; j++) {
+    const x = 26 + i * 58, y = 26 + j * 58;
+    s += `<rect x="${x}" y="${y}" width="42" height="42" rx="9" style="fill:${c}" opacity=".32"/><circle cx="${x + 12}" cy="${y + 12}" r="4" style="fill:${c}"/><circle cx="${x + 24}" cy="${y + 12}" r="4" style="fill:${c}" opacity=".55"/>`;
+  }
+  return s;
+}
+function cakeSVG(t, { W = 540, H = 520, CX = 184, gap = 76, sel = null, labels = true, dot = null } = {}) {
+  const g = t * gap;
+  const cys = []; let y = 0;
+  LAYERS.forEach(L => { cys.push(y); y += L.T + g; });
+  const top = cys[0] - LAYERS[0].S / 2, bottom = cys[3] + LAYERS[3].S / 2 + LAYERS[3].T;
+  const off = (H - (bottom - top)) / 2 - top;
+  const la = Math.max(0, Math.min(1, (t - .35) / .4));
+  let s = '', lab = '';
+  for (let i = LAYERS.length - 1; i >= 0; i--) {
+    const L = LAYERS[i], S = L.S, T = L.T, h = S / 2, w = S * C30, cy = cys[i] + off;
+    const A = [CX, cy - h], B = [CX + w, cy], D = [CX, cy + h], E = [CX - w, cy];
+    const P = a => a.map(p => p.map(n => n.toFixed(1)).join(',')).join(' ');
+    const cls = 'slab' + (sel && sel !== L.id ? ' dim' : '');
+    s += `<g class="${cls}" data-layer="${L.id}">
+      <polygon points="${P([E, D, [D[0], D[1] + T], [E[0], E[1] + T]])}" style="fill:${L.c}"/>
+      <polygon points="${P([D, B, [B[0], B[1] + T], [D[0], D[1] + T]])}" style="fill:${tint(L.c, 62)}"/>
+      <polygon points="${P([A, B, D, E])}" style="fill:${tint(L.c, 16)};stroke:${tint(L.c, 45)}" stroke-width="1.2"/>
+      <g transform="matrix(${C30},0.5,${-C30},0.5,${A[0]},${A[1]})">${faceArt(L.id, S, L.c)}</g>`;
+    if (labels && la > 0) {
+      const lx = 392, ly = cy + T / 2;
+      lab += `<g opacity="${la}" data-layer="${L.id}" class="slab-label" style="cursor:pointer"><line x1="${B[0] + 10}" x2="${lx - 6}" y1="${ly}" y2="${ly}" style="stroke:${L.c}" stroke-width="2" stroke-linecap="round" opacity=".7"/>
+        <circle cx="${lx + 4}" cy="${ly}" r="6" style="fill:${L.c}"/>
+        <text class="cake-label" x="${lx + 18}" y="${ly + 8}" style="fill:${sel && sel !== L.id ? 'var(--ink-2)' : 'var(--ink)'}">${L.name}</text></g>`;
+    }
+    s += '</g>';
+  }
+  s += lab;
+  if (dot) {
+    const cy0 = cys[0] + off, cyN = cys[2] + off;
+    const yy = cy0 + (cyN - cy0) * dot.p;
+    s += `<circle cx="${CX}" cy="${yy}" r="15" style="fill:${dot.c}" opacity=".22"/><circle cx="${CX}" cy="${yy}" r="8" style="fill:${dot.c};stroke:var(--paper)" stroke-width="2.5"/>`;
+  }
+  return s;
+}
+const ease = x => x < .5 ? 4 * x * x * x : 1 - Math.pow(-2 * x + 2, 3) / 2;
+
+/* hero loop */
+(function hero() {
+  const svg = $('#heroCake'), where = $('#heroWhere'), cap = $('#heroCap');
+  const say = (w, c) => { if (where.textContent !== w) where.textContent = w; if (cap.textContent !== c) cap.textContent = c; };
+  if (reduce) { svg.innerHTML = cakeSVG(1); say('server', 'POST /api/orders'); return; }
+  const P = 9000; let t0 = null;
+  const frame = now => {
+    if (t0 === null) t0 = now;
+    const k = ((now - t0) % P) / P * 9;
+    let t = 0, dot = null;
+    if (k < 1) { t = 0; say('browser', 'GET rosiesbakery.com'); }
+    else if (k < 2.2) { t = ease((k - 1) / 1.2); say('browser', 'customer taps Place order'); }
+    else if (k < 6.8) {
+      t = 1; const q = (k - 2.2) / 4.6;
+      if (q < .5) { dot = { p: ease(q / .5), c: 'var(--l2)' }; say(q < .25 ? 'server' : 'database', q < .25 ? 'POST /api/orders' : 'INSERT INTO orders …'); }
+      else { dot = { p: 1 - ease((q - .5) / .5), c: 'var(--good)' }; say('browser', '201 Created · order #1048'); }
+    } else if (k < 8) { t = 1 - ease((k - 6.8) / 1.2); say('browser', 'Thanks! Order #1048'); }
+    else { t = 0; }
+    svg.innerHTML = cakeSVG(t, { dot });
+    requestAnimationFrame(frame);
+  };
+  requestAnimationFrame(frame);
+})();
+
+/* ---------------- Part 1: exploded view ---------------- */
+const INFO = {
+  front: { where: "Runs in the customer's browser", what: 'Everything the customer sees and touches: pages, buttons, forms and animations. It is downloaded to their phone or laptop and runs there.',
+    made: 'HTML for structure, CSS for looks, JavaScript for behavior. Often built with React, Vue or Svelte.', rosie: 'The menu, the cake photos, the Order button, the checkout form.',
+    code: `<span class="c">// a button on the checkout page</span>\n&lt;<span class="k">button</span> onClick={placeOrder}&gt;\n  Place order\n&lt;/<span class="k">button</span>&gt;`, tip: 'Anyone can read this code. Never put secrets here.' },
+  back: { where: 'Runs on your server', what: 'The rules and the private work, on a computer customers never see. The frontend asks. The backend decides.',
+    made: 'Code in JavaScript (Node.js), Python, Ruby, Go or similar, usually offered as an API that the frontend calls.', rosie: 'Checks prices, charges cards, saves orders, sends confirmation emails.',
+    code: `<span class="c">// look up the real price, never trust the browser's</span>\n<span class="k">const</span> cake = <span class="k">await</span> db.cake.<span class="f">find</span>(order.cakeId)\n<span class="k">await</span> payments.<span class="f">charge</span>(cake.price)`, tip: 'Secret keys live here, and every check that matters happens here. The frontend reaches it through an API: see <a href="206-apis-and-integrations.html">course 206</a>.' },
+  db: { where: 'Runs on a database server', what: 'The memory. It keeps everything that must survive after the page closes, organized so it can be searched fast.',
+    made: 'Tables of rows and columns (Postgres, MySQL, SQLite), or collections of documents (MongoDB, Firestore).', rosie: 'Cakes and prices, customers, and every order ever placed.',
+    code: `<span class="c">orders</span>\n id   | cake          | pickup    | paid\n 1047 | Carrot        | Fri 16:00 | yes\n 1048 | Lemon drizzle | Sat 10:00 | yes`, tip: 'Only the backend talks to it. <a href="205-data-and-databases.html">Course 205</a> covers databases in depth.' },
+  host: { where: 'Runs in a data center', what: 'Where it all lives: rented computers that run your backend and database, and send your frontend files to every visitor, day and night.',
+    made: 'A hosting platform (Vercel, Netlify, Render, AWS…), a domain name like rosiesbakery.com, and often a CDN that keeps copies of your files near every customer.', rosie: 'Keeps rosiesbakery.com online at 3am, and copes with the lunchtime rush.',
+    code: `<span class="c">// DNS: the name points to your host</span>\nrosiesbakery.com  →  203.0.113.7\n<span class="c">// the host runs your app there</span>`, tip: '<a href="209-shipping-and-running-software.html">Course 209</a> covers going live and keeping it running.' }
+};
+let apart = 0, selLayer = null, anim = null;
+const seenLayers = new Set();
+function drawCake() { $('#cake').innerHTML = cakeSVG(apart, { sel: selLayer }); }
+function animateTo(target, ms = 700) {
+  cancelAnimationFrame(anim);
+  if (reduce) { apart = target; $('#apart').value = Math.round(apart * 100); drawCake(); return; }
+  const from = apart, t0 = performance.now();
+  const step = now => { const k = Math.min(1, (now - t0) / ms); apart = from + (target - from) * ease(k); $('#apart').value = Math.round(apart * 100); drawCake(); if (k < 1) anim = requestAnimationFrame(step); };
+  anim = requestAnimationFrame(step);
+}
+$('#layerBtns').innerHTML = LAYERS.map(L => `<button class="btn" data-layer="${L.id}" style="--c:${L.c}" aria-pressed="false"><i></i>${L.name}<span class="seen" hidden>✓</span></button>`).join('');
+function renderInsp() {
+  const el = $('#insp');
+  if (!selLayer) { el.innerHTML = `<h3 class="ctl-title">Pick a layer</h3><p class="empty">Slide the app apart, then pick a layer, on the drawing or with the buttons above, to see what it does.</p>`; return; }
+  const L = LAYERS.find(l => l.id === selLayer), I = INFO[selLayer];
+  el.innerHTML = `<h3 class="ctl-title">${L.name}</h3><div><span class="chip" style="--c:${L.c}"><i></i>${I.where}</span></div><p>${I.what}</p>
+    <dl><div><dt>Made of</dt><dd>${I.made}</dd></div><div><dt>At Rosie's</dt><dd>${I.rosie}</dd></div></dl>
+    <div class="code">${I.code}</div><div class="note info">${I.tip}</div>`;
+}
+function pickLayer(id) {
+  selLayer = selLayer === id && seenLayers.has(id) ? null : id;
+  if (selLayer) seenLayers.add(id);
+  $$('#layerBtns .btn').forEach(b => { b.setAttribute('aria-pressed', String(b.dataset.layer === selLayer)); b.querySelector('.seen').hidden = !seenLayers.has(b.dataset.layer); });
+  if (selLayer && apart < .6) { animateTo(1); CS.tick('p1', 'explode'); }
+  drawCake(); renderInsp();
+  if (seenLayers.size === 4) CS.tick('p1', 'layers');
+}
+$('#layerBtns').addEventListener('click', e => { const b = e.target.closest('[data-layer]'); if (b) pickLayer(b.dataset.layer); });
+$('#cake').addEventListener('click', e => { const g = e.target.closest('.slab, .slab-label'); if (g) pickLayer(g.dataset.layer); });
+$('#apart').addEventListener('input', e => { cancelAnimationFrame(anim); apart = +e.target.value / 100; drawCake(); if (apart >= .9) CS.tick('p1', 'explode'); });
+drawCake(); renderInsp();
+
+/* job sorter */
+const LNAME = { front: 'Frontend', back: 'Backend', db: 'Database', host: 'Hosting' };
+const LCOL = { front: 'var(--l2)', back: 'var(--l5)', db: 'var(--l3)', host: 'var(--l4)' };
+const JOBS = [
+  ['Shows the Order button', 'front', "Right. It's something customers see and tap, so it's frontend.", 'The Order button is something customers see and tap. What they see is the frontend.'],
+  ['Checks that a discount code is real', 'back', 'Right. A check that matters must happen where customers can’t change the code: the backend.', 'If this check ran in the browser, anyone could edit it to say "yes". Checks that matter run on the server.'],
+  ['Remembers every order from last year', 'db', 'Right. Remembering things for good is the database’s whole job.', 'Pages forget everything when they close. Long-term memory lives in the database.'],
+  ['Keeps rosiesbakery.com reachable at 3am', 'host', 'Right. Hosting keeps the computers on and the domain pointing at them.', 'Something has to keep the computers running and the domain pointed at them, around the clock. That’s hosting.'],
+  ['Turns the button pink when you hover over it', 'front', 'Right. Looks and little animations are frontend: CSS in the browser.', 'That’s about how the page looks on the customer’s screen: frontend.'],
+  ['Charges the customer’s card', 'back', 'Right. Charging needs a secret key, so it happens on the server, the backend.', 'Charging needs a secret key, and secrets can’t go to the browser. It happens in the backend.']
+];
+const jobState = {};
+function renderJobs() {
+  $('#jobs').innerHTML = JOBS.map(([t, ans], i) => {
+    const st = jobState[i];
+    return `<div class="job${st && st.ok ? ' ok' : st ? ' no' : ''}" data-j="${i}"><b>${esc(t)}</b>
+      <div class="pick">${st && st.ok ? `<span class="chip" style="--c:${LCOL[ans]}"><i></i>${LNAME[ans]}</span>` : Object.keys(LNAME).map(k => `<button class="btn" data-pick="${k}" style="--c:${LCOL[k]}"><i></i>${LNAME[k]}</button>`).join('')}</div>
+      <div class="fb" aria-live="polite">${st ? esc(st.msg) : ''}</div></div>`;
+  }).join('');
+}
+$('#jobs').addEventListener('click', e => {
+  const b = e.target.closest('[data-pick]'); if (!b) return;
+  const row = b.closest('.job'), i = +row.dataset.j, [, ans, yes, no] = JOBS[i];
+  const ok = b.dataset.pick === ans;
+  jobState[i] = { ok, msg: ok ? yes : no };
+  renderJobs();
+  if (!ok && !reduce) { const r = $(`.job[data-j="${i}"]`); r.classList.add('shake'); }
+  if (JOBS.every((_, k) => jobState[k] && jobState[k].ok)) CS.tick('p1', 'sort');
+});
+renderJobs();
+
+/* ---------------- Part 2: follow one order ---------------- */
+const ROWS0 = [[1046, 'Carrot', 'Fri 16:00'], [1047, 'Brownies', 'Fri 17:30']];
+const SCREENS = {
+  cart: `<div class="cake-pic"><svg viewBox="0 0 64 48" aria-hidden="true"><ellipse cx="32" cy="42" rx="27" ry="5" fill="#fff"/><rect x="12" y="18" width="40" height="22" rx="4" fill="#F2C14E"/><rect x="12" y="27" width="40" height="4" fill="#FFF4D6"/><path d="M10 18q0-6 6-6h32q6 0 6 6v3q-3 4-6 0-3 5-7 0-4 5-8 0-4 5-8 0-3 5-7 0-3 4-8 0z" fill="#FFFDF6"/><circle cx="32" cy="9" r="6" fill="#F7D51D"/><path d="M32 3v12M26 9h12M28 5l8 8M36 5l-8 8" stroke="#FFF8B0" stroke-width="1.2"/></svg></div><b>Lemon drizzle cake</b><span>$18.50 · Pickup Sat 10:00</span><div class="buy">Place order</div>`,
+  waiting: `<div class="ctr"><div class="spin"></div>Placing your order…</div>`,
+  thanks: `<div class="ctr"><div class="tick">✓</div><b>Thanks, Sam!</b><br>Order #1048<br>Pickup Sat 10:00</div>`
+};
+const JSTEPS = [
+  { z: 'browser', where: 'In the browser', title: 'The customer taps "Place order"', screen: 'waiting', checks: [], rows: 0,
+    text: 'The checkout page is frontend code. When the customer taps the button, it bundles up their choice and sends it to your backend. Notice what it sends: which cake, and when. No price, and no secrets.',
+    who: "<b>Who can read this code?</b> Anyone. It was downloaded to the customer's phone.",
+    file: 'src/app/checkout/page.tsx', code: `<span class="k">await</span> <span class="f">fetch</span>(<span class="s">'/api/orders'</span>, {\n  method: <span class="s">'POST'</span>,\n  body: JSON.<span class="f">stringify</span>({ cakeId: <span class="n">7</span>, pickup: <span class="s">'Sat 10:00'</span> })\n})` },
+  { z: 'host', where: 'Across the internet', title: 'The request travels to rosiesbakery.com', screen: 'waiting', checks: [], rows: 0,
+    text: 'DNS turns the name rosiesbakery.com into the address of your hosting provider. The host receives the request and hands it to your backend code.',
+    who: '<b>Who can send a request like this?</b> Anyone on the internet, with any contents. That’s why the backend must check everything.',
+    file: 'The request, as it travels', code: `<span class="k">POST</span> https://rosiesbakery.com/api/orders\n\n{ <span class="s">"cakeId"</span>: <span class="n">7</span>, <span class="s">"pickup"</span>: <span class="s">"Sat 10:00"</span> }` },
+  { z: 'server', where: 'On your server', title: 'Your server checks the order', screen: 'waiting', checks: ['Cake #7 is lemon drizzle, $18.50', 'Sat 10:00 has space'], rows: 0,
+    text: 'The backend looks up the cake in the database itself. It never trusts a price from the browser, because anyone can change what their browser sends.',
+    who: '<b>Who can read this code?</b> Only you. Customers see its answers, never the code.',
+    file: 'src/app/api/orders/route.ts', code: `<span class="k">const</span> { cakeId, pickup } = <span class="k">await</span> request.<span class="f">json</span>()\n<span class="c">// the real price comes from the database</span>\n<span class="k">const</span> cake = <span class="k">await</span> db.cake.<span class="f">findUnique</span>({
+  where: { id: cakeId }
+})` },
+  { z: 'server', where: 'On your server', title: 'It charges the card, using a secret key', screen: 'waiting', checks: ['Cake #7 is lemon drizzle, $18.50', 'Sat 10:00 has space', 'Card charged $18.50'], rows: 0,
+    text: 'The backend asks the payment provider to charge the real price. The secret key that proves it’s really Rosie’s shop is kept in a server setting that the browser can never see.',
+    who: '<b>Who can read the key?</b> Only the server. It lives in an environment variable, not in the code.',
+    file: 'src/app/api/orders/route.ts', code: `<span class="k">const</span> payments = <span class="k">new</span> <span class="f">Payments</span>(process.env.PAYMENTS_SECRET_KEY)\n<span class="k">await</span> payments.<span class="f">charge</span>({ amount: cake.price })` },
+  { z: 'db', where: 'In the database', title: 'The database saves the order', screen: 'waiting', checks: ['Cake #7 is lemon drizzle, $18.50', 'Sat 10:00 has space', 'Card charged $18.50', 'Order saved as #1048'], rows: 1,
+    text: 'The backend asks the database to add a row to the orders table. It’s stored for good now, even after every page is closed.',
+    who: '<b>Who can talk to the database?</b> Only your backend. Customers never reach it directly.',
+    file: 'What the database runs', code: `<span class="k">INSERT INTO</span> orders (cake_id, pickup, paid)\n<span class="k">VALUES</span> (<span class="n">7</span>, <span class="s">'Sat 10:00'</span>, <span class="k">true</span>);` },
+  { z: 'browser', where: 'Back in the browser', title: 'The answer comes back', screen: 'thanks', checks: ['Cake #7 is lemon drizzle, $18.50', 'Sat 10:00 has space', 'Card charged $18.50', 'Order saved as #1048', 'Answered: 201 Created'], rows: 1,
+    text: 'The backend replies with the new order number, and the frontend shows a thank-you page. The whole round trip took about half a second.',
+    who: '<b>What does the customer get?</b> Only this small answer. Everything else stayed on the server.',
+    file: 'The answer, then the browser', code: `<span class="c">// server → browser</span>\n{ <span class="s">"orderId"</span>: <span class="n">1048</span> }   <span class="c">201 Created</span>\n\n<span class="c">// the checkout page shows the thank-you page</span>\nwindow.location.href = <span class="s">'/thanks/1048'</span>` }
+];
+let jstep = -1;
+function packetTo(z) {
+  const pk = $('#packet'), J = $('#journey');
+  const el = z === 'host' ? $('.host-head', J) : $(`.zone[data-z="${z}"]`, J);
+  const jr = J.getBoundingClientRect(), r = el.getBoundingClientRect();
+  const x = z === 'browser' ? r.left - jr.left + r.width / 2 : r.right - jr.left - 24, y = z === 'browser' ? r.top - jr.top + r.height / 2 : r.top - jr.top + (z === 'host' ? r.height / 2 : 24);
+  pk.style.transform = `translate(${x}px, ${y}px)`;
+  pk.classList.add('show');
+}
+function renderTable(n) {
+  const rows = [...ROWS0]; if (n) rows.push([1048, 'Lemon drizzle', 'Sat 10:00']);
+  $('#ordersTable').innerHTML = `<thead><tr><th>id</th><th>cake</th><th>pickup</th></tr></thead><tbody>${rows.map((r, i) => `<tr class="${i === 2 && jstep === 4 ? 'new' : ''}"><td>${r[0]}</td><td>${esc(r[1])}</td><td>${r[2]}</td></tr>`).join('')}</tbody>`;
+}
+function renderJourney() {
+  const s = JSTEPS[jstep];
+  $$('#journey .zone, #journey .host-wrap').forEach(z => z.classList.remove('on'));
+  if (!s) {
+    $('#screen').innerHTML = SCREENS.cart; $('#checks').innerHTML = '<li class="idle">Waiting for a request…</li>'; renderTable(0);
+    $('#packet').classList.remove('show');
+    return;
+  }
+  const zEl = s.z === 'host' ? $('#journey .host-wrap') : $(`#journey .zone[data-z="${s.z}"]`); zEl.classList.add('on');
+  $('#screen').innerHTML = SCREENS[s.screen];
+  $('#checks').innerHTML = s.checks.length ? s.checks.map(c => `<li>${esc(c)}</li>`).join('') : '<li class="idle">Waiting for a request…</li>';
+  renderTable(s.rows);
+  packetTo(s.z);
+  $('#scKicker').textContent = `Step ${jstep + 1} of ${JSTEPS.length} · ${s.where}`;
+  $('#scTitle').textContent = s.title;
+  $('#scText').textContent = s.text;
+  const who = $('#scWho'); who.hidden = false; who.innerHTML = s.who;
+  $('#scFile').textContent = s.file;
+  $('#scCode').innerHTML = s.code;
+}
+function goJ(i) {
+  jstep = Math.max(-1, Math.min(JSTEPS.length - 1, i));
+  renderJourney();
+  $('#jBack').disabled = jstep <= 0;
+  $('#jNext').textContent = jstep < 0 ? 'Start the order' : jstep === JSTEPS.length - 1 ? 'Follow another order' : 'Next step';
+  if (jstep === JSTEPS.length - 1) CS.tick('p2', 'follow');
+}
+$('#jNext').addEventListener('click', () => { if (jstep === JSTEPS.length - 1) { goJ(-1); setTimeout(() => goJ(0), reduce ? 0 : 350); } else goJ(jstep + 1); });
+$('#jBack').addEventListener('click', () => goJ(jstep - 1));
+new ResizeObserver(() => requestAnimationFrame(() => { if (jstep >= 0) packetTo(JSTEPS[jstep].z); })).observe($('#journey'));
+goJ(-1);
+
+/* sneaky customer */
+let beMode = 'trust';
+const cheatSeen = { trust: false, lookup: false };
+const BE_SUB = { trust: 'This backend saves whatever price arrives with the order.', lookup: 'This backend ignores any price from the browser and looks up the real one in the database.' };
+function paintBe() { $$('[data-be]').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.be === beMode))); $('#beSub').textContent = BE_SUB[beMode]; }
+$$('[data-be]').forEach(b => b.addEventListener('click', () => { beMode = b.dataset.be; paintBe(); }));
+paintBe();
+$('#cheapBtn').addEventListener('click', () => { $('#priceIn').value = '0.01'; $('#priceIn').focus(); });
+$('#sendBtn').addEventListener('click', () => {
+  const raw = $('#priceIn').value.replace(/[$\s,]/g, '');
+  const v = parseFloat(raw);
+  const box = $('#receiptBox'), note = $('#cheatNote');
+  if (!isFinite(v)) { box.innerHTML = '<span class="bad">400 Bad Request:</span> price is not a number'; CS.say(note, "The backend rejected it: that price isn't a number. Try something like 0.01.", 'info'); return; }
+  const tampered = Math.abs(v - 18.5) > .001;
+  const n = 1048 + Math.floor(Math.random() * 40) + 1;
+  if (beMode === 'trust') {
+    box.innerHTML = tampered ? `Order #${n} accepted. <span class="bad">Charged $${v.toFixed(2)}</span> for an $18.50 cake.` : `Order #${n} accepted. <span class="good">Charged $18.50.</span>`;
+    CS.say(note, tampered ? `<strong>Rosie just lost money.</strong> The backend believed the browser. Anyone who can open the developer tools can set their own prices. Now switch to <b>Looks it up itself</b> and try the same trick.` : 'That order was honest. Change the price first, like a sneaky customer would.', tampered ? 'bad' : '');
+  } else {
+    box.innerHTML = `Order #${n} accepted. <span class="good">Charged $18.50</span>${tampered ? ', the real price from the database.' : '.'}`;
+    CS.say(note, tampered ? '<strong>Nice try, sneaky customer.</strong> The backend ignored the price from the browser and charged the real one. The trick is useless, because the server never trusted the browser in the first place.' : 'That order was honest. Change the price first, like a sneaky customer would.', tampered ? 'good' : '');
+  }
+  if (tampered) { cheatSeen[beMode] = true; if (cheatSeen.trust && cheatSeen.lookup) CS.tick('p2', 'cheat'); else if (cheatSeen.lookup && !cheatSeen.trust) CS.say(note, note.innerHTML + ' Try it on <b>Trusts the browser</b> too, to see the difference.', 'good'); }
+});
+
+/* browser or server sorter */
+const ITEMS = [
+  ['The payment secret key', 'server', 'On the server, in an environment variable.', 'With this key, a stranger could charge cards or issue refunds as Rosie. In the browser, anyone can read it.'],
+  ['The Order button’s colors', 'browser', 'Colors are just for the customer’s eyes.', 'Nothing secret here, and the browser needs it to draw the page.'],
+  ['The database password', 'server', 'Only the backend talks to the database.', 'In the browser, anyone could copy it and connect to the database directly, then read or delete every order.'],
+  ['Looking up the real price of a cake', 'server', 'The server decides the price.', 'You just saw why: a customer can change anything the browser does.'],
+  ['The friendly “Please pick a time” reminder', 'browser', 'A helpful message, shown instantly. The server double-checks the time too.', 'It’s a helpful message for the customer, so it belongs with the page. (The server should still check the time is valid.)'],
+  ['The list of valid discount codes', 'server', 'The server checks codes one at a time.', 'If the full list is in the browser, anyone can open the developer tools and copy every code.'],
+  ['The cake photos and menu layout', 'browser', 'Public, and needed to draw the page.', 'Customers are meant to see these. They belong with the page.']
+];
+const placed = {}, wrongMsg = {};
+function renderSort() {
+  $('#pile').innerHTML = ITEMS.map(([t], i) => placed[i] ? '' : `<div class="item" data-i="${i}"><b>${esc(t)}</b><div class="row" style="gap:6px"><button class="btn" data-to="browser">In the browser</button><button class="btn" data-to="server">On the server</button></div><div class="fb" aria-live="polite">${wrongMsg[i] ? esc(wrongMsg[i]) : ''}</div></div>`).join('')
+    || '<p class="note good" style="max-width:none"><strong>All sorted.</strong> Secrets and checks that matter stay on the server. Everything the customer needs to see goes to the browser.</p>';
+  ['browser', 'server'].forEach(k => {
+    $(k === 'browser' ? '#bBrowser' : '#bServer').innerHTML = ITEMS.map(([t, a, ok], i) => placed[i] && a === k ? `<li>${esc(t)}<small>${esc(ok)}</small></li>` : '').join('') || '<li style="background:none; padding-left:0" class="muted">Nothing here yet.</li>';
+  });
+}
+$('#pile').addEventListener('click', e => {
+  const b = e.target.closest('[data-to]'); if (!b) return;
+  const row = b.closest('.item'), i = +row.dataset.i, [, ans, , why] = ITEMS[i];
+  if (b.dataset.to === ans) { placed[i] = true; delete wrongMsg[i]; renderSort(); if (ITEMS.every((_, k) => placed[k])) CS.tick('p2', 'sort'); }
+  else { wrongMsg[i] = why; renderSort(); if (!reduce) $(`.item[data-i="${i}"]`).classList.add('shake'); }
+});
+renderSort();
+
+/* ---------------- Part 3: explore the project ---------------- */
+const BIN = '\u0000';
+const FS = {
+  '.env.local': `<span class="dim"># Secret settings. Only the server reads these. Never commit this file.</span>
+DATABASE_URL=<span class="g">"postgresql://rosie:••••••••@db.example.com:5432/bakery"</span>
+PAYMENTS_SECRET_KEY=<span class="g">"sk_live_••••••••••••••••"</span>
+NEXT_PUBLIC_SITE_NAME=<span class="g">"Rosie's Bakery"</span>`,
+  '.gitignore': `node_modules
+.next
+<span class="y">.env*.local</span>`,
+  'README.md': `# Rosie's Bakery
+Order cakes online for pickup.
+
+Run it locally: <span class="y">npm install</span>, then <span class="y">npm run dev</span>`,
+  'next.config.js': `<span class="dim">/** Settings for Next.js itself */</span>
+module.exports = {
+  images: { remotePatterns: [{ hostname: <span class="g">'images.rosiesbakery.com'</span> }] }
+}`,
+  'package.json': `{
+  <span class="b">"name"</span>: <span class="g">"rosies-bakery"</span>,
+  <span class="b">"scripts"</span>: {
+    <span class="b">"dev"</span>: <span class="g">"next dev"</span>,
+    <span class="b">"build"</span>: <span class="g">"next build"</span>,
+    <span class="b">"start"</span>: <span class="g">"next start"</span>
+  },
+  <span class="b">"dependencies"</span>: {
+    <span class="b">"next"</span>: <span class="g">"^15.0.0"</span>,
+    <span class="b">"react"</span>: <span class="g">"^19.0.0"</span>,
+    <span class="b">"react-dom"</span>: <span class="g">"^19.0.0"</span>,
+    <span class="b">"@prisma/client"</span>: <span class="g">"^6.0.0"</span>,
+    <span class="b">"payments-sdk"</span>: <span class="g">"^4.2.0"</span>
+  },
+  <span class="b">"devDependencies"</span>: {
+    <span class="b">"prisma"</span>: <span class="g">"^6.0.0"</span>,
+    <span class="b">"typescript"</span>: <span class="g">"^5.6.0"</span>
+  }
+}`,
+  prisma: {
+    'schema.prisma': `<span class="dim">// The blueprint for the database: each model becomes a table.</span>
+datasource db {
+  provider = <span class="g">"postgresql"</span>
+  url      = env(<span class="g">"DATABASE_URL"</span>)
+}
+
+<span class="y">model Cake</span> {
+  id     Int     @id @default(autoincrement())
+  name   String
+  slug   String
+  price  Int     <span class="dim">// in cents: 1850 = $18.50</span>
+  orders Order[]
+}
+
+<span class="y">model Order</span> {
+  id     Int     @id @default(autoincrement())
+  cake   Cake    @relation(fields: [cakeId], references: [id])
+  cakeId Int
+  pickup String
+  paid   Boolean @default(false)
+}`
+  },
+  public: { cakes: { 'carrot.jpg': BIN, 'lemon-drizzle.jpg': BIN } },
+  src: {
+    app: {
+      'layout.tsx': `<span class="dim">// Wraps every page: the header and footer.</span>
+export default function RootLayout({ children }) {
+  return (
+    &lt;html lang=<span class="g">"en"</span>&gt;
+      &lt;body&gt;&lt;header&gt;Rosie's Bakery&lt;/header&gt;{children}&lt;/body&gt;
+    &lt;/html&gt;
+  )
+}`,
+      'page.tsx': `import { db } from <span class="g">'@/lib/db'</span>
+import CakeCard from <span class="g">'@/components/CakeCard'</span>
+
+<span class="dim">// The home page: every cake on the menu.</span>
+export default async function HomePage() {
+  const cakes = await db.cake.findMany()
+  return (
+    &lt;main&gt;
+      &lt;h1&gt;Rosie's Bakery&lt;/h1&gt;
+      {cakes.map(cake =&gt; &lt;CakeCard key={cake.id} cake={cake} /&gt;)}
+    &lt;/main&gt;
+  )
+}`,
+      checkout: {
+        'page.tsx': `<span class="y">'use client'</span>
+<span class="dim">// Runs in the customer's browser: the checkout form.</span>
+import { useState } from <span class="g">'react'</span>
+
+export default function CheckoutPage() {
+  const [pickup, setPickup] = useState(<span class="g">'Sat 10:00'</span>)
+
+  async function placeOrder() {
+    const res = await fetch(<span class="g">'/api/orders'</span>, {
+      method: <span class="g">'POST'</span>,
+      body: JSON.stringify({ cakeId: 7, pickup })
+    })
+    const { orderId } = await res.json()
+    window.location.href = <span class="g">\`/thanks/\${orderId}\`</span>
+  }
+
+  return (
+    &lt;form&gt;
+      &lt;h1&gt;Lemon drizzle cake&lt;/h1&gt;
+      &lt;select value={pickup} onChange={e =&gt; setPickup(e.target.value)}&gt;
+        &lt;option&gt;Sat 10:00&lt;/option&gt;
+        &lt;option&gt;Sat 14:00&lt;/option&gt;
+      &lt;/select&gt;
+      &lt;button type=<span class="g">"button"</span> onClick={placeOrder}&gt;Place order&lt;/button&gt;
+    &lt;/form&gt;
+  )
+}`
+      },
+      api: {
+        orders: {
+          'route.ts': `<span class="dim">// Runs on the server. Customers never see this code.</span>
+import { db } from <span class="g">'@/lib/db'</span>
+import { Payments } from <span class="g">'payments-sdk'</span>
+
+const payments = new Payments(<span class="y">process.env.PAYMENTS_SECRET_KEY</span>)
+
+export async function POST(request: Request) {
+  const { cakeId, pickup } = await request.json()
+
+  <span class="dim">// Look up the real price. Never trust a price from the browser.</span>
+  const cake = await db.cake.findUnique({ where: { id: cakeId } })
+  if (!cake) return Response.json({ error: <span class="g">'No such cake'</span> }, { status: 404 })
+
+  await payments.charge({ amount: cake.price })
+  const order = await db.order.create({ data: { cakeId, pickup, paid: true } })
+
+  return Response.json({ orderId: order.id }, { status: 201 })
+}`
+        }
+      }
+    },
+    components: {
+      'CakeCard.tsx': `<span class="dim">// One piece of the page: a cake with its photo and price.</span>
+export default function CakeCard({ cake }) {
+  return (
+    &lt;div className=<span class="g">"cake-card"</span>&gt;
+      &lt;img src={\`/cakes/\${cake.slug}.jpg\`} alt={cake.name} /&gt;
+      &lt;h2&gt;{cake.name}&lt;/h2&gt;
+      &lt;p&gt;\${(cake.price / 100).toFixed(2)}&lt;/p&gt;
+    &lt;/div&gt;
+  )
+}`
+    },
+    lib: {
+      'db.ts': `<span class="dim">// Runs on the server: the one connection to the database.</span>
+import { PrismaClient } from <span class="g">'@prisma/client'</span>
+export const db = new PrismaClient()`
+    }
+  }
+};
+const KEY_FILES = [
+  ['package.json', 'config', "It lists what the app is built from and how to run it. It doesn't run on its own: it's config."],
+  ['src/app/checkout/page.tsx', 'front', "'use client' and a Place order button: this runs in the browser."],
+  ['src/app/api/orders/route.ts', 'back', "It's under app/api/ and reads a secret key: it runs on the server."],
+  ['prisma/schema.prisma', 'db', 'It describes tables, Cake and Order. That’s the blueprint for the database.'],
+  ['.env.local', 'config', 'It holds settings and secrets that the app reads. It’s config, and it stays on the server.']
+];
+const CATS = { front: ['Frontend', 'var(--l2)'], back: ['Backend', 'var(--l5)'], db: ['Database', 'var(--l3)'], config: ['Config', 'var(--l4)'] };
+const readFiles = new Set(), labels = {}, labelWrong = {};
+let cwd = [], showHidden = false, term;
+const nodeAt = segs => segs.reduce((n, s) => (n && typeof n === 'object' ? n[s] : undefined), FS);
+function resolve(p) {
+  let segs = p.startsWith('/') || p.startsWith('~') ? [] : [...cwd];
+  for (const part of p.replace(/^~\/?/, '').replace(/^\/+/, '').replace(/^home\/rosie\/rosies-bakery\/?/, '').split('/')) {
+    if (!part || part === '.') continue;
+    if (part === '..') segs.pop(); else segs.push(part);
+  }
+  return segs;
+}
+const allPaths = (n = FS, pre = []) => Object.entries(n).flatMap(([k, v]) => typeof v === 'object' ? [[...pre, k].join('/') + '/', ...allPaths(v, [...pre, k])] : [[...pre, k].join('/')]);
+function listing(segs, all) {
+  const n = nodeAt(segs);
+  const names = Object.keys(n).filter(k => all || !k.startsWith('.')).sort((a, b) => a.replace(/^\./, '').localeCompare(b.replace(/^\./, '')));
+  const out = (all ? ['<span class="b">./</span>', '<span class="b">../</span>'] : []).concat(names.map(k => typeof n[k] === 'object' ? `<span class="b">${esc(k)}/</span>` : k.startsWith('.') ? `<span class="y">${esc(k)}</span>` : esc(k)));
+  return out.join('  ');
+}
+function treeText(n = FS, pre = '', segs = []) {
+  const keys = Object.keys(n).filter(k => showHidden || !k.startsWith('.')).sort((a, b) => a.replace(/^\./, '').localeCompare(b.replace(/^\./, '')));
+  return keys.map((k, i) => {
+    const last = i === keys.length - 1, v = n[k], path = [...segs, k].join('/');
+    const branch = pre + (last ? '└── ' : '├── ');
+    if (typeof v === 'object') {
+      const here = [...segs, k].join('/') === cwd.join('/');
+      return `<span class="dim">${branch}</span><span class="dir">${esc(k)}/</span>${here ? '  <span class="here">← you are here</span>' : ''}\n` + treeText(v, pre + (last ? '    ' : '│   '), [...segs, k]);
+    }
+    const lab = labels[path];
+    const mark = lab ? `<i style="--c:${CATS[lab][1]}" title="${CATS[lab][0]}"></i>` : readFiles.has(path) ? '<i style="--c:var(--ink-2)" title="read"></i>' : '';
+    return `<span class="dim">${branch}</span>${esc(k)}${mark}\n`;
+  }).join('');
+}
+function renderTree() { $('#tree').innerHTML = `<span class="dir">rosies-bakery/</span>${!cwd.length ? '  <span class="here">← you are here</span>' : ''}\n` + treeText().replace(/\n$/, ''); }
+function renderMap() {
+  $('#pmap').innerHTML = KEY_FILES.map(([p, ans], i) => {
+    const ok = labels[p] === ans;
+    let body;
+    if (ok) body = `<span class="res"><span class="chip" style="--c:${CATS[ans][1]}"><i></i>${CATS[ans][0]}</span></span>`;
+    else if (!readFiles.has(p)) body = `<span class="lock">Unlocks once you read it with <code>cat</code></span>`;
+    else body = `<div class="pick">${Object.entries(CATS).map(([k, [n, c]]) => `<button class="btn" data-cat="${k}" style="--c:${c}"><i></i>${n}</button>`).join('')}</div>${labelWrong[p] ? `<span class="why">${esc(labelWrong[p])}</span>` : ''}`;
+    return `<div class="prow${ok ? ' ok' : ''}" data-i="${i}"><code>${esc(p)}</code>${body}</div>`;
+  }).join('');
+}
+const allLabeled = () => KEY_FILES.every(([p, a]) => labels[p] === a);
+$('#pmap').addEventListener('click', e => {
+  const b = e.target.closest('[data-cat]'); if (!b) return;
+  const row = b.closest('.prow'), [p, ans, why] = KEY_FILES[+row.dataset.i];
+  if (b.dataset.cat === ans) { labels[p] = ans; delete labelWrong[p]; }
+  else labelWrong[p] = `Not quite. ${why}`;
+  renderMap(); renderTree();
+  if (b.dataset.cat !== ans && !reduce) $(`.prow[data-i="${row.dataset.i}"]`).classList.add('shake');
+  if (allLabeled() && term) term.advance({ k: 'sorted' });
+});
+const TUTOR = {
+  'package.json': 'This is the ingredient list: the libraries the app is built on (course 204) and scripts like <b>npm run dev</b>. <b>next</b> and <b>react</b> tell you it’s a Next.js app, which keeps frontend and backend in one project. So you tell them apart by folder, and by clues inside each file.',
+  'src/app/checkout/page.tsx': '<b>\'use client\'</b> on the first line means this file is sent to the browser and runs there. A form, a button, a click handler: this is <b>frontend</b>. Notice it sends only the cake and the time, never a price.',
+  'src/app/api/orders/route.ts': 'Anything under <b>app/api/</b> runs on the server: <b>backend</b>. It reads a secret with <b>process.env.PAYMENTS_SECRET_KEY</b>, and looks up the real price itself.',
+  'prisma/schema.prisma': 'A <b>schema</b>: the blueprint for the database. Each <b>model</b> becomes a table, here Cake and Order. <a href="205-data-and-databases.html">Course 205</a> covers databases.',
+  '.env.local': 'Secrets live here, on the server’s side. (The values are hidden in this practice copy.) <b>.gitignore</b> keeps this file out of git, as you learned in course 203. One trap: anything named <b>NEXT_PUBLIC_…</b> is copied into the browser on purpose, so it must never hold a secret.',
+  'src/app/page.tsx': 'The home page. It draws the menu, so it’s frontend. In Next.js it’s drawn on the server first (see "Under the hood" below), which is why it can read from the database here.',
+  'src/components/CakeCard.tsx': 'A <b>component</b>: one reusable piece of the page. Frontend.',
+  'src/lib/db.ts': 'The connection to the database, used by backend code.',
+  '.gitignore': 'The list of files git should never save. <b>.env*.local</b> is on it, so your secrets stay out of your history.',
+  'next.config.js': 'Settings for Next.js itself. Config.'
+};
+function run(a, line, io, api) {
+  const { print, tutor } = io;
+  const cmd = a[0];
+  if (cmd === 'help') { print(`Commands you can use here:\n  <span class="y">ls</span>              list files (<span class="y">ls -a</span> shows hidden ones)\n  <span class="y">cd &lt;folder&gt;</span>     move into a folder (<span class="y">cd ..</span> goes back up)\n  <span class="y">cat &lt;file&gt;</span>      print a file\n  <span class="y">pwd</span>             where am I?\n  <span class="y">tree</span>            the whole folder at once\n  <span class="y">map</span>             how your labels are going\n  <span class="y">clear</span>  <span class="y">hint</span>`); return null; }
+  if (cmd === 'pwd') { print('/home/rosie/rosies-bakery' + (cwd.length ? '/' + cwd.join('/') : '')); return { k: 'pwd' }; }
+  if (cmd === 'ls') {
+    const all = a.slice(1).some(x => /^-\w*a/.test(x));
+    const target = a.slice(1).find(x => !x.startsWith('-'));
+    const segs = target ? resolve(target) : cwd;
+    const n = nodeAt(segs);
+    if (n === undefined) { print(`ls: ${esc(target)}: No such file or directory`, 'r'); return null; }
+    if (typeof n !== 'object') { print(esc(target)); return null; }
+    print(listing(segs, all));
+    if (all && !showHidden && !segs.length) { showHidden = true; renderTree(); tutor(TUTOR['.gitignore'] ? 'Files that start with a dot are hidden unless you ask. <b>.env.local</b> holds secrets, and <b>.gitignore</b> lists files git should never save.' : ''); }
+    else if (!segs.length && !all) tutor('Folders end with <b>/</b>. <b>src/</b> holds the app’s code, <b>prisma/</b> the database blueprint, <b>public/</b> files anyone can download, like photos. Try <b>cat package.json</b>.');
+    return { k: 'ls', all, path: segs.join('/') };
+  }
+  if (cmd === 'cd') {
+    const target = a[1] || '~';
+    const segs = resolve(target), n = nodeAt(segs);
+    if (n === undefined) { print(`cd: no such file or directory: ${esc(target)}`, 'r'); tutor('Type <b>ls</b> to see the folders here.'); return null; }
+    if (typeof n !== 'object') { print(`cd: not a directory: ${esc(target)}`, 'r'); tutor(`That's a file. Use <b>cat ${esc(target)}</b> to read it.`); return null; }
+    cwd = segs; renderTree();
+    return { k: 'cd', path: segs.join('/') };
+  }
+  if (cmd === 'tree') { print(treeText(nodeAt(cwd), '', cwd).replace(/\n$/, '')); return { k: 'tree' }; }
+  if (cmd === 'cat' || cmd === 'less' || cmd === 'more' || cmd === 'head') {
+    if (!a[1]) { print(`usage: cat &lt;file&gt;`, 'r'); return null; }
+    const segs = resolve(a[1]), path = segs.join('/'), n = nodeAt(segs);
+    if (n === undefined) {
+      print(`cat: ${esc(a[1])}: No such file or directory`, 'r');
+      const best = allPaths().filter(p => !p.endsWith('/')).map(p => [p, Math.min(CS.lev(a[1], p), CS.lev(a[1], p.split('/').pop()) + (p.includes('/') ? 1 : 0))]).sort((x, y) => x[1] - y[1])[0];
+      tutor(best && best[1] <= 4 ? `Did you mean <b>${esc(best[0])}</b>? Paths are relative to the folder you're in${cwd.length ? ` (<b>${esc(cwd.join('/'))}</b>)` : ''}.` : 'Type <b>ls</b> to see what’s here, or <b>tree</b> to see everything.');
+      return null;
+    }
+    if (typeof n === 'object') { print(`cat: ${esc(a[1])}: Is a directory`, 'r'); tutor(`It's a folder. Try <b>ls ${esc(a[1])}</b>, or <b>cd ${esc(a[1])}</b>.`); return null; }
+    if (n === BIN) { print('<span class="dim">&#xFFFD;&#xFFFD;&#xFFFD;&#xFFFD;JFIF&#xFFFD;&#xFFFD;C… (binary data)</span>'); tutor('A photo. Binary files look like gibberish in a terminal. Files in <b>public/</b> are sent to anyone who asks, so never put anything private there.'); return null; }
+    print(n);
+    const first = !readFiles.has(path); readFiles.add(path);
+    if (TUTOR[path]) tutor(TUTOR[path] + (KEY_FILES.some(k => k[0] === path) && first ? ' Label it in the <b>Project map</b>.' : ''));
+    renderMap(); renderTree();
+    return { k: 'cat', path };
+  }
+  if (cmd === 'map') {
+    const done = KEY_FILES.filter(([p, ans]) => labels[p] === ans).length;
+    print(KEY_FILES.map(([p, ans]) => `${labels[p] === ans ? '<span class="g">✓</span>' : readFiles.has(p) ? '<span class="y">?</span>' : '<span class="dim">·</span>'} ${esc(p)}${labels[p] === ans ? `  <span class="dim">${CATS[ans][0]}</span>` : ''}`).join('\n'));
+    tutor(done === KEY_FILES.length ? 'Every file is labeled.' : 'Pick a layer for each file in the <b>Project map</b> panel. Files you haven’t read yet are locked.');
+    return { k: 'map' };
+  }
+  if (['code', 'open', 'vim', 'vi', 'nano', 'edit'].includes(cmd)) { print(`${esc(cmd)}: no editor in this practice terminal`, 'dim'); tutor('Use <b>cat</b> to read a file here.'); return null; }
+  if (cmd === 'npm' || cmd === 'npx') {
+    if (a[1] === 'run' && a[2] === 'dev') { print('<span class="dim">&gt; next dev</span>\n  ▲ Next.js 15\n  - Local: <span class="b">http://localhost:3000</span>\n<span class="g">✓ Ready</span>'); tutor('<b>npm run dev</b> starts the app on your own computer, frontend and backend together, at localhost:3000. Only you can see it. Press nothing: this is just a peek.'); return null; }
+    print(`${esc(line)}: try this in course 204`, 'dim'); return null;
+  }
+  if (cmd === 'git') { print('git: this practice project has no history. Course 203 covers git.', 'dim'); return null; }
+  if (cmd === 'rm') { print('rm: not in this practice terminal. Nothing here can be deleted.', 'dim'); return null; }
+  return undefined;
+}
+term = CS.terminal($('#term'), {
+  part: 'p3',
+  mission: $('#mission'),
+  prompt: () => `~/rosies-bakery${cwd.length ? '/' + cwd.join('/') : ''} $`,
+  intro: 'Type a command below and press Enter.\nStuck? Press "Show a hint", or type <span class="y">help</span>.',
+  steps: [
+    { t: 'Look around', how: 'List the files in the project.', cmd: 'ls', done: a => a.k === 'ls' && !a.all },
+    { t: 'Read the ingredient list', how: 'Print package.json.', cmd: 'cat package.json', done: a => a.k === 'cat' && a.path === 'package.json' },
+    { t: 'Open the checkout page', how: 'It lives in src/app/checkout/.', cmd: () => cwd.length ? 'cat ~/src/app/checkout/page.tsx' : 'cat src/app/checkout/page.tsx', done: a => a.k === 'cat' && a.path === 'src/app/checkout/page.tsx' },
+    { t: 'Find the code that saves orders', how: 'Look in src/app/api/orders/.', cmd: () => cwd.length ? 'cat ~/src/app/api/orders/route.ts' : 'cat src/app/api/orders/route.ts', done: a => a.k === 'cat' && a.path === 'src/app/api/orders/route.ts' },
+    { t: 'Find the database blueprint', how: 'It’s in the prisma/ folder.', cmd: () => cwd.length ? 'cat ~/prisma/schema.prisma' : 'cat prisma/schema.prisma', done: a => a.k === 'cat' && a.path === 'prisma/schema.prisma' },
+    { t: 'Reveal hidden files', how: 'List everything, including files that start with a dot.', cmd: () => cwd.length ? 'ls -a ~' : 'ls -a', done: a => a.k === 'ls' && a.all && a.path === '' },
+    { t: 'Peek at the secrets file', how: 'Print .env.local.', cmd: () => cwd.length ? 'cat ~/.env.local' : 'cat .env.local', done: a => a.k === 'cat' && a.path === '.env.local' },
+    { t: 'Label the files you read', how: 'Pick a layer for each file in the Project map.', cmd: 'map', done: () => allLabeled() }
+  ],
+  run,
+  doneHTML: '<b>Mission complete.</b> Explore more with <code>tree</code>, <code>cd</code> and <code>cat</code> if you like.',
+  doneTutor: '<b>Mission complete!</b> You can now open any project an AI builds and tell its layers apart: pages and components are frontend, <b>app/api</b> is backend, the schema is the database, and secrets live in <b>.env</b> files on the server.'
+});
+renderMap(); renderTree();
+
+/* ---------------- Part 4: steer the AI ---------------- */
+CS.steer($('#steer'), [
+  { ai: "I put the payment secret key in checkout/page.tsx, so the page can charge the card directly. It's simpler, with one less server call!",
+    opts: [["Fine. The code gets minified, so nobody can read it.", 0, "Minified code is still readable. Anyone can open the developer tools and find the key."],
+           ["Rename the variable so it's harder to spot.", 0, "A disguised key is still sent to every visitor. Anyone who looks can use it."],
+           ["Move the charge into a backend route and keep the key in a server environment variable. Then replace the key, in case it was already exposed.", 1, "Right. Secrets belong on the server. And once a key has been in browser code, treat it as leaked and create a new one."]] },
+  { ai: "The checkout sends the cart with its prices from the browser, and the API saves whatever total it receives.",
+    opts: [["Have the backend look up each price in the database and work out the total itself. Ignore prices from the browser.", 1, "Exactly. The browser can be edited by the customer, so the server must decide prices."],
+           ["That's fine, the page shows the right prices.", 0, "It shows them, but a customer can change what their browser sends, as you did in part 2."],
+           ["Hide the price field so customers can't see it.", 0, "Hidden fields are still visible and editable in the developer tools."]] },
+  { ai: "To skip setting up a database, I'll save orders in the browser's localStorage.",
+    opts: [["Great, fewer moving parts.", 0, "localStorage lives on one customer's device. Rosie would never see the orders, and they vanish if the customer clears their browser."],
+           ["Orders must be sent to the backend and saved in a database, so Rosie can see them and they last.", 1, "Right. Anything shared or important goes through the backend into the database."],
+           ["Keep localStorage, and have the browser email each order to Rosie too.", 0, "Still no reliable record, and sending email from the browser would expose the email service's key."]] },
+  { ai: "To show today's orders on Rosie's kitchen page, the page downloads all 12,000 orders and filters them in the browser.",
+    opts: [["Fine, computers are fast.", 0, "It's slow on a phone, and it sends every customer's name and order to whoever opens that page."],
+           ["Keep a copy of all 12,000 in the browser so it's quicker next time.", 0, "Still sends everyone's data to the browser, and the copy goes stale."],
+           ["Filter on the server: ask the database for today's orders only, and check the person is logged in as Rosie.", 1, "Yes. The database is built to filter. Send the browser only what it needs, and only to people allowed to see it."]] }
+], { part: 'p4', counter: $('#steerCount') });
+
+/* ---------------- Part 5: quiz ---------------- */
+CS.quiz($('#quiz'), [
+  { q: 'Where does frontend code run?', a: [['On your server', 0], ["In each visitor's browser", 1], ['Inside the database', 0]], why: "Frontend code is downloaded to the visitor's phone or laptop and runs there. That's why anyone can read it." },
+  { q: 'Which of these must never be in frontend code?', a: [["The Order button's color", 0], ['The text of the thank-you message', 0], ['A payment secret key', 1]], why: 'Anything in the frontend is public. A secret key belongs in a server environment variable.' },
+  { q: "A customer's browser sends an order saying the cake costs $0.01. What should the backend do?", a: [['Look up the real price in the database and charge that', 1], ['Charge $0.01. The customer agreed to it', 0], ["Trust it, since the request came from Rosie's own website", 0]], why: 'Anyone can edit what their browser sends. The backend decides prices from its own data.' },
+  { q: 'What does hosting do?', a: [['Designs how the pages look', 0], ['Runs your backend and serves your frontend from computers that stay online', 1], ['Keeps the history of your code', 0]], why: "Hosting is where the app lives: rented computers, your domain and often a CDN. Your code's history is git's job (course 203)." },
+  { q: 'In a Next.js project, which file most likely runs only on the server?', a: [["src/app/checkout/page.tsx, with 'use client' at the top", 0], ['src/components/CakeCard.tsx', 0], ['src/app/api/orders/route.ts', 1]], why: "Files under app/api/ are backend routes. 'use client' marks code that is sent to the browser, and components draw the page." }
+], { part: 'p5', doneCard: $('#doneCard'), doneTitle: 'You can read an app’s anatomy now.', doneText: 'You can tell frontend, backend, database and hosting apart, follow a request through them, and spot code or secrets in the wrong layer.' });
+})();
+</script>
+</body>
+</html>

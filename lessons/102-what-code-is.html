@@ -1,0 +1,783 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>What code actually is · CS School</title>
+<meta name="description" content="Course 102: variables, conditions, loops and functions, stepped through one line at a time, so you can read the code an AI writes.">
+<link rel="icon" href="../assets/favicon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="../assets/cs-school.css">
+<style>
+/* lesson-specific styles: hero code animation, step-through visualiser (code panel, boxes, output), building blocks, code lab side panels */
+
+/* syntax colors on dark panels (same palette as the shared .code block) */
+.syn .k{color:#C4A7FF} .syn .s{color:#8BF0A8} .syn .n{color:#FFC53D} .syn .f{color:#7CC4FF} .syn .c{color:var(--term-dim)}
+
+/* ---------- hero ---------- */
+.hv{display:grid; grid-template-columns:minmax(0,1.45fr) minmax(0,1fr); gap:18px; align-items:center}
+.hv-code{list-style:none; margin:0; padding:12px 0; background:var(--term); color:var(--term-ink); border-radius:14px; font-family:var(--f-mono); font-size:15px; line-height:1.5}
+.hv-code li{display:grid; grid-template-columns:2.2em minmax(0,1fr); padding:4px 12px 4px 4px; transition:background .3s}
+.hv-code .ln{color:#5B6572; text-align:right; padding-right:12px}
+.hv-code code{background:none; padding:0; font-size:inherit; color:inherit; white-space:pre}
+.hv-code li.cur{background:rgba(255,197,61,.2)}
+.hv-boxes{display:flex; flex-direction:column; gap:10px}
+.hv-box{border-radius:14px; padding:8px 14px; background:var(--glass-strong); box-shadow:0 1px 4px rgba(18,20,23,.08); display:flex; justify-content:space-between; align-items:baseline; gap:10px; transition:opacity .3s, transform .3s}
+.hv-box span{font-family:var(--f-mono); font-size:.95rem; color:var(--ink-2)}
+.hv-box b{font-family:var(--f-mono); font-size:1.4rem; font-weight:600}
+.hv-box.empty{opacity:.3}
+.hv-box.chg{animation:pop .45s cubic-bezier(.3,1.6,.5,1), flash 1s}
+
+/* ---------- visualiser ---------- */
+.vpanel{background:var(--term); border-radius:18px; box-shadow:var(--float); overflow:hidden}
+.vhead{display:flex; justify-content:space-between; align-items:center; gap:10px; padding:10px 16px; background:var(--term-2); color:var(--term-dim); font-family:var(--f-mono); font-size:.9rem}
+.vhead .vstep{color:#FFC53D}
+.vcode{list-style:none; margin:0; padding:10px 0 12px; font-family:var(--f-mono); font-size:15.5px; line-height:1.55; color:var(--term-ink)}
+.vcode li{display:grid; grid-template-columns:2.4em 1.5em minmax(0,1fr); align-items:start; padding:3px 12px 3px 2px; transition:background .25s, opacity .25s}
+.vcode .ln{color:#5B6572; text-align:right; padding-right:2px}
+.vcode .mk{width:10px; height:10px; border-radius:50%; justify-self:center; margin-top:.45em}
+.vcode code{background:none; padding:0; font-size:inherit; color:inherit; white-space:pre-wrap; overflow-wrap:anywhere}
+.vcode li.cur{background:rgba(255,197,61,.17)}
+.vcode li.cur .mk{background:#FFC53D; box-shadow:0 0 0 4px rgba(255,197,61,.25)}
+.vcode li.next .mk{box-shadow:inset 0 0 0 2px #7CC4FF}
+.vcode li.skip{opacity:.32}
+.cond{display:inline-block; margin-left:10px; font-size:.85em; padding:0 9px; border-radius:99px; white-space:nowrap; animation:rise .3s}
+.cond.t{background:rgba(139,240,168,.18); color:#8BF0A8}
+.cond.f{background:rgba(255,154,138,.18); color:#FF9A8A}
+.vctl .row{gap:8px}
+.vparams{display:flex; flex-wrap:wrap; gap:10px 16px; align-items:center; margin-top:14px}
+.vparams:empty{display:none}
+.stepper{display:inline-flex; align-items:center; gap:4px; background:color-mix(in srgb, var(--ink) 7%, transparent); border-radius:12px; padding:4px}
+.stepper button{width:40px; height:40px; border:0; border-radius:9px; background:var(--paper); color:var(--ink); font-family:var(--f-display); font-weight:900; font-size:1.2rem; cursor:pointer; box-shadow:0 1px 3px rgba(18,20,23,.1)}
+.stepper button:disabled{opacity:.4; cursor:not-allowed}
+.stepper output{min-width:2.4em; text-align:center; font-family:var(--f-mono); font-weight:600; font-size:1.1rem}
+.vparams .plabel{font-family:var(--f-display); font-weight:700; font-size:1rem}
+.vsay{min-height:5.2em}
+.vsay code{font-size:.9em}
+.vboxes{display:flex; flex-wrap:wrap; gap:10px; align-items:flex-start; min-height:80px}
+.vboxes .none{color:var(--ink-2); font-size:1rem}
+.vbox{min-width:120px; max-width:100%; border-radius:14px; padding:8px 14px 10px; background:var(--glass-strong); box-shadow:0 1px 4px rgba(18,20,23,.09); display:flex; flex-direction:column; gap:2px}
+.vbox .nm{font-family:var(--f-mono); font-size:.92rem; color:var(--ink-2)}
+.vbox .val{font-family:var(--f-mono); font-weight:600; font-size:1.3rem; color:var(--ink); line-height:1.35; overflow-wrap:anywhere}
+.vbox .ty{display:flex; align-items:center; gap:6px; font-size:.9rem; color:var(--ink-2)}
+.vbox .ty i{width:8px; height:8px; border-radius:50%; background:var(--c)}
+.vbox.chg{animation:pop .45s cubic-bezier(.3,1.6,.5,1), flash 1.1s}
+.vlist{display:flex; flex-wrap:wrap; gap:5px; padding-top:4px}
+.vlist span{font-family:var(--f-mono); font-size:.92rem; font-weight:600; padding:2px 9px; border-radius:99px; background:color-mix(in srgb, var(--ink) 8%, transparent); transition:background .25s, color .25s}
+.vlist span.on{background:var(--l2); color:#fff}
+.vfn{font-family:var(--f-mono); font-size:1rem; font-weight:600}
+.vframe{flex-basis:100%; border-radius:16px; padding:10px 12px 12px; background:color-mix(in srgb, var(--l5) 13%, transparent); display:flex; flex-direction:column; gap:8px; animation:rise .3s}
+.vframe .fh{font-family:var(--f-display); font-weight:800; font-size:1rem}
+.vframe .vboxes{min-height:0}
+.vout{font-family:var(--f-mono); font-size:.95rem; background:var(--term); color:var(--term-ink); border-radius:12px; padding:10px 14px; min-height:64px; display:flex; flex-direction:column; gap:2px}
+.vout .none{color:var(--term-dim)}
+.vout .new{color:#8BF0A8; animation:rise .3s}
+.vpredict{border-radius:18px; padding:16px 18px; display:flex; flex-direction:column; gap:10px; animation:rise .35s}
+.vpredict h3{font-size:1.1rem; line-height:1.3}
+.vpredict .opts{flex-direction:row; flex-wrap:wrap}
+.prog-pick{display:flex; flex-wrap:wrap; gap:12px; align-items:center}
+#viz1 .pg,#viz2 .pg{grid-template-columns:minmax(0,1.15fr) minmax(0,1fr)}
+
+/* ---------- explainers ---------- */
+.ideas{margin:0; display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:16px 22px}
+.ideas > div{border-radius:18px; padding:16px 18px}
+.ideas dt{font-family:var(--f-display); font-weight:800; font-size:1.12rem; line-height:1.3}
+.ideas dd{margin:4px 0 0; font-size:1rem; color:var(--ink-2)}
+.blocks{display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:18px}
+.block{border-radius:20px; padding:18px 20px; display:flex; flex-direction:column; gap:10px}
+.block .bh{display:flex; align-items:center; gap:10px}
+.block .bh i{width:12px; height:12px; border-radius:50%; background:var(--c)}
+.block h4{font-family:var(--f-display); font-weight:800; font-size:1.2rem; margin:0}
+.block pre{margin:0; font-family:var(--f-mono); font-size:.92rem; line-height:1.55; background:var(--term); color:var(--term-ink); border-radius:12px; padding:10px 14px; overflow-x:auto}
+.block p{font-size:1rem}
+.block .look{font-size:1rem; background:color-mix(in srgb, var(--c) 12%, transparent); border-radius:12px; padding:8px 12px}
+.block .look b{font-family:var(--f-display); font-weight:800}
+.read-steps{margin:0; padding:0; list-style:none; counter-reset:r; display:flex; flex-direction:column; gap:10px}
+.read-steps li{counter-increment:r; display:grid; grid-template-columns:30px minmax(0,1fr); gap:12px; align-items:start}
+.read-steps li::before{content:counter(r); width:30px; height:30px; border-radius:10px; display:grid; place-items:center; font-family:var(--f-display); font-weight:800; background:color-mix(in srgb, var(--l2) 16%, transparent)}
+
+/* ---------- code lab side panels ---------- */
+#lab textarea{min-height:600px}
+#lab .cl-lines{font-size:16px}
+.syntax{display:flex; flex-direction:column; gap:8px}
+.syntax div{display:grid; grid-template-columns:minmax(0,1.25fr) minmax(0,1fr); gap:12px; align-items:center; background:var(--glass-strong); border-radius:12px; padding:8px 12px}
+.syntax code{background:none; padding:0; font-size:.9rem; overflow-wrap:anywhere}
+.syntax span{font-size:.95rem; color:var(--ink-2)}
+.errbox{font-family:var(--f-mono); font-size:.92rem; background:var(--term); color:#FF9A8A; border-radius:12px; padding:10px 14px; overflow-x:auto}
+.errparts{margin:12px 0 0; display:flex; flex-direction:column; gap:8px}
+.errparts div{display:grid; grid-template-columns:auto minmax(0,1fr); gap:10px; align-items:baseline; font-size:1rem}
+.errparts dt{font-family:var(--f-mono); font-weight:600; font-size:.92rem; background:color-mix(in srgb, var(--l1) 14%, transparent); border-radius:8px; padding:1px 8px}
+.errparts dd{margin:0; color:var(--ink-2)}
+
+@media (max-width:900px){
+  .ideas,.blocks{grid-template-columns:minmax(0,1fr)}
+  .pg{align-items:stretch}
+}
+@media (max-width:640px){
+  .hv{grid-template-columns:minmax(0,1fr)}
+  .hv-boxes{flex-direction:row; flex-wrap:wrap}
+  .hv-box{flex:1 1 90px; flex-direction:column; gap:0}
+  .hv-code{font-size:14px}
+  .vcode{font-size:14.5px}
+  .vcode li{grid-template-columns:2em 1.3em minmax(0,1fr)}
+  .syntax div{grid-template-columns:minmax(0,1fr); gap:2px}
+  #lab textarea{min-height:520px}
+  .errparts div{grid-template-columns:minmax(0,1fr); gap:2px}
+  .errparts dt{justify-self:start}
+}
+</style>
+</head>
+<body>
+<main id="top">
+  <section class="wrap hero">
+    <div>
+      <div class="kicker">Intro · Course 102 · What code actually is</div>
+      <h1>Code is a recipe the computer follows exactly.</h1>
+      <p class="lede">A program is a list of small instructions, run one line at a time, top to bottom. Watch a few run step by step and you'll be able to read the code your AI writes, and notice when it does something you didn't ask for.</p>
+      <ul class="facts">
+        <li>About 15 minutes</li>
+        <li>5 parts</li>
+        <li>Code lab</li>
+        <li>No coding experience needed</li>
+      </ul>
+      <div class="row hero-cta"><a class="btn primary" href="#p1">Start the lesson</a></div>
+    </div>
+    <figure style="margin:0">
+      <div class="hero-visual glass">
+        <div class="hv" role="img" aria-label="An animation of a five-line program running one line at a time. As each line is highlighted, labeled boxes called cookies, price and total fill with values and change.">
+          <ol class="hv-code syn" id="hvCode" aria-hidden="true"></ol>
+          <div class="hv-boxes" id="hvBoxes" aria-hidden="true"></div>
+        </div>
+        <div class="legend"><span><i style="background:var(--l4)"></i>Line running now</span><span><i style="background:var(--l2)"></i>Boxes that hold values</span></div>
+      </div>
+      <div class="hero-caption glass" aria-hidden="true"><span id="heroCapA">line 1</span><span id="heroCap">let cookies = 3;</span></div>
+    </figure>
+  </section>
+
+  <div class="wrap">
+  <!-- PART 1 -->
+  <section class="part" id="p1">
+    <span class="bullet glass" data-p="p1">1</span>
+    <div class="part-head">
+      <div class="kicker">Part 1 of 5</div>
+      <h2>One line at a time</h2>
+      <p>Code looks dense, but the computer reads it the way you'd follow a recipe: one line, then the next. Along the way it keeps values in named <b>boxes</b>, called <b>variables</b>.</p>
+    </div>
+
+    <div class="chat" aria-label="Example conversation">
+      <div class="msg ai"><span class="who">AI assistant</span>Here's the code that works out the total for a cookie order at Bea's Bakery. It's all done!</div>
+      <div class="msg me"><span class="who">You</span>I have no idea what this says. How would I know if it's right?</div>
+      <div class="msg ai"><span class="who">AI assistant</span>Let's run it one line at a time and watch what each line does.</div>
+    </div>
+
+    <div class="task glass" data-part="p1">
+      <h3>Your task</h3>
+      <ol>
+        <li data-t="predict"><span>Press Step to run the program. Before line 5 runs, predict what it will do.</span></li>
+        <li data-t="run"><span>Keep stepping until the program finishes.</span></li>
+        <li data-t="change"><span>Change the starting number of cookies and run it to the end again.</span></li>
+      </ol>
+    </div>
+
+    <div id="viz1"></div>
+
+    <div class="stack" style="margin-top:56px">
+      <h3>What you just saw</h3>
+      <dl class="ideas">
+        <div class="glass"><dt>A program runs one line at a time, top to bottom.</dt><dd>Each line finishes before the next one starts. In part 2 you'll see the three ways code can skip or repeat lines.</dd></div>
+        <div class="glass"><dt>A variable is a labeled box.</dt><dd><code>let cookies = 3;</code> makes a box, labels it <code>cookies</code>, and puts 3 inside. Later lines use the name to get the value back.</dd></div>
+        <div class="glass"><dt>In code, = means "put into".</dt><dd>It doesn't mean "is equal to" like in math. The right side is worked out first, then stored in the box on the left. That's why <code>cookies = cookies + 1</code> makes sense.</dd></div>
+        <div class="glass"><dt>Values come in types.</dt><dd>Numbers like <code>2</code>, text in quotes like <code>"Total: $"</code> (programmers call it a <b>string</b>), true and false, and lists in square brackets. The type decides what you can do with it.</dd></div>
+      </dl>
+      <details class="deeper glass">
+        <summary>Under the hood: why "2" + 1 is "21" <small>optional</small></summary>
+        <div>
+          <p>In JavaScript, <code>+</code> does two jobs. With two numbers it adds: <code>2 + 1</code> is <code>3</code>. If either side is text, it glues them together: <code>"2" + 1</code> is <code>"21"</code>. That's how <code>"Total: $" + total</code> builds a message.</p>
+          <p>It's also a classic bug. If a number arrives as text (from a form, say), adding to it quietly glues instead of adding. Nothing crashes, the answer is just wrong. When you see strange totals, ask the AI whether a number is really text.</p>
+          <p><code>console.log</code> is how a program prints. In a real website the output goes to the browser's developer console, and on a server it goes to the server's logs.</p>
+        </div>
+      </details>
+    </div>
+  </section>
+
+  <!-- PART 2 -->
+  <section class="part" id="p2">
+    <span class="bullet glass" data-p="p2">2</span>
+    <div class="part-head">
+      <div class="kicker">Part 2 of 5</div>
+      <h2>Decide, repeat, reuse</h2>
+      <p>Three ideas let code do more than run straight down the page. An <b>if</b> decides which lines to run. A <b>loop</b> repeats lines. A <b>function</b> packs lines into a named recipe you can use again. Watch each one move the highlight around.</p>
+    </div>
+
+    <div class="task glass" data-part="p2">
+      <h3>Your task</h3>
+      <ol>
+        <li data-t="no"><span>Decide: run the loyalty card program and watch the if skip to "else".</span></li>
+        <li data-t="yes"><span>Change the stamps so the card is full, and get a free croissant.</span></li>
+        <li data-t="loop"><span>Repeat: step through the loop until the order is ready.</span></li>
+        <li data-t="func"><span>Reuse: follow the function calls until the total is printed.</span></li>
+      </ol>
+    </div>
+
+    <div class="ctl glass" style="margin-bottom:22px">
+      <h3 class="ctl-title">Pick a program</h3>
+      <div class="prog-pick">
+        <div class="seg-control" role="group" aria-label="Program">
+          <button type="button" data-prog="if" aria-pressed="true">Decide: if</button>
+          <button type="button" data-prog="loop" aria-pressed="false">Repeat: loop</button>
+          <button type="button" data-prog="fn" aria-pressed="false">Reuse: function</button>
+        </div>
+      </div>
+    </div>
+    <div id="viz2"></div>
+
+    <div class="stack" style="margin-top:56px">
+      <h3>The four building blocks</h3>
+      <p class="muted">Almost every program is made of these. When the AI hands you code, look for them, and check the thing that usually goes wrong.</p>
+      <div class="blocks">
+        <div class="block glass" style="--c:var(--l2)"><div class="bh"><i></i><h4>Variables</h4></div><pre class="syn"><span class="k">let</span> total = <span class="n">0</span>;</pre><p>A named box for a value. Names are how code stays readable.</p><p class="look"><b>Check:</b> do the names say what's inside? <code>total</code> is clear. <code>x2</code> is not.</p></div>
+        <div class="block glass" style="--c:var(--l3)"><div class="bh"><i></i><h4>Conditions</h4></div><pre class="syn"><span class="k">if</span> (stamps &gt;= <span class="n">10</span>) { … } <span class="k">else</span> { … }</pre><p>Run some lines only when a test is true, and others when it's false.</p><p class="look"><b>Check the edges:</b> <code>&gt; 10</code> and <code>&gt;= 10</code> differ at exactly 10.</p></div>
+        <div class="block glass" style="--c:var(--l4)"><div class="bh"><i></i><h4>Loops</h4></div><pre class="syn"><span class="k">for</span> (<span class="k">let</span> item <span class="k">of</span> order) { … }</pre><p>Repeat lines once for each item in a list, or until something is true.</p><p class="look"><b>Check:</b> what does it loop over? Could that be empty, or a million items? Does it always end?</p></div>
+        <div class="block glass" style="--c:var(--l5)"><div class="bh"><i></i><h4>Functions</h4></div><pre class="syn"><span class="k">function</span> <span class="f">priceFor</span>(size) { … <span class="k">return</span> <span class="n">3</span>; }</pre><p>A named recipe: inputs go in, an answer comes back with <code>return</code>.</p><p class="look"><b>Check:</b> does the name match what it does? One clear job per function.</p></div>
+      </div>
+      <div class="ctl glass" style="margin-top:6px">
+        <h3 class="ctl-title">How to read code you didn't write</h3>
+        <ol class="read-steps">
+          <li><span><b>Skim the names first.</b> Variable and function names tell you what the code is about before you read a single line closely.</span></li>
+          <li><span><b>Find where it starts.</b> Function definitions wait until they're called. The lines outside them run first, top to bottom.</span></li>
+          <li><span><b>Follow one example.</b> Pick a value, like 12 cookies, and track the boxes line by line, exactly like the visualiser does.</span></li>
+          <li><span><b>Say it in one sentence.</b> "This gives a free croissant when the card reaches 10." If you can't, ask the AI to explain that part, then check its answer by running an example.</span></li>
+        </ol>
+      </div>
+    </div>
+  </section>
+
+  <!-- PART 3 -->
+  <section class="part" id="p3">
+    <span class="bullet glass" data-p="p3">3</span>
+    <div class="part-head">
+      <div class="kicker">Part 3 of 5</div>
+      <h2>Try it: edit real code</h2>
+      <p>This is real JavaScript, running in your browser. Change it, press Run, and watch the output. Mistakes are fine here: you'll get a plain-language explanation for any error.</p>
+    </div>
+
+    <div class="lab">
+      <div class="a-mission ctl glass">
+        <h3 class="ctl-title">Your mission</h3>
+        <p class="ctl-sub" style="margin-top:0">Bea's cookie order code needs four small changes. Each numbered comment in the code marks where to work.</p>
+        <ol class="mission" id="mission"></ol>
+      </div>
+      <div class="a-work" id="lab"></div>
+      <div class="a-side ctl glass">
+        <h3 class="ctl-title">Cheat card</h3>
+        <div class="syntax">
+          <div><code>let name = value;</code><span>Make a box</span></div>
+          <div><code>name = new value;</code><span>Change what's inside</span></div>
+          <div><code>if (test) { … }</code><span>Run only if the test is true</span></div>
+          <div><code>&gt;=  &gt;  ===  &lt;  &lt;=</code><span>At least, more than, exactly equal, less than, at most</span></div>
+          <div><code>for (let x of list) { … }</code><span>Repeat for each item</span></div>
+          <div><code>priceFor("large")</code><span>Call a function</span></div>
+          <div><code>console.log(…)</code><span>Print to the output</span></div>
+        </div>
+      </div>
+      <div class="a-extra ctl glass">
+        <h3 class="ctl-title">How to read an error</h3>
+        <div class="errbox">ReferenceError: cookie is not defined</div>
+        <dl class="errparts">
+          <div><dt>ReferenceError</dt><dd>The kind of problem: a name the computer doesn't know.</dd></div>
+          <div><dt>cookie</dt><dd>The exact name it tripped on. Look for a typo: the box is called <code>cookies</code>.</dd></div>
+          <div><dt>is not defined</dt><dd>No box with that name was ever made with <code>let</code>.</dd></div>
+        </dl>
+      </div>
+    </div>
+  </section>
+
+  <!-- PART 4 -->
+  <section class="part" id="p4">
+    <span class="bullet glass" data-p="p4">4</span>
+    <div class="part-head">
+      <div class="kicker">Part 4 of 5</div>
+      <h2>Steer the AI</h2>
+      <p>You don't need to write code to catch problems in it. You need to read it. Here are four things an AI might say about code it wrote. Pick the reply you'd send.</p>
+    </div>
+    <p class="counter" id="steerCount"></p>
+    <div id="steer"></div>
+  </section>
+
+  <!-- PART 5 -->
+  <section class="part" id="p5">
+    <span class="bullet glass" data-p="p5">5</span>
+    <div class="part-head">
+      <div class="kicker">Part 5 of 5</div>
+      <h2>Check your understanding</h2>
+      <p>Five quick questions. Each answer explains itself.</p>
+    </div>
+    <div id="quiz"></div>
+    <div id="doneCard" aria-live="polite"></div>
+  </section>
+  </div>
+
+  <section class="after" id="terms">
+    <div class="wrap stack">
+      <h2>Key terms</h2>
+      <p class="muted">The words you'll hear when an AI explains its code.</p>
+      <dl class="terms">
+        <div class="glass"><dt>Program</dt><dd>A list of instructions the computer runs one line at a time, top to bottom.</dd></div>
+        <div class="glass"><dt>Variable</dt><dd>A named box holding one value. <code>let</code> makes a new one.</dd></div>
+        <div class="glass"><dt>= (assignment)</dt><dd>"Put the right side into the box on the left." Not "is equal to".</dd></div>
+        <div class="glass"><dt>String, number, boolean, list</dt><dd>Types of values: text in quotes, numbers, true or false, and several values in square brackets.</dd></div>
+        <div class="glass"><dt>if / else</dt><dd>Runs one block of lines when a test is true, another when it's false.</dd></div>
+        <div class="glass"><dt>Comparison</dt><dd><code>===</code> exactly equal, <code>&gt;</code> more than, <code>&gt;=</code> at least. Check the edges.</dd></div>
+        <div class="glass"><dt>Loop</dt><dd>Repeats a block of lines, for example once for each item in a list.</dd></div>
+        <div class="glass"><dt>Function</dt><dd>A named recipe. Defining it saves it; calling it, like <code>priceFor("large")</code>, runs it.</dd></div>
+        <div class="glass"><dt>return</dt><dd>Hands an answer back to the line that called the function, and ends the function.</dd></div>
+        <div class="glass"><dt>Error message</dt><dd>The kind of problem, plus the name or line it tripped on. Read it before asking for a fix.</dd></div>
+      </dl>
+    </div>
+  </section>
+</main>
+<script src="../assets/cs-school.js"></script>
+<script>
+(() => {
+const { $, $$, esc, reduce } = CS;
+
+CS.lesson({
+  id: '102',
+  parts: [
+    { id: 'p1', title: 'One line at a time' },
+    { id: 'p2', title: 'Decide, repeat, reuse' },
+    { id: 'p3', title: 'Try it' },
+    { id: 'p4', title: 'Steer the AI' },
+    { id: 'p5', title: 'Check' }
+  ]
+});
+
+/* ---------- tiny JavaScript highlighter for display ---------- */
+const KW = /^(let|const|if|else|for|of|function|return|true|false)$/;
+function hl(src) {
+  const re = /(\/\/.*$)|("(?:[^"\\]|\\.)*")|(\b\d+(?:\.\d+)?\b)|([A-Za-z_$][\w$.]*)/g;
+  let out = '', last = 0, m;
+  while ((m = re.exec(src))) {
+    out += esc(src.slice(last, m.index)); last = re.lastIndex;
+    if (m[1]) out += `<span class="c">${esc(m[1])}</span>`;
+    else if (m[2]) out += `<span class="s">${esc(m[2])}</span>`;
+    else if (m[3]) out += `<span class="n">${m[3]}</span>`;
+    else if (KW.test(m[4])) out += `<span class="k">${m[4]}</span>`;
+    else if (src.slice(re.lastIndex).match(/^\s*\(/)) out += `<span class="f">${esc(m[4])}</span>`;
+    else out += esc(m[4]);
+  }
+  return out + esc(src.slice(last));
+}
+
+/* ---------- hero: a five-line program runs on a loop ---------- */
+(function hero() {
+  const lines = ['let cookies = 3;', 'let price = 2;', 'let total = cookies * price;', 'cookies = cookies + 1;', 'total = cookies * price;'];
+  const states = [{ cookies: 3 }, { cookies: 3, price: 2 }, { cookies: 3, price: 2, total: 6 }, { cookies: 4, price: 2, total: 6 }, { cookies: 4, price: 2, total: 8 }];
+  const caps = ['let cookies = 3;', 'let price = 2;', 'total = 3 × 2 = 6', 'cookies = 3 + 1 = 4', 'total = 4 × 2 = 8'];
+  const code = $('#hvCode'), boxes = $('#hvBoxes');
+  code.innerHTML = lines.map((l, i) => `<li><span class="ln">${i + 1}</span><code>${hl(l)}</code></li>`).join('');
+  const names = ['cookies', 'price', 'total'];
+  boxes.innerHTML = names.map(n => `<div class="hv-box empty" data-n="${n}"><span>${n}</span><b>·</b></div>`).join('');
+  let prev = {};
+  const show = i => {
+    $$('li', code).forEach((li, j) => li.classList.toggle('cur', j === i));
+    const s = i < 0 ? {} : states[i];
+    names.forEach(n => {
+      const b = $(`[data-n="${n}"]`, boxes);
+      b.classList.toggle('empty', !(n in s));
+      $('b', b).textContent = n in s ? s[n] : '·';
+      b.classList.remove('chg');
+      if (n in s && s[n] !== prev[n]) { void b.offsetWidth; b.classList.add('chg'); }
+    });
+    prev = s;
+    $('#heroCapA').textContent = i < 0 ? 'ready' : `line ${i + 1}`;
+    $('#heroCap').textContent = i < 0 ? 'press play in your head' : caps[i];
+  };
+  if (reduce) { show(2); return; }
+  let i = -1;
+  const tick = () => { i = i + 1 > lines.length - 1 ? -1 : i + 1; show(i); setTimeout(tick, i === lines.length - 1 ? 2600 : i < 0 ? 700 : 1300); };
+  show(-1); setTimeout(tick, 900);
+})();
+
+/* ---------- tracer: runs a program "by hand" and records a snapshot per step ---------- */
+function Tracer() {
+  const snaps = [], g = [], out = []; let fr = null, ch = [], fresh = false;
+  const clone = x => JSON.parse(JSON.stringify(x));
+  return {
+    set(n, v) { const arr = fr ? fr.vars : g; const x = arr.find(b => b.n === n); if (x) x.v = v; else arr.push({ n, v }); ch.push(n); },
+    del(n) { const i = g.findIndex(b => b.n === n); if (i >= 0) g.splice(i, 1); },
+    print(s) { out.push(s); fresh = true; },
+    enter(name) { fr = { name, vars: [] }; },
+    leave() { fr = null; },
+    snap(line, say, o = {}) { snaps.push({ line, say, g: clone(g), fr: fr && clone(fr), out: [...out], ch, fresh, cond: o.cond, skip: o.skip || [], cur: o.cur }); ch = []; fresh = false; },
+    snaps
+  };
+}
+const q = s => `<code>${esc(s)}</code>`;
+const ORD = ['first', 'second', 'third', 'fourth', 'fifth', 'sixth'];
+
+/* ---------- the programs ---------- */
+const PROGRAMS = {
+  vars: {
+    file: 'order.js',
+    lines: p => [`let cookies = ${p.cookies};`, 'let price = 2;', 'let total = cookies * price;', 'console.log("Total: $" + total);', 'cookies = cookies + 1;', 'total = cookies * price;', 'console.log("Total: $" + total);'],
+    build(p) {
+      const t = Tracer(); let c = p.cookies; const price = 2;
+      t.set('cookies', c); t.snap(0, `Make a box called <b>cookies</b> and put <b>${c}</b> in it. The word ${q('let')} means "make a new box".`);
+      t.set('price', price); t.snap(1, `Make another box, <b>price</b>, holding <b>2</b>. Each cookie costs $2.`);
+      let total = c * price; t.set('total', total);
+      t.snap(2, `Work out the right side first: ${q('cookies * price')} is ${c} × 2 = <b>${total}</b>. Then put ${total} in a new box called <b>total</b>. The ${q('*')} symbol means multiply.`);
+      t.print(`Total: $${total}`); t.snap(3, `Print a message. ${q('"Total: $"')} is text (it's in quotes), and ${q('+')} glues the value of total onto the end: <b>Total: $${total}</b>.`);
+      c += 1; t.set('cookies', c); t.snap(4, `Take what's in cookies (${c - 1}), add 1, and put the answer back into cookies. It now holds <b>${c}</b>. The old value is gone.`);
+      total = c * price; t.set('total', total);
+      t.snap(5, `Work out ${q('cookies * price')} again with the new value: ${c} × 2 = <b>${total}</b>. Notice that total didn't change by itself when cookies changed. It changed now, because this line ran.`);
+      t.print(`Total: $${total}`); t.snap(6, `Print again: <b>Total: $${total}</b>. That was the last line, so the program is finished.`);
+      return t.snaps;
+    }
+  },
+  if: {
+    file: 'loyalty.js',
+    lines: p => [`let stamps = ${p.stamps};`, 'stamps = stamps + 1;', 'if (stamps >= 10) {', '  console.log("Free croissant!");', '  stamps = 0;', '} else {', '  console.log((10 - stamps) + " to go");', '}'],
+    build(p) {
+      const t = Tracer(); let s = p.stamps;
+      t.set('stamps', s); t.snap(0, `Make a box called <b>stamps</b> holding ${s}. It's a customer's loyalty card: 10 stamps earn a free croissant.`);
+      s += 1; t.set('stamps', s); t.snap(1, `The customer buys something, so add a stamp: ${s - 1} + 1 = <b>${s}</b>.`);
+      if (s >= 10) {
+        t.snap(2, `The <b>if</b> asks a yes-or-no question: is stamps at least 10? ${q(`${s} >= 10`)} is <b>true</b>. So the lines inside the first pair of braces run, and the else part will be skipped.`, { cond: [`${s} >= 10`, true], skip: [5, 6, 7] });
+        t.print('Free croissant!'); t.snap(3, 'Print <b>Free croissant!</b>', { skip: [5, 6, 7] });
+        t.set('stamps', 0); t.snap(4, 'Reset the card: stamps goes back to <b>0</b>. The first block is done, so the program jumps past the else part. Finished.', { skip: [5, 6, 7] });
+      } else {
+        t.snap(2, `The <b>if</b> asks a yes-or-no question: is stamps at least 10? ${q(`${s} >= 10`)} is <b>false</b>. So the computer skips the first block and jumps to <b>else</b>.`, { cond: [`${s} >= 10`, false], skip: [3, 4] });
+        t.print(`${10 - s} to go`); t.snap(6, `Print how many stamps are still needed. The parentheses make ${q(`10 - ${s}`)} happen first, giving ${10 - s}, then ${q('+')} glues on the text: <b>${10 - s} to go</b>. Finished.`, { skip: [3, 4] });
+      }
+      return t.snaps;
+    }
+  },
+  loop: {
+    file: 'boxing.js',
+    lines: p => [`let order = [${p.order.map(x => `"${x}"`).join(', ')}];`, 'for (let item of order) {', '  console.log("Boxing a " + item);', '}', 'console.log("Order ready!");'],
+    build(p) {
+      const t = Tracer(); const n = p.order.length;
+      t.set('order', p.order); t.snap(0, `Make a box called <b>order</b> holding a <b>list</b>: ${n} items in square brackets, kept in order.`);
+      p.order.forEach((x, k) => {
+        t.set('item', x);
+        t.snap(1, `${k === 0 ? 'A <b>for</b> loop repeats the lines inside its braces once for each item in the list. ' : ''}Round ${k + 1} of ${n}: take the ${ORD[k] || (k + 1) + 'th'} item and put it in a box called <b>item</b>. item is now "${esc(x)}".`, { cur: k });
+        t.print(`Boxing a ${x}`); t.snap(2, `Print <b>Boxing a ${esc(x)}</b>. ${k < n - 1 ? 'Then jump back up to the for line for the next round.' : 'Then back up to the for line, to see if anything is left.'}`, { cur: k });
+      });
+      t.del('item'); t.snap(1, `No items left, so the loop ends. The <b>item</b> box disappears: it only existed inside the loop. The program carries on below the closing brace.`);
+      t.print('Order ready!'); t.snap(4, `Print <b>Order ready!</b> The loop ran ${n} times without anyone writing the print line ${n} times. Finished.`);
+      return t.snaps;
+    }
+  },
+  fn: {
+    file: 'prices.js',
+    lines: () => ['function priceFor(size) {', '  if (size === "large") {', '    return 5;', '  }', '  return 3;', '}', 'let total = priceFor("small") + priceFor("large");', 'console.log("Total: $" + total);'],
+    build() {
+      const t = Tracer();
+      t.set('priceFor', { fn: 'priceFor', params: ['size'] });
+      t.snap(0, `Define a <b>function</b> called priceFor: a named recipe for the price of a box of cookies. It's saved for later. Nothing inside it runs yet. ${q('size')} is its input.`);
+      t.snap(6, `Line 7 needs ${q('priceFor("small")')}. That's a <b>call</b>: the computer pauses this line and jumps into the function, carrying "small" with it.`);
+      t.enter('priceFor'); t.set('size', 'small');
+      t.snap(0, `Now we're inside priceFor. Its input box <b>size</b> holds "small". This box only exists while the function runs.`);
+      t.snap(1, `Is size exactly equal to "large"? ${q('"small" === "large"')} is <b>false</b>, so skip the block.`, { cond: ['"small" === "large"', false], skip: [2, 3] });
+      t.leave();
+      t.snap(4, `${q('return 3')} hands the answer, <b>3</b>, back to the line that called the function. The function is finished, so its boxes disappear.`, { skip: [2, 3] });
+      t.snap(6, `Back on line 7. ${q('priceFor("small")')} gave back 3, so the line now reads ${q('3 + priceFor("large")')}. Time for a second call.`);
+      t.enter('priceFor'); t.set('size', 'large');
+      t.snap(0, `Inside priceFor again, with a fresh size box. This time it holds "large". Same recipe, different input.`);
+      t.snap(1, `${q('"large" === "large"')} is <b>true</b>, so run the block.`, { cond: ['"large" === "large"', true] });
+      t.leave();
+      t.snap(2, `${q('return 5')} hands back <b>5</b> and ends the function right here, so line 5 doesn't run this time. The size box disappears again.`, { skip: [4] });
+      t.set('total', 8);
+      t.snap(6, `Back on line 7 with both answers: 3 + 5 = <b>8</b>. Put 8 in a new box called <b>total</b>.`);
+      t.print('Total: $8'); t.snap(7, 'Print <b>Total: $8</b>. One recipe, used twice with different inputs. Finished.');
+      return t.snaps;
+    }
+  }
+};
+
+/* ---------- the visualiser ---------- */
+const TYPE = v => Array.isArray(v) ? ['list', 'var(--l2)'] : v && v.fn ? ['function', 'var(--l5)'] : typeof v === 'string' ? ['text', 'var(--l3)'] : ['number', 'var(--l4)'];
+function valHTML(v, cur) {
+  if (Array.isArray(v)) return `<div class="vlist">${v.map((x, i) => `<span class="${i === cur ? 'on' : ''}">"${esc(x)}"</span>`).join('')}</div>`;
+  if (v && v.fn) return `<span class="vfn">${esc(v.fn)}(${v.params.join(', ')})</span>`;
+  return `<span class="val">${typeof v === 'string' ? `"${esc(v)}"` : v}</span>`;
+}
+function boxHTML(b, snap) {
+  const [ty, c] = TYPE(b.v);
+  return `<div class="vbox${snap.ch.includes(b.n) ? ' chg' : ''}"><span class="nm">${esc(b.n)}</span>${valHTML(b.v, snap.cur)}<span class="ty" style="--c:${c}"><i></i>${ty}</span></div>`;
+}
+class Viz {
+  constructor(root, opts = {}) {
+    this.root = root; this.opts = opts;
+    root.innerHTML = `<div class="pg">
+      <div class="pg-col">
+        <div class="o1 vpanel"><div class="vhead"><span class="vfile"></span><span class="vstep"></span></div><ol class="vcode syn"></ol></div>
+        <div class="o2 ctl glass vctl">
+          <h3 class="ctl-title">Run it one line at a time</h3>
+          <div class="row"><button class="btn primary" type="button" data-v="step">Step</button><button class="btn" type="button" data-v="back">Back</button><button class="btn" type="button" data-v="all">Run to the end</button><button class="btn" type="button" data-v="reset">Start over</button></div>
+          <div class="vparams"></div>
+        </div>
+        <div class="o3 note info vsay" aria-live="polite"></div>
+      </div>
+      <div class="pg-col">
+        <div class="o5 ctl glass"><h3 class="ctl-title">Boxes (variables)</h3><p class="ctl-sub">Each box has a name and holds one value.</p><div class="vboxes"></div></div>
+        <div class="o6 ctl glass"><h3 class="ctl-title">Output</h3><div class="vout" aria-live="polite"></div></div>
+        <div class="o4 vpredict glass" hidden aria-live="polite"></div>
+      </div></div>`;
+    this.$ = s => $(s, root);
+    root.addEventListener('click', e => {
+      const b = e.target.closest('[data-v]'); if (!b || b.disabled) return;
+      ({ step: () => this.step(), back: () => this.go(this.i - 1), all: () => this.runAll(), reset: () => this.go(-1) })[b.dataset.v]();
+    });
+  }
+  load(prog, params) {
+    this.prog = prog; this.params = params; clearTimeout(this.timer); this.playing = false;
+    this.lines = prog.lines(params); this.snaps = prog.build(params);
+    this.$('.vfile').textContent = prog.file;
+    this.$('.vcode').innerHTML = this.lines.map((l, i) => `<li><span class="ln">${i + 1}</span><span class="mk"></span><code>${hl(l)}</code></li>`).join('');
+    this.go(-1);
+  }
+  get done() { return this.i === this.snaps.length - 1; }
+  gated() { return this.opts.gate && this.opts.gate(this.i + 1, this); }
+  step() { if (this.i < this.snaps.length - 1 && !this.gated()) this.go(this.i + 1); }
+  runAll() {
+    if (this.playing) return;
+    if (this.done) this.go(-1);
+    this.playing = true;
+    const next = () => {
+      if (!this.playing) return;
+      if (this.done || this.gated()) { this.playing = false; this.render(); return; }
+      this.go(this.i + 1);
+      this.timer = setTimeout(next, reduce ? 0 : 520);
+    };
+    next();
+  }
+  go(i) {
+    if (i < -1 || i > this.snaps.length - 1) return;
+    if (i < this.i) { this.playing = false; clearTimeout(this.timer); }
+    this.i = i; this.render();
+    if (this.opts.onStep) this.opts.onStep(this.snaps[i], i, this);
+  }
+  render() {
+    const s = this.snaps[this.i], nx = this.snaps[this.i + 1];
+    const empty = { g: [], fr: null, out: [], ch: [], skip: [], fresh: false };
+    const S = s || empty;
+    $$('.vcode li', this.root).forEach((li, j) => {
+      li.classList.toggle('cur', !!s && s.line === j);
+      li.classList.toggle('next', !!nx && nx.line === j && (!s || s.line !== j));
+      li.classList.toggle('skip', S.skip.includes(j));
+      const old = $('.cond', li); if (old) old.remove();
+      if (s && s.cond && s.line === j) $('code', li).insertAdjacentHTML('beforeend', `<span class="cond ${s.cond[1] ? 't' : 'f'}">${esc(s.cond[0])} → ${s.cond[1]}</span>`);
+    });
+    this.$('.vstep').textContent = !s ? 'Not started' : this.done ? 'Finished' : `Step ${this.i + 1} of ${this.snaps.length}`;
+    const say = this.$('.vsay');
+    say.innerHTML = s ? `<strong>Line ${s.line + 1}.</strong> ${s.say}` : `<strong>Ready.</strong> Press <b>Step</b> to run line ${nx.line + 1}. The hollow dot marks the next line to run.`;
+    say.className = 'o3 note vsay ' + (s && this.done ? 'good' : 'info');
+    const boxes = S.g.map(b => boxHTML(b, S)).join('') + (S.fr ? `<div class="vframe"><span class="fh">Inside ${esc(S.fr.name)}</span><div class="vboxes">${S.fr.vars.map(b => boxHTML(b, S)).join('')}</div></div>` : '');
+    this.$('.vboxes').innerHTML = boxes || '<span class="none">No boxes yet.</span>';
+    this.$('.vout').innerHTML = S.out.length ? S.out.map((o, k) => `<div class="${S.fresh && k === S.out.length - 1 ? 'new' : ''}">${esc(o)}</div>`).join('') : '<span class="none">Nothing printed yet.</span>';
+    const g = this.gated();
+    this.$('[data-v="step"]').disabled = this.done || !!g;
+    this.$('[data-v="all"]').disabled = !!g || this.playing;
+    this.$('[data-v="back"]').disabled = this.i < 0;
+    this.$('[data-v="reset"]').disabled = this.i < 0;
+  }
+}
+function stepper(label, value, min, max, onChange) {
+  const w = document.createElement('div'); w.className = 'row'; w.style.gap = '10px';
+  const id = 'st' + Math.random().toString(36).slice(2, 7);
+  w.innerHTML = `<span class="plabel" id="${id}">${label}</span><div class="stepper" role="group" aria-labelledby="${id}"><button type="button" aria-label="Fewer">−</button><output aria-live="polite">${value}</output><button type="button" aria-label="More">+</button></div>`;
+  const [minus, plus] = $$('button', w), out = $('output', w);
+  const set = v => { value = Math.max(min, Math.min(max, v)); out.textContent = value; minus.disabled = value <= min; plus.disabled = value >= max; onChange(value); };
+  minus.addEventListener('click', () => set(value - 1)); plus.addEventListener('click', () => set(value + 1));
+  minus.disabled = value <= min; plus.disabled = value >= max;
+  return w;
+}
+
+/* ---------- Part 1 ---------- */
+const P1 = { cookies: 3, predicted: false };
+const GATE = 4; // the snapshot where line 5 (cookies = cookies + 1) runs
+const v1 = new Viz($('#viz1'), {
+  gate: (next, v) => next === GATE && !P1.predicted && v.i === GATE - 1,
+  onStep(snap, i, v) {
+    const box = $('.vpredict', v.root);
+    if (i === GATE - 1 && !P1.predicted) showPredict(box, v);
+    else if (i < GATE - 1) box.hidden = true;
+    if (v.done) {
+      CS.tick('p1', 'run');
+      if (P1.cookies !== 3) CS.tick('p1', 'change');
+      else if (!CS.ticked('p1', 'change')) CS.toast('Now change the starting cookies below the buttons');
+    }
+  }
+});
+function showPredict(box, v) {
+  const c = P1.cookies;
+  const opts = [[`${c}. Nothing changes.`, 0, `This line does change the box. The right side, ${q(`${c} + 1`)}, is worked out first, then the answer goes back into cookies.`],
+                [`${c + 1}`, 1, `Right. The right side is worked out first, ${c} + 1 = ${c + 1}, and the answer goes back into the same box, replacing ${c}.`],
+                ['An error: cookies can\'t equal cookies + 1.', 0, `Good instinct from math class, but in code ${q('=')} doesn't mean "is equal to". It means "put the right side into the box on the left".`]];
+  box.hidden = false;
+  box.innerHTML = `<div class="kicker">Predict first</div><h3>Line 5 is next: <code>cookies = cookies + 1;</code> What will be in the cookies box after it runs?</h3>
+    <div class="opts">${opts.map((o, j) => `<button class="opt" type="button" data-o="${j}">${esc(o[0])}</button>`).join('')}</div><div class="note" hidden></div>`;
+  box.onclick = e => {
+    const b = e.target.closest('.opt'); if (!b || b.disabled) return;
+    const o = opts[+b.dataset.o];
+    if (o[1]) {
+      b.classList.add('right'); $$('.opt', box).forEach(x => x.disabled = true);
+      CS.say($('.note', box), `<strong>Good prediction.</strong> ${o[2]} Now press Step to check.`, 'good');
+      P1.predicted = true; CS.tick('p1', 'predict'); v.render();
+    } else { b.classList.add('wrong'); b.disabled = true; CS.say($('.note', box), `<strong>Not quite.</strong> ${o[2]} Try again.`, 'bad'); }
+  };
+}
+$('#viz1 .vparams').appendChild(stepper('Starting cookies', 3, 0, 12, n => { P1.cookies = n; $('#viz1 .vpredict').hidden = true; v1.load(PROGRAMS.vars, { cookies: n }); }));
+v1.load(PROGRAMS.vars, { cookies: 3 });
+
+/* ---------- Part 2 ---------- */
+const P2 = { prog: 'if', stamps: 8, order: ['croissant', 'bagel', 'muffin'] };
+const EXTRA = ['cookie', 'scone', 'tart'];
+const v2 = new Viz($('#viz2'), {
+  onStep(snap, i, v) {
+    if (!snap) return;
+    if (P2.prog === 'if' && snap.line === 6) CS.tick('p2', 'no');
+    if (P2.prog === 'if' && snap.line === 3) CS.tick('p2', 'yes');
+    if (P2.prog === 'if' && v.done && snap.line === 6 && !CS.ticked('p2', 'yes')) CS.toast('Now add stamps until the card is full');
+    if (P2.prog === 'loop' && v.done) CS.tick('p2', 'loop');
+    if (P2.prog === 'fn' && v.done) CS.tick('p2', 'func');
+  }
+});
+function params2() {
+  const box = $('#viz2 .vparams'); box.innerHTML = '';
+  if (P2.prog === 'if') box.appendChild(stepper('Stamps on the card', P2.stamps, 0, 12, n => { P2.stamps = n; v2.load(PROGRAMS.if, { stamps: n }); }));
+  if (P2.prog === 'loop') {
+    const w = document.createElement('div'); w.className = 'row';
+    w.innerHTML = `<button class="btn" type="button" id="addItem">Add an item to the order</button><button class="btn" type="button" id="resetItems">Back to 3 items</button>`;
+    box.appendChild(w);
+    const sync = () => { $('#addItem').disabled = P2.order.length >= 6; $('#resetItems').disabled = P2.order.length === 3; };
+    $('#addItem').addEventListener('click', () => { if (P2.order.length < 6) { P2.order = [...P2.order, EXTRA[P2.order.length - 3]]; v2.load(PROGRAMS.loop, { order: P2.order }); sync(); } });
+    $('#resetItems').addEventListener('click', () => { P2.order = P2.order.slice(0, 3); v2.load(PROGRAMS.loop, { order: P2.order }); sync(); });
+    sync();
+  }
+}
+function pick(prog) {
+  P2.prog = prog;
+  $$('[data-prog]').forEach(b => b.setAttribute('aria-pressed', b.dataset.prog === prog ? 'true' : 'false'));
+  params2();
+  v2.load(PROGRAMS[prog], prog === 'if' ? { stamps: P2.stamps } : prog === 'loop' ? { order: P2.order } : {});
+}
+$$('[data-prog]').forEach(b => b.addEventListener('click', () => pick(b.dataset.prog)));
+pick('if');
+
+/* ---------- Part 3: code lab ---------- */
+const STARTER = `// Bea's Bakery: cookie order
+
+// 1. How many cookies?
+let cookies = 2;
+let price = 2;
+let total = cookies * price;
+console.log("Total: $" + total);
+
+// 2. 10 or more cookies earn a free croissant.
+//    This check has a bug!
+if (cookies > 100) {
+  console.log("Free croissant!");
+}
+
+// 3. Print each item in the order.
+let order = ["croissant", "bagel", "muffin"];
+// write your loop here
+
+
+// 4. The price of a box of cookies.
+function priceFor(size) {
+  if (size === "large") {
+    return 5;
+  }
+  return 3;
+}
+// call priceFor("large") and print it:
+
+`;
+const withCookies = (code, n) => code.replace(/\b(let|const|var)\s+cookies\s*=\s*[^;\n]+/, `$1 cookies = ${n}`);
+const freebie = logs => logs.some(l => /free croissant/i.test(l));
+const LOOP_RE = /\bfor\s*\(|\.forEach\s*\(|\bwhile\s*\(/;
+CS.codeLab($('#lab'), {
+  part: 'p3',
+  mission: $('#mission'),
+  language: 'JavaScript',
+  starter: STARTER,
+  steps: [
+    { t: 'Change a value', how: 'Make the order 12 cookies, then press Run.',
+      hint: 'On line 4, change <code>let cookies = 2;</code> to <code>let cookies = 12;</code> and press Run. The total should be $24.',
+      check: r => !r.error && r.logs.includes('Total: $24'),
+      nudge: r => r.logs.includes('Total: $4') ? 'The output says <b>Total: $4</b>, the total for 2 cookies. Change the 2 in <code>let cookies = 2;</code> to 12, then Run again.' : 'Aim for <b>Total: $24</b>: 12 cookies at $2 each. Only the number of cookies needs to change.' },
+    { t: 'Fix the if', how: '12 cookies should earn a free croissant. Fix the check so any order of 10 or more gets one.',
+      hint: 'Line 11 says <code>if (cookies &gt; 100)</code>. The rule is "10 or more". Which comparison means "at least"? Look at the cheat card.',
+      check: r => {
+        if (r.error || !freebie(r.logs) || !/\bif\s*\(/.test(r.code)) return false;
+        if (!/\b(let|const|var)\s+cookies\s*=/.test(r.code)) return true;
+        const at9 = CS.runJS(withCookies(r.code, 9)), at10 = CS.runJS(withCookies(r.code, 10));
+        return !freebie(at9.logs) && freebie(at10.logs);
+      },
+      nudge: r => {
+        if (!freebie(r.logs)) return 'Still no free croissant. The check compares cookies to <b>100</b>. What number should it compare to?';
+        if (!/\bif\s*\(/.test(r.code)) return 'The croissant prints, but the <code>if</code> is gone, so every order would get one. Put the check back and fix the comparison.';
+        if (freebie(CS.runJS(withCookies(r.code, 9)).logs)) return 'I tested your code with 9 cookies, and it gave a free croissant. The rule is 10 or more.';
+        return 'Close! I tested it with exactly 10 cookies and got no croissant. <code>&gt;</code> means "more than". For "10 or more", use <code>&gt;= 10</code>.';
+      } },
+    { t: 'Write a loop', how: 'Under comment 3, print every item in the order using a loop.',
+      hint: 'Type this under comment 3:<br><code>for (let item of order) {</code><br><code>&nbsp;&nbsp;console.log(item);</code><br><code>}</code>',
+      check: r => !r.error && LOOP_RE.test(r.code.split(/let\s+order\s*=/)[1] || r.code) && r.logs.some(l => /bagel/i.test(l)) && r.logs.some(l => /muffin/i.test(l)) && r.logs.some(l => /croissant/i.test(l) && !/free croissant/i.test(l)),
+      nudge: r => LOOP_RE.test(r.code.split(/let\s+order\s*=/)[1] || '') ? 'Your loop is there, but the items aren\'t printed. Put <code>console.log(item);</code> inside the curly braces.' : (r.logs.some(l => /bagel/i.test(l)) ? 'That prints them, but one line at a time by hand. Use a <b>for</b> loop so it works for an order of any size.' : 'Write a <b>for</b> loop under comment 3. The Show a hint button has the shape.') },
+    { t: 'Call a function', how: 'Under comment 4, call priceFor("large") and print the answer.',
+      hint: 'Type <code>console.log(priceFor("large"));</code> under comment 4. You should see 5 in the output.',
+      check: r => !r.error && /priceFor\s*\(\s*["'`]large["'`]\s*\)/.test(r.code) && r.logs.some(l => /(^|[^\d.])5([^\d]|$)/.test(l) && !/Total/.test(l)),
+      nudge: r => /priceFor\s*\(\s*["'`]small["'`]\s*\)/.test(r.code) ? 'That works: a small box is 3. Now call it with <code>"large"</code>.' : /priceFor\s*\(\s*["'`]large["'`]\s*\)/.test(r.code) ? 'You called it, but the answer wasn\'t printed. Wrap the call in <code>console.log( … )</code>.' : 'Call the function by name with an input in brackets: <code>priceFor("large")</code>. Then print what it gives back.' }
+  ],
+  explainError: err => {
+    let m;
+    if ((m = err.match(/ReferenceError: (\w+) is not defined/))) return `The computer doesn't know the name <b>${esc(m[1])}</b>. Check the spelling and capitals: <code>Cookies</code> and <code>cookies</code> are different names.`;
+    if (/Unexpected end of input/.test(err)) return 'Something was opened but never closed. Every <code>{</code> needs a <code>}</code> and every <code>(</code> needs a <code>)</code>.';
+    if (/missing \) after argument list/.test(err)) return 'A bracket or quote is missing inside something like <code>console.log( … )</code>. Check that every <code>(</code> and <code>"</code> has a partner.';
+    if ((m = err.match(/Identifier '(\w+)' has already been declared/))) return `You made a box called <b>${esc(m[1])}</b> twice with <code>let</code>. Use <code>let</code> only the first time. After that, just write <code>${esc(m[1])} = …</code>.`;
+    if (/Invalid or unexpected token|Unexpected token|Unexpected identifier|Unexpected string|Unexpected number/.test(err)) return 'The computer hit something it didn\'t expect. Look for a missing bracket, quote, comma or <code>+</code> near where you last typed.';
+    if ((m = err.match(/TypeError: ([\w.$]+) is not a function/))) {
+      const near = ['console.log', 'priceFor'].find(n => CS.lev(n, m[1]) <= 2);
+      return `<b>${esc(m[1])}</b> isn't something the computer can run. ${near ? `Check the spelling: did you mean <code>${near}</code>?` : 'Check the name for a typo.'}`;
+    }
+    if (/Stopped: this loop ran/.test(err)) return 'Your loop never stops. A <code>for (let item of order)</code> loop always ends when the list runs out.';
+    return 'Read the first word (the kind of error) and the name it mentions, then compare that part of your code with the cheat card.';
+  },
+  doneTutor: '<b>All four done!</b> You changed a value, fixed an off-by-one bug, wrote a loop and called a function. That\'s the core of reading and checking code.'
+});
+
+/* ---------- Part 4: steer the AI ---------- */
+CS.steer($('#steer'), [
+  { ai: 'Done! Customers now get a free croissant on their 10th stamp: if (stamps > 10) { giveFreeCroissant(); }',
+    opts: [["Looks right, ship it.", 0, "Read the comparison: > 10 means 11 or more. A customer with exactly 10 stamps gets nothing."],
+           ["With > 10, the 10th stamp doesn't count. Shouldn't it be stamps >= 10?", 1, "Exactly. > means \"more than\" and >= means \"at least\". Edges like this are where AI-written code most often slips."],
+           ["Can you rewrite it in Python so it's easier to read?", 0, "The language isn't the problem. The same off-by-one mistake is just as easy to make in Python."]] },
+  { ai: 'Fixed the error! I changed let price = 2; to let price = "2"; and now it runs without complaining.',
+    opts: [["Great, thanks!", 0, "The error is hidden, not fixed. With quotes, price is text, so \"2\" + 1 would give \"21\" instead of 3."],
+           ["Now price is text, not a number, so adding to it will glue instead of add. What caused the original error? Fix that instead.", 1, "Right. Changing a value's type to silence an error usually creates a quieter, worse bug. Ask for the real cause."],
+           ["Put quotes around all the numbers to be safe.", 0, "That would turn every calculation into text-gluing. Totals would come out wrong everywhere."]] },
+  { ai: 'I wrote one function, handleOrder(), that\'s 240 lines. It prices the order, sends the receipt email, updates stock and saves to the database.',
+    opts: [["Nice, one function is simpler than many.", 0, "One function doing four jobs is hard to read, test and fix. A bug in the email part can break pricing."],
+           ["Please split it into small functions with clear names, one job each, like priceFor and sendReceipt.", 1, "Yes. Small, well-named functions read like a table of contents, and each one can be checked on its own."],
+           ["Just add a comment on every line.", 0, "Comments help a little, but 240 lines doing four jobs is still hard to follow and test. Structure beats commentary."]] },
+  { ai: 'Here\'s the new discount function. I haven\'t run it, but it should work.',
+    opts: [["OK, add it to the site.", 0, "\"Should work\" isn't evidence. Code that hasn't run has bugs you can't see yet."],
+           ["Explain every line to me first.", 0, "Explanations help you understand, but they can be confidently wrong. Running examples is proof."],
+           ["Run it with a few example orders, like 0, 9, 10 and 50 cookies, and show me the output.", 1, "Right. Examples at the edges (0, just below 10, exactly 10) catch most mistakes, and you can judge the output yourself."]] }
+], { part: 'p4', counter: $('#steerCount') });
+
+/* ---------- Part 5: quiz ---------- */
+CS.quiz($('#quiz'), [
+  { q: 'After these two lines, what is in total? let total = 5; total = total + 2;', a: [['5', 0], ['7', 1], ['The text "total + 2"', 0]], why: 'The right side is worked out first (5 + 2 = 7), then stored back in total, replacing the 5.' },
+  { q: 'if (cookies >= 10) runs its block when cookies is…', a: [['More than 10 only', 0], ['10 or more', 1], ['Less than 10', 0]], why: '>= means "at least". It includes 10 itself. > 10 would start at 11.' },
+  { q: 'A for loop goes through a list of 4 items with one console.log inside. How many lines does it print?', a: [['1', 0], ['4', 1], ['It depends on luck', 0]], why: 'The loop runs its block once for each item: 4 items, 4 rounds, 4 printed lines.' },
+  { q: 'What does return do inside a function?', a: [['Hands a value back to the line that called the function', 1], ['Prints the value on the screen', 0], ['Starts the program again from the top', 0]], why: 'return sends the answer back to where the function was called, and ends the function right there.' },
+  { q: 'In code, what does = do?', a: [['Checks whether two things are equal', 0], ['Puts the value on the right into the box on the left', 1], ['Means the two sides are equal forever, like in math', 0]], why: '= is assignment. Checking equality uses === instead. That\'s why cookies = cookies + 1 is fine.' }
+], { part: 'p5', doneCard: $('#doneCard'), doneTitle: 'You can read code now.', doneText: 'You can follow a program line by line, track its variables, and spot the if, loop and function patterns, plus the edge cases where AI-written code often goes wrong.' });
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,1012 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Shipping &amp; running software · CS School</title>
+<meta name="description" content="Course 209: deploys, environments, costs, scaling and knowing when things break.">
+<link rel="icon" href="../assets/favicon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="../assets/cs-school.css">
+<style>
+/* lesson-specific styles: change picker, deploy checks, environment previews, traffic simulator, monitoring tiles, ops side panels */
+.hero-visual canvas{display:block; width:100%}
+
+/* change picker */
+.pick{display:flex; flex-direction:column; gap:10px}
+.pickbtn{display:flex; flex-direction:column; gap:3px; width:100%; text-align:left; font:inherit; color:var(--ink); background:var(--glass-strong); border:1px solid var(--hair); border-radius:14px; padding:12px 14px; cursor:pointer; min-height:44px; transition:background .15s}
+.pickbtn:hover:not(:disabled){background:var(--paper)}
+.pickbtn:disabled{cursor:not-allowed; opacity:.55}
+.pickbtn b{font-family:var(--f-display); font-weight:800; line-height:1.3}
+.pickbtn small{font-size:.95rem; color:var(--ink-2); line-height:1.4}
+.pickbtn .local{display:inline-flex; align-items:center; gap:6px; font-size:.9rem; color:var(--good); font-family:var(--f-display); font-weight:700}
+.pickbtn .local::before{content:""; width:8px; height:8px; border-radius:50%; background:var(--good)}
+.pickbtn[aria-pressed="true"]{background:var(--ink); color:var(--paper)}
+.pickbtn[aria-pressed="true"] small{color:color-mix(in srgb, var(--paper) 78%, transparent)}
+.pickbtn[aria-pressed="true"] .local{color:var(--paper)} .pickbtn[aria-pressed="true"] .local::before{background:var(--l3)}
+.pickbtn .shipped{font-family:var(--f-display); font-weight:700; font-size:.9rem; color:var(--ink-2)}
+.pickbtn[aria-pressed="true"] .shipped{color:var(--paper)}
+.switch{display:flex; gap:12px; align-items:center; width:100%; text-align:left; font:inherit; color:var(--ink); background:none; border:0; padding:8px 2px; cursor:pointer; min-height:44px}
+.switch:disabled{cursor:not-allowed; opacity:.55}
+.switch .sw{flex:none; width:42px; height:24px; border-radius:12px; background:color-mix(in srgb, var(--ink) 18%, transparent); position:relative; transition:background .2s}
+.switch .sw::after{content:""; position:absolute; top:3px; left:3px; width:18px; height:18px; border-radius:50%; background:var(--paper); box-shadow:0 1px 3px rgba(0,0,0,.3); transition:transform .2s}
+.switch[aria-pressed="true"] .sw{background:var(--l1)}
+.switch.good[aria-pressed="true"] .sw{background:var(--l3)}
+.switch[aria-pressed="true"] .sw::after{transform:translateX(18px)}
+.switch b{display:block; font-family:var(--f-display); font-weight:800; line-height:1.3}
+.switch small{display:block; font-size:.95rem; color:var(--ink-2); line-height:1.35}
+.deploy-row{display:flex; gap:10px; flex-wrap:wrap; margin-top:10px}
+
+/* deploy checks */
+.stages{list-style:none; margin:0; padding:0; display:flex; flex-direction:column; gap:4px}
+.stage{display:flex; gap:12px; align-items:flex-start; padding:8px 10px; border-radius:12px; transition:background .3s}
+.stage.run{background:color-mix(in srgb, var(--l4) 14%, transparent)}
+.stage.fail{background:var(--bad-bg)}
+.stage .ring{flex:none; width:28px; height:28px; margin-top:1px}
+.stage .ring svg{display:block; width:28px; height:28px}
+.stage.run .ring svg{animation:spin 1s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+.stage .st-t{flex:1; min-width:0}
+.stage b{display:block; font-family:var(--f-display); font-weight:800; line-height:1.3}
+.stage .det{display:block; font-size:.95rem; color:var(--ink-2); line-height:1.4; overflow-wrap:anywhere}
+.stage.fail .det{color:var(--bad)}
+.stage.skip b,.stage.skip .det{color:var(--ink-2)}
+.stage .tm{font-family:var(--f-mono); font-size:.85rem; color:var(--ink-2); white-space:nowrap; padding-top:3px}
+.stage.done-pop .ring{animation:pop .4s cubic-bezier(.3,1.7,.5,1)}
+
+/* environment previews (mock websites keep their own colors in both themes) */
+.envs{display:grid; grid-template-columns:minmax(0,1fr) minmax(0,1fr); gap:14px; width:100%}
+.env{border-radius:18px; padding:12px; display:flex; flex-direction:column; gap:10px}
+.env-head{display:flex; align-items:center; gap:8px; flex-wrap:wrap}
+.env-head b{font-family:var(--f-display); font-weight:800; font-size:1.08rem}
+.env-head .ver{margin-left:auto; font-family:var(--f-mono); font-size:.85rem; background:var(--glass-strong); border-radius:99px; padding:1px 10px}
+.env-head .ver.bump{animation:pop .4s cubic-bezier(.3,1.7,.5,1)}
+.hdot{width:10px; height:10px; border-radius:50%; background:var(--l3); flex:none}
+.hdot.bad{background:var(--l1); box-shadow:0 0 0 4px color-mix(in srgb, var(--l1) 25%, transparent)}
+.mini{border:1px solid var(--hair); border-radius:12px; overflow:hidden; background:#FFFBF3; color:#2B1B12}
+.mini-bar{display:flex; align-items:center; gap:5px; padding:6px 8px; background:var(--panel); border-bottom:1px solid var(--hair)}
+.mini-bar i{width:8px; height:8px; border-radius:50%; background:var(--rule)}
+.mini-bar span{margin-left:4px; font-family:var(--f-mono); font-size:.8rem; color:var(--ink-2); white-space:nowrap; overflow:hidden; text-overflow:ellipsis}
+.mini-body{padding:10px 12px 12px}
+.mini-body h4{margin:0 0 6px; font-family:var(--f-display); font-weight:900; font-size:1.1rem; color:#B8321F}
+.mini-menu{list-style:none; margin:0; padding:0; font-size:.92rem}
+.mini-menu li{display:flex; justify-content:space-between; gap:8px; padding:1px 0}
+.mini-menu li.new{animation:rise .4s; font-weight:700}
+.mini-menu .tag{font-family:var(--f-display); font-size:.75rem; font-weight:800; background:#FFD86B; color:#5A3A00; border-radius:99px; padding:0 7px; margin-left:4px}
+.mini-pay{margin-top:8px; font-family:var(--f-display); font-weight:800; font-size:.92rem; background:#0E6B5E; color:#FFF; border-radius:99px; padding:6px 10px; text-align:center}
+.mini-pay.bad{background:#FDE3DF; color:#9A2A10; animation:shake .4s}
+.env-foot{display:flex; flex-direction:column; gap:6px; font-size:.95rem}
+.env-foot .stat{display:flex; justify-content:space-between; gap:8px}
+.env-foot .stat.bad{color:var(--bad); font-weight:700}
+.spark{display:block; width:100%; height:34px}
+.env .btn{width:100%; justify-content:center}
+
+/* explanation tiles */
+.trio{margin:0; display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:16px}
+.trio > div{border-radius:18px; padding:16px}
+.trio dt{font-family:var(--f-display); font-weight:900; font-size:1.2rem; display:flex; align-items:center; gap:10px}
+.trio dt i{flex:none; width:12px; height:12px; border-radius:50%; background:var(--c)}
+.trio dd{margin:6px 0 0; font-size:1rem; color:var(--ink-2)}
+.trio .eg{display:block; margin-top:10px; font-size:.95rem; color:var(--ink)}
+.envtable td:first-child,.envtable th:first-child{font-family:var(--f-mono); font-size:.92rem}
+.envtable .miss{color:var(--bad); font-weight:700}
+
+/* traffic simulator */
+.simcard{border-radius:20px; padding:14px; display:flex; flex-direction:column; gap:12px; width:100%}
+.simwrap{position:relative; border-radius:14px; overflow:hidden; background:color-mix(in srgb, var(--paper) 55%, transparent)}
+.simwrap canvas{display:block; width:100%; height:250px}
+.clock{position:absolute; right:10px; top:8px; font-family:var(--f-mono); font-size:.9rem; background:var(--glass-strong); border-radius:99px; padding:2px 10px}
+.alertrow{display:flex; align-items:center; gap:8px; border-radius:12px; padding:7px 12px; font-family:var(--f-display); font-weight:700; font-size:.95rem; color:var(--ink-2); background:color-mix(in srgb, var(--ink) 5%, transparent); transition:background .3s, color .3s}
+.alertrow::before{content:""; flex:none; width:8px; height:8px; border-radius:50%; background:var(--l3)}
+.alertrow.on{background:var(--bad-bg); color:var(--bad); font-weight:800; animation:rise .3s}
+.alertrow.on::before{background:var(--bad)}
+.stats{display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:10px}
+.stat-box{border-radius:14px; padding:10px 12px; background:var(--glass-strong); display:flex; flex-direction:column; gap:0}
+.stat-box .k{font-family:var(--f-display); font-weight:700; font-size:.9rem; color:var(--ink-2)}
+.stat-box b{font-family:var(--f-display); font-weight:900; font-size:1.55rem; line-height:1.15; font-variant-numeric:tabular-nums; transition:color .3s}
+.stat-box .u{font-size:.9rem; color:var(--ink-2)}
+.stat-box.good b{color:var(--good)} .stat-box.warn b{color:var(--tip)} .stat-box.bad b{color:var(--bad)}
+.meters{display:flex; flex-direction:column; gap:6px}
+.mrow{display:grid; grid-template-columns:6.5em minmax(0,1fr) 3.4em; gap:10px; align-items:center; font-size:.95rem}
+.mrow .bar{height:10px; border-radius:5px; background:color-mix(in srgb, var(--ink) 10%, transparent); overflow:hidden}
+.mrow .bar i{display:block; height:100%; border-radius:5px; transition:width .3s, background .3s}
+.mrow span:last-child{font-family:var(--f-mono); font-size:.9rem; text-align:right}
+.ctlrow{display:flex; align-items:center; justify-content:space-between; gap:10px; flex-wrap:wrap}
+.ctlrow label,.ctlrow .lbl{font-family:var(--f-display); font-weight:800}
+.ctlrow output{font-family:var(--f-mono); font-size:.95rem}
+.quick{display:flex; gap:8px; flex-wrap:wrap; margin-top:6px}
+.stepper{display:inline-flex; align-items:center; gap:6px}
+.stepper .btn{min-width:44px; justify-content:center; padding:8px 0; font-size:1.2rem}
+.stepper output{min-width:3.6em; text-align:center; font-family:var(--f-display); font-weight:800; font-size:1.1rem}
+.ctl-sec + .ctl-sec{margin-top:14px; padding-top:12px; border-top:1px solid var(--hair)}
+.ctl-sec .hint{font-size:.95rem; color:var(--ink-2)}
+
+/* monitoring tiles */
+.mon{margin:0; display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:16px}
+.mon > div{border-radius:18px; padding:16px; display:flex; flex-direction:column; gap:8px}
+.mon dt{font-family:var(--f-display); font-weight:900; font-size:1.2rem}
+.mon dd{margin:0; font-size:1rem; color:var(--ink-2)}
+.mon .logs{font-family:var(--f-mono); font-size:.8rem; background:var(--term); color:var(--term-ink); border-radius:10px; padding:10px 12px; line-height:1.6; white-space:pre; overflow-x:auto}
+.mon .logs .r{color:#FF9A8A} .mon .logs .d{color:var(--term-dim)}
+.mon .chart{background:var(--glass-strong); border-radius:10px; padding:8px 10px}
+.mon .chart svg{display:block; width:100%; height:auto}
+.mon .notif{background:var(--glass-strong); border-radius:14px; padding:10px 12px; font-size:.95rem; box-shadow:0 6px 18px -10px rgba(0,0,0,.35)}
+.mon .notif b{display:flex; align-items:center; gap:8px; font-family:var(--f-display); font-weight:800}
+.mon .notif b::before{content:""; width:8px; height:8px; border-radius:50%; background:var(--l1)}
+
+/* ops side panels (part 3) */
+.ops{display:flex; flex-direction:column; gap:4px}
+.oprow{display:grid; grid-template-columns:auto minmax(0,1fr) auto; gap:10px; align-items:center; padding:8px 0}
+.oprow + .oprow{border-top:1px solid var(--hair)}
+.oprow b{font-family:var(--f-display); font-weight:800}
+.oprow .osub{display:block; font-size:.9rem; color:var(--ink-2)}
+.oprow .osub.bad{color:var(--bad); font-weight:700}
+.oprow .v{font-family:var(--f-mono); font-size:.9rem; background:var(--glass-strong); border-radius:99px; padding:1px 10px}
+.oprow.flash{animation:flash 1s}
+.envgrid{width:100%; border-collapse:collapse; min-width:0; font-size:.95rem}
+.envgrid th,.envgrid td{padding:8px 6px; border-bottom:1px solid var(--hair); text-align:left; vertical-align:top}
+.envgrid th{background:none; font-size:.9rem; color:var(--ink-2)}
+.envgrid td:first-child{font-family:var(--f-mono); font-size:.85rem; overflow-wrap:anywhere}
+.envgrid tr:last-child td{border-bottom:0}
+.envgrid .ok{color:var(--good)} .envgrid .miss{color:var(--bad); font-weight:700}
+.envgrid td.flash{animation:flash 1s}
+
+@media (max-width:900px){ .trio,.mon{grid-template-columns:minmax(0,1fr)} }
+@media (max-width:640px){ .envs{grid-template-columns:minmax(0,1fr)} .simwrap canvas{height:230px} .stat-box b{font-size:1.25rem} .stats{gap:8px} .stat-box{padding:8px 10px} }
+</style>
+</head>
+<body>
+<main id="top">
+  <section class="wrap hero">
+    <div>
+      <div class="kicker">Core curriculum · Course 209 · Shipping &amp; running software</div>
+      <h1>Launching is easy. Keeping it running is the job.</h1>
+      <p class="lede">Your app works on your laptop. Now it has to work for everyone, all day, at lunch rush and at 3 a.m. You'll ship changes safely, scale for a crowd, watch the costs, and learn what to do in the first minute after something breaks.</p>
+      <ul class="facts">
+        <li>About 15 minutes</li>
+        <li>5 parts</li>
+        <li>Practice terminal</li>
+        <li>No coding experience needed</li>
+      </ul>
+      <div class="row hero-cta"><a class="btn primary" href="#p1">Start the lesson</a></div>
+    </div>
+    <figure style="margin:0">
+      <div class="hero-visual glass">
+        <canvas id="heroArt" role="img" aria-label="An animated view of a live app: visitor requests flow in from the left and are shared across servers. As traffic rises, the servers fill up and turn amber, then an autoscaler adds another server and the load evens out."></canvas>
+        <div class="legend">
+          <span><i style="background:var(--l2)"></i>requests</span>
+          <span><i style="background:var(--l3)"></i>healthy</span>
+          <span><i style="background:var(--l4)"></i>busy</span>
+          <span><i style="background:var(--l1)"></i>overloaded</span>
+        </div>
+      </div>
+      <div class="hero-caption glass" aria-hidden="true"><span>$</span><span id="heroCap">status --watch</span></div>
+    </figure>
+  </section>
+
+  <div class="wrap">
+  <!-- PART 1 -->
+  <section class="part" id="p1">
+    <span class="bullet glass" data-p="p1">1</span>
+    <div class="part-head">
+      <div class="kicker">Part 1 of 5</div>
+      <h2>Three places your code lives</h2>
+      <p><b>Local</b> is your own computer. <b>Staging</b> is a private rehearsal copy of the real app. <b>Production</b> ("prod") is the real thing, with real customers and real money. A <b>deploy</b> moves a new version of your code into one of them.</p>
+    </div>
+
+    <div class="chat" aria-label="Example conversation">
+      <div class="msg ai"><span class="who">AI assistant</span>Done! I pushed the new payment code straight to production.</div>
+      <div class="msg me"><span class="who">You</span>Rosa's customers are texting her that they can't pay for their tacos.</div>
+      <div class="msg ai"><span class="who">AI assistant</span>Strange, it worked on my machine. I'll roll production back to the last version while I look at the logs.</div>
+    </div>
+
+    <div class="task glass" data-part="p1">
+      <h3>Your task</h3>
+      <ol>
+        <li data-t="menu"><span>Ship the new menu all the way to production.</span></li>
+        <li data-t="caught"><span>Ship the AI's checkout rewrite and see where it gets stopped.</span></li>
+        <li data-t="staging"><span>Ship the payments change and see where it gets stopped.</span></li>
+        <li data-t="skip"><span>Switch on "Skip staging" and ship the payments change again.</span></li>
+        <li data-t="rollback"><span>Roll production back to the last version that worked.</span></li>
+      </ol>
+    </div>
+
+    <div class="pg">
+      <div class="pg-col">
+        <div class="o1 ctl glass">
+          <h3 class="ctl-title">Pick a change to ship</h3>
+          <p class="ctl-sub">Rosa's Tacos, an order-ahead app for a taco truck. All three changes work on your laptop.</p>
+          <div class="pick" id="pick"></div>
+          <button class="switch" id="skipBtn" aria-pressed="false" style="margin-top:6px"><span class="sw" aria-hidden="true"></span><span><b>Skip staging</b><small>Go straight to production. Faster, riskier.</small></span></button>
+          <div class="deploy-row"><button class="btn primary" id="deployBtn">Deploy</button></div>
+        </div>
+        <div class="o4 note" id="tip1" aria-live="polite">Pick a change, then press <b>Deploy</b>. Every change goes through the same checks, in order.</div>
+        <details class="deeper glass o6">
+          <summary>Under the hood: why rolling back takes seconds <small>optional</small></summary>
+          <div>
+            <p>A deploy doesn't edit the running app. It <b>builds</b> a complete new package of the app (a "build" or "release"), starts it, and then switches traffic over to it. The old build is kept.</p>
+            <p>So a <b>rollback</b> just switches traffic back to the previous build. No code is rewritten and nothing is rebuilt. Hosts like Vercel, Netlify, Render and Fly.io have a one-click rollback for exactly this reason.</p>
+            <p>Bigger teams go further: a <b>canary</b> release sends a new version to 5% of users first and watches the error rate before sending it to everyone.</p>
+          </div>
+        </details>
+      </div>
+      <div class="pg-col">
+        <div class="o2 ctl glass">
+          <h3 class="ctl-title">Deploy checks</h3>
+          <p class="ctl-sub">Each step must pass before the next one starts.</p>
+          <ol class="stages" id="stages"></ol>
+        </div>
+        <div class="o3 envs" id="envs"></div>
+      </div>
+    </div>
+
+    <div class="stack" style="margin-top:56px">
+      <h3>Local, staging, production</h3>
+      <dl class="trio">
+        <div class="glass" style="--c:var(--l2)"><dt><i></i>Local</dt><dd>Your computer, or the AI's workspace. Fast to change, only you see it, and full of settings that exist nowhere else.<span class="eg">"It works on my machine" is a local fact, not a promise.</span></dd></div>
+        <div class="glass" style="--c:var(--l4)"><dt><i></i>Staging</dt><dd>A private copy set up like production, with fake data and test keys. You try each change here before customers see it.<span class="eg">When the AI says "deployed to staging", nothing is public yet.</span></dd></div>
+        <div class="glass" style="--c:var(--l1)"><dt><i></i>Production</dt><dd>The live app. Real customers, real data, real payments. Changes here should be boring, checked and easy to undo.<span class="eg">When the AI says "deploying to prod", ask what checks it passed.</span></dd></div>
+      </dl>
+    </div>
+
+    <div class="stack" style="margin-top:48px">
+      <h3>Environment variables: same code, different settings</h3>
+      <p class="muted">The code is identical everywhere. What changes between local, staging and production lives in <b>environment variables</b>: named settings the host gives your app when it starts, like which database to use or which secret key to pay with. On your laptop they usually sit in a file called <code>.env</code>, which never goes into git.</p>
+      <div class="table-wrap glass">
+        <table class="envtable">
+          <thead><tr><th>Variable</th><th>Local (.env file)</th><th>Staging</th><th>Production</th></tr></thead>
+          <tbody>
+            <tr><td>DATABASE_URL</td><td>A database on your laptop</td><td>The staging database, fake orders</td><td>The real database, real orders</td></tr>
+            <tr><td>PAYMENTS_KEY</td><td>A test key: no real money moves</td><td class="miss">Missing</td><td class="miss">Missing</td></tr>
+            <tr><td>SEND_TEXTS</td><td>false</td><td>false</td><td>true: customers get "your tacos are ready"</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p>That's why the payments change worked locally and broke everywhere else: the new code needed <code>PAYMENTS_KEY</code>, and only your laptop had it. You'll fix that in part 3.</p>
+    </div>
+  </section>
+
+  <!-- PART 2 -->
+  <section class="part" id="p2">
+    <span class="bullet glass" data-p="p2">2</span>
+    <div class="part-head">
+      <div class="kicker">Part 2 of 5</div>
+      <h2>Traffic, scaling and cost</h2>
+      <p>A local TV show just featured Rosa's Tacos. At lunch, hundreds of people open the app every second. Each server can only answer so many visitors at once. Past that, pages slow down, then fail. You can add servers, add a cache, or fix the slow part, and each choice has a price.</p>
+    </div>
+
+    <div class="task glass" data-part="p2">
+      <h3>Your task</h3>
+      <ol>
+        <li data-t="rush"><span>Push traffic up to the lunch rush (400 visitors a second) and watch what happens.</span></li>
+        <li data-t="fix"><span>Get errors under 1% during the rush.</span></li>
+        <li data-t="cheap"><span>Handle the rush for under $150 a month, with pages under 500 ms.</span></li>
+        <li data-t="auto"><span>Turn on autoscaling and play a whole day.</span></li>
+      </ol>
+    </div>
+
+    <div class="pg">
+      <div class="pg-col">
+        <div class="o2 ctl glass">
+          <h3 class="ctl-title">Your setup</h3>
+          <div class="ctl-sec">
+            <div class="ctlrow"><label for="traffic">Traffic</label><output id="trafficOut" for="traffic">40 visitors / s</output></div>
+            <input class="range" id="traffic" type="range" min="10" max="500" step="10" value="40">
+            <div class="quick"><button class="btn" data-l="20">Quiet morning</button><button class="btn" data-l="400">Lunch rush</button><button class="btn" id="playDay">Play a whole day</button></div>
+          </div>
+          <div class="ctl-sec">
+            <div class="ctlrow"><span class="lbl" id="srvLbl">Servers</span><span class="stepper"><button class="btn" id="srvMinus" aria-label="Remove a server">−</button><output id="srvOut" aria-labelledby="srvLbl">1</output><button class="btn" id="srvPlus" aria-label="Add a server">+</button></span></div>
+            <p class="hint">$20 a month each. Each one handles about 90 visitors a second.</p>
+          </div>
+          <div class="ctl-sec">
+            <button class="switch good" id="cacheBtn" aria-pressed="false"><span class="sw" aria-hidden="true"></span><span><b>Cache the menu page</b><small>Keep a ready-made copy in memory. $15 a month.</small></span></button>
+            <button class="switch good" id="indexBtn" aria-pressed="false"><span class="sw" aria-hidden="true"></span><span><b>Fix the slow menu query</b><small>Add a database index. Free each month, an afternoon of work.</small></span></button>
+            <button class="switch good" id="autoBtn" aria-pressed="false"><span class="sw" aria-hidden="true"></span><span><b>Autoscaling</b><small>Add and remove servers automatically, 1 to 10.</small></span></button>
+          </div>
+        </div>
+        <div class="o3 note" id="tip2" aria-live="polite">Drag the traffic slider, or press <b>Lunch rush</b>.</div>
+        <details class="deeper glass o5">
+          <summary>Under the hood: serverless and managed hosting <small>optional</small></summary>
+          <div>
+            <p>Most small apps today don't manage servers directly. Managed hosts and <b>serverless</b> platforms start copies of your app on demand and charge for what you use. That's autoscaling built in.</p>
+            <p>The trade-offs don't go away. A traffic spike still costs money, so set a spending limit and a billing alert. And a slow database query is slow no matter how many copies of your app are running.</p>
+          </div>
+        </details>
+      </div>
+      <div class="pg-col">
+        <div class="o1 simcard glass">
+          <div class="simwrap"><canvas id="sim" role="img" aria-label="Traffic simulation: visitor requests flow from the left, through an optional cache, to the servers and on to the database. Overloaded requests turn red and drop."></canvas><span class="clock" id="clock" hidden></span></div>
+          <div class="alertrow" id="alert" aria-live="polite"><span>Monitoring: all quiet</span></div>
+          <div class="stats" aria-live="polite">
+            <div class="stat-box" id="bLat"><span class="k">Page load</span><b id="stLat">–</b><span class="u">per page</span></div>
+            <div class="stat-box" id="bErr"><span class="k">Errors</span><b id="stErr">–</b><span class="u">of visits fail</span></div>
+            <div class="stat-box" id="bCost"><span class="k">Cost</span><b id="stCost">–</b><span class="u">a month</span></div>
+          </div>
+          <div class="meters">
+            <div class="mrow"><span>Server load</span><div class="bar"><i id="mSrv"></i></div><span id="mSrvT">0%</span></div>
+            <div class="mrow"><span>Database</span><div class="bar"><i id="mDb"></i></div><span id="mDbT">0%</span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="stack" style="margin-top:56px">
+      <h3>Four ways to handle more visitors</h3>
+      <div class="table-wrap glass">
+        <table>
+          <thead><tr><th>Move</th><th>What it does</th><th>Cost</th><th>Watch out</th></tr></thead>
+          <tbody>
+            <tr><td><b>Fix the slow part</b></td><td>Find the one query or function doing too much work and make it faster.</td><td>Some work, then free</td><td>Always look here first. It's often the whole problem.</td></tr>
+            <tr><td><b>Cache</b></td><td>Keep a ready-made copy of pages or data that rarely change.</td><td>Small</td><td>Cached data can be stale, like an old price.</td></tr>
+            <tr><td><b>Scale out</b></td><td>Run more copies of the app side by side.</td><td>Grows with every server</td><td>Doesn't help if the database is the bottleneck.</td></tr>
+            <tr><td><b>Scale up</b></td><td>Move to one bigger, faster machine.</td><td>Big jumps</td><td>There's always a biggest machine.</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p><b>Autoscaling</b> does the scaling out for you: more servers when it's busy, fewer when it's quiet, so you only pay for the rush while it's happening.</p>
+    </div>
+
+    <div class="stack" style="margin-top:48px">
+      <h3>Knowing when it breaks: logs, metrics, alerts</h3>
+      <p class="muted">You can't watch your app all day. These three do it for you.</p>
+      <dl class="mon">
+        <div class="glass"><dt>Logs</dt><dd>A diary the app writes as it runs: every request, every error, with a time.</dd>
+          <div class="logs" aria-label="Example log lines">12:31:04 GET /menu 200 <span class="d">38ms</span>
+12:31:04 POST /order 201 <span class="d">112ms</span>
+<span class="r">12:31:05 ERROR db timeout</span>
+12:31:05 GET /menu 200 <span class="d">41ms</span></div></div>
+        <div class="glass"><dt>Metrics</dt><dd>Numbers tracked over time: response time, error rate, visitors, cost.</dd>
+          <div class="chart"><svg viewBox="0 0 200 60" role="img" aria-label="A response-time chart that jumps at lunchtime"><path d="M4 50 L30 48 L55 49 L80 44 L100 18 L115 12 L130 22 L150 45 L175 47 L196 46" fill="none" style="stroke:var(--l2)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/><circle cx="115" cy="12" r="4" style="fill:var(--l1)"/></svg></div></div>
+        <div class="glass"><dt>Alerts</dt><dd>A rule that pings a person when a metric crosses a line.</dd>
+          <div class="notif"><b>Rosa's Tacos</b>Errors above 1% for 5 minutes on production.</div></div>
+      </dl>
+    </div>
+  </section>
+
+  <!-- PART 3 -->
+  <section class="part" id="p3">
+    <span class="bullet glass" data-p="p3">3</span>
+    <div class="part-head">
+      <div class="kicker">Part 3 of 5</div>
+      <h2>Try it: ship, break, recover</h2>
+      <p>Hosting tools have commands for all of this, and AI agents run them for you. Run them yourself once and you'll know what the AI is doing. This practice terminal is safe. Nothing here is real.</p>
+    </div>
+
+    <div class="lab">
+      <div class="a-mission ctl glass">
+        <h3 class="ctl-title">Your mission</h3>
+        <p class="ctl-sub" style="margin-top:0">It's Tuesday, 10:40. Version 19 of Rosa's app, with the new payments service, is ready on your laptop. Since part 1, staging got a test payments key. Get v19 to customers safely.</p>
+        <ol class="mission" id="mission"></ol>
+      </div>
+      <div class="a-work" id="term"></div>
+      <div class="a-side ctl glass">
+        <h3 class="ctl-title">Environments</h3>
+        <div class="ops" id="ops"></div>
+      </div>
+      <div class="a-extra ctl glass">
+        <h3 class="ctl-title">Environment variables</h3>
+        <p class="ctl-sub">Settings each environment gives the app. Secret values are hidden.</p>
+        <div id="envgrid"></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- PART 4 -->
+  <section class="part" id="p4">
+    <span class="bullet glass" data-p="p4">4</span>
+    <div class="part-head">
+      <div class="kicker">Part 4 of 5</div>
+      <h2>Steer the AI</h2>
+      <p>AI tools will happily deploy, scale and configure things for you. Some of their ideas cost money, some cost sleep. Pick the reply you'd send.</p>
+    </div>
+    <p class="counter" id="steerCount"></p>
+    <div id="steer"></div>
+  </section>
+
+  <!-- PART 5 -->
+  <section class="part" id="p5">
+    <span class="bullet glass" data-p="p5">5</span>
+    <div class="part-head">
+      <div class="kicker">Part 5 of 5</div>
+      <h2>Check your understanding</h2>
+      <p>Five quick questions. Each answer explains itself.</p>
+    </div>
+    <div id="quiz"></div>
+    <div id="doneCard" aria-live="polite"></div>
+  </section>
+  </div>
+
+  <section class="after" id="cheat">
+    <div class="wrap stack">
+      <h2>Cheat sheet</h2>
+      <p class="muted">The words you'll hear once your app is live, and what to listen for.</p>
+      <div class="table-wrap glass">
+        <table>
+          <thead><tr><th>Term</th><th>In plain words</th><th>When the AI says…</th></tr></thead>
+          <tbody>
+            <tr><td>Deploy</td><td>Put a new version of the code where it runs.</td><td>"Deploying to production." Ask: did it go through staging first?</td></tr>
+            <tr><td>Staging</td><td>A private rehearsal copy of the live app.</td><td>"It's on staging." Try it there yourself.</td></tr>
+            <tr><td>Production</td><td>The live app with real users.</td><td>"Pushed to prod." Is someone watching it for the next hour?</td></tr>
+            <tr><td>Rollback</td><td>Switch back to the previous build.</td><td>"Rolling back." The right first move when prod breaks.</td></tr>
+            <tr><td>Environment variable</td><td>A setting, often a secret, given to the app by the host.</td><td>"Add it to your .env." Never paste keys into the code.</td></tr>
+            <tr><td>Scale out / up</td><td>More servers / a bigger server.</td><td>"Let's add servers." Ask what's actually slow first.</td></tr>
+            <tr><td>Cache</td><td>A ready-made copy of something slow to make.</td><td>"I'll cache it." Ask how long it can be out of date.</td></tr>
+            <tr><td>Autoscaling</td><td>Servers added and removed automatically with traffic.</td><td>"It autoscales." Ask for a maximum and a spending limit.</td></tr>
+            <tr><td>Logs · metrics · alerts</td><td>The diary, the numbers, and the ping when numbers go bad.</td><td>"Checking the logs." Good: that's where the clues are.</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+</main>
+<script src="../assets/cs-school.js"></script>
+<script>
+(() => {
+const { $, $$, esc, reduce } = CS;
+const wait = ms => new Promise(r => setTimeout(r, reduce ? 0 : ms));
+const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+
+CS.lesson({
+  id: '209',
+  parts: [
+    { id: 'p1', title: 'Environments & deploys' },
+    { id: 'p2', title: 'Scaling & cost' },
+    { id: 'p3', title: 'Try it' },
+    { id: 'p4', title: 'Steer the AI' },
+    { id: 'p5', title: 'Check' }
+  ]
+});
+
+// theme colors for canvas drawing, refreshed when the color scheme changes
+let COL = {};
+function readColors() { const cs = getComputedStyle(document.documentElement); ['--ink', '--ink-2', '--l1', '--l2', '--l3', '--l4', '--l5', '--hair', '--paper', '--panel-2', '--glass-strong'].forEach(k => COL[k.slice(2)] = cs.getPropertyValue(k).trim()); }
+readColors();
+matchMedia('(prefers-color-scheme: dark)').addEventListener('change', readColors);
+function fitCanvas(cv, h) {
+  const w = cv.clientWidth || 500, dpr = Math.min(devicePixelRatio || 1, 2);
+  if (cv.width !== Math.round(w * dpr) || cv.height !== Math.round(h * dpr)) { cv.width = Math.round(w * dpr); cv.height = Math.round(h * dpr); }
+  const ctx = cv.getContext('2d'); ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  return { ctx, w, h };
+}
+function rrect(ctx, x, y, w, h, r) { ctx.beginPath(); ctx.moveTo(x + r, y); ctx.arcTo(x + w, y, x + w, y + h, r); ctx.arcTo(x + w, y + h, x, y + h, r); ctx.arcTo(x, y + h, x, y, r); ctx.arcTo(x, y, x + w, y, r); ctx.closePath(); }
+const loadCol = u => u < 0.7 ? COL.l3 : u < 0.92 ? COL.l4 : COL.l1;
+
+/* ---------------- hero: live ops view ---------------- */
+(function hero() {
+  const cv = $('#heroArt'), cap = $('#heroCap');
+  const T = 18;
+  let t = 0, n = 1, cool = 0, dots = [], acc = 0, lat = 90, samples = [], event = null, eventT = 0, capT = 0;
+  const CAPV = 90;
+  const L = () => 45 + 285 * Math.pow(Math.sin(Math.PI * t / T), 2);
+  function step(dt, { quiet } = {}) {
+    t = (t + dt) % T;
+    const load = L(), u = load / (n * CAPV);
+    cool -= dt;
+    if (cool <= 0 && u > 0.8 && n < 4) { n++; cool = 1.1; event = `autoscale: added web-${n}`; eventT = 1.6; }
+    else if (cool <= 0 && u < 0.3 && n > 1) { n--; cool = 1.6; event = `autoscale: removed web-${n + 1}`; eventT = 1.6; }
+    const uc = Math.min(u, 0.95);
+    const target = 80 + 45 * uc / (1 - uc);
+    lat += (target - lat) * Math.min(1, dt * 3);
+    acc += dt * load / 8;
+    while (acc > 1) { acc--; dots.push({ x: -4, y: Math.random(), st: 0, srv: Math.random() * n | 0, drop: Math.random() < Math.max(0, 1 - 1 / u), p: 0, a: 1 }); }
+    dots.forEach(d => { d.p += dt * (d.st === 0 ? 0.9 : 1.3) * clamp(260 / lat, 0.35, 1.2); if (d.st === 2) { d.a -= dt * 1.4; d.fall = (d.fall || 0) + dt * 60; } });
+    dots.forEach(d => { if (d.p >= 1) { d.p = 0; d.st++; if (d.st === 1 && d.srv >= n) d.srv = n - 1; } });
+    dots = dots.filter(d => d.st < 2 || (d.drop && d.a > 0));
+    samples.push(lat); if (samples.length > 60) samples.shift();
+    if (!quiet) {
+      eventT -= dt; capT -= dt;
+      if (capT <= 0) { cap.textContent = eventT > 0 ? event : `status · ${Math.round(load)} visitors/s · ${n} server${n > 1 ? 's' : ''} · ${Math.round(lat)} ms`; capT = 0.4; }
+    }
+  }
+  function draw() {
+    const narrow = (cv.clientWidth || 520) < 430;
+    const { ctx, w, h } = fitCanvas(cv, narrow ? 240 : 290);
+    ctx.clearRect(0, 0, w, h);
+    const lbx = w * 0.27, lby = h / 2, sx = w * (narrow ? 0.44 : 0.42), sw = w * (narrow ? 0.3 : 0.24), mx = sx + sw + (narrow ? 14 : 24);
+    const bh = Math.min(40, (h - 60 - 10 * 3) / 4), total = n * bh + (n - 1) * 10, top = lby - total / 2;
+    const sy = i => top + i * (bh + 10) + bh / 2;
+    const u = L() / (n * CAPV);
+    // soft guide curves from the balancer to each server
+    ctx.lineWidth = 1.5; ctx.strokeStyle = COL.hair;
+    for (let i = 0; i < n; i++) { ctx.beginPath(); ctx.moveTo(lbx, lby); ctx.bezierCurveTo(lbx + (sx - lbx) * .5, lby, lbx + (sx - lbx) * .5, sy(i), sx, sy(i)); ctx.stroke(); }
+    // dots
+    dots.forEach(d => {
+      let x, y;
+      const y0 = 26 + d.y * (h - 52);
+      if (d.st === 0) { x = d.p * lbx; y = y0 + (lby - y0) * (d.p * d.p); }
+      else if (d.st === 1) { const e = d.p, ty = sy(Math.min(d.srv, n - 1)); const k = 1 - e; x = k * k * k * lbx + 3 * k * k * e * (lbx + (sx - lbx) * .5) + 3 * k * e * e * (lbx + (sx - lbx) * .5) + e * e * e * sx; y = k * k * k * lby + 3 * k * k * e * lby + 3 * k * e * e * ty + e * e * e * ty; }
+      else { x = sx - 6; y = sy(Math.min(d.srv, n - 1)) + d.fall; }
+      ctx.globalAlpha = Math.max(0, d.a); ctx.fillStyle = (d.drop && d.st >= 1 && d.p > .6) || d.st >= 2 ? COL.l1 : COL.l2;
+      ctx.beginPath(); ctx.arc(x, y, 3.4, 0, 7); ctx.fill();
+    });
+    ctx.globalAlpha = 1;
+    // balancer node
+    ctx.fillStyle = COL['glass-strong']; ctx.strokeStyle = COL.hair; ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.arc(lbx, lby, 12, 0, 7); ctx.fill(); ctx.stroke();
+    ctx.fillStyle = COL.l2; ctx.beginPath(); ctx.arc(lbx, lby, 5, 0, 7); ctx.fill();
+    // servers
+    ctx.font = `700 ${narrow ? 12 : 13}px Overpass, "Helvetica Neue", Arial, sans-serif`;
+    for (let i = 0; i < n; i++) {
+      const y = sy(i) - bh / 2;
+      ctx.fillStyle = COL['glass-strong']; rrect(ctx, sx, y, sw, bh, 10); ctx.fill(); ctx.strokeStyle = COL.hair; ctx.stroke();
+      const uu = Math.min(u, 1.2);
+      ctx.fillStyle = loadCol(u); rrect(ctx, sx + 8, y + bh - 11, Math.max(6, (sw - 16) * Math.min(uu, 1)), 5, 2.5); ctx.fill();
+      ctx.fillStyle = COL.ink; ctx.fillText(`web-${i + 1}`, sx + 9, y + 16);
+      ctx.fillStyle = COL['ink-2']; ctx.textAlign = 'right'; ctx.fillText(`${Math.round(Math.min(u, 1.5) * 100)}%`, sx + sw - 8, y + 16); ctx.textAlign = 'left';
+    }
+    // metrics
+    const mw = w - mx - 6;
+    if (mw > 60) {
+      ctx.fillStyle = COL['ink-2']; ctx.font = `700 ${narrow ? 12 : 13}px Overpass, "Helvetica Neue", Arial, sans-serif`; ctx.fillText('Response', mx, 44);
+      ctx.fillStyle = lat > 400 ? COL.l1 : lat > 180 ? COL.l4 : COL.ink; ctx.font = `900 ${narrow ? 19 : 24}px Overpass, "Helvetica Neue", Arial, sans-serif`; ctx.fillText(`${Math.round(lat)} ms`, mx, narrow ? 66 : 72);
+      const gy = narrow ? 88 : 96, gh = narrow ? 50 : 70, max = 600;
+      ctx.strokeStyle = COL.l2; ctx.lineWidth = 2; ctx.lineJoin = 'round'; ctx.beginPath();
+      samples.forEach((v, i) => { const X = mx + i / 59 * mw, Y = gy + gh - Math.min(v, max) / max * gh; i ? ctx.lineTo(X, Y) : ctx.moveTo(X, Y); }); ctx.stroke();
+      ctx.fillStyle = COL['ink-2']; ctx.font = `700 ${narrow ? 12 : 13}px Overpass, "Helvetica Neue", Arial, sans-serif`;
+      ctx.fillText(`${n} server${n > 1 ? 's' : ''}`, mx, gy + gh + 26);
+      ctx.fillStyle = COL.ink; ctx.fillText(narrow ? `$${n * 20 + 25}/mo` : `$${n * 20 + 25} / month`, mx, gy + gh + 46);
+    }
+    ctx.fillStyle = COL['ink-2']; ctx.font = `700 ${narrow ? 12 : 13}px Overpass, "Helvetica Neue", Arial, sans-serif`; ctx.fillText('visitors', 4, 16);
+  }
+  if (reduce) { t = T * 0.35; for (let i = 0; i < 240; i++) step(1 / 30, { quiet: true }); t = T * 0.5; draw(); addEventListener('resize', draw); return; }
+  t = T * 0.22; for (let i = 0; i < 90; i++) step(1 / 30, { quiet: true });
+  let last = performance.now(), visible = true;
+  new IntersectionObserver(es => { visible = es.some(e => e.isIntersecting); }).observe(cv);
+  (function frame(now) {
+    const dt = Math.min(0.05, (now - last) / 1000); last = now;
+    if (visible && !document.hidden) { step(dt); draw(); }
+    requestAnimationFrame(frame);
+  })(last);
+})();
+
+/* ---------------- Part 1: deploy checks & environments ---------------- */
+const CHANGES = {
+  menu: { t: 'Add al pastor to the menu', sub: "Rosa's new taco, $3.50.", msg: 'Add al pastor to the menu' },
+  checkout: { t: 'The AI\'s checkout rewrite', sub: '"40% faster checkout," says the AI.', msg: 'Rewrite checkout for speed', failAt: 'tests', failMsg: '2 of 48 failed: "adds tax once" expected $9.72, got $10.50' },
+  pay: { t: 'Switch to the new payments service', sub: 'Lower card fees for Rosa.', msg: 'Switch to the new payments service', failAt: 'staging', failMsg: 'Smoke test failed: POST /api/pay → 500 "PAYMENTS_KEY is not set"' }
+};
+const STAGES = [['commit', 'Commit'], ['build', 'Build'], ['tests', 'Tests'], ['staging', 'Staging'], ['prod', 'Production']];
+let pick = 'menu', skip = false, deploying = false, ver = 17;
+const stageSt = {};
+const prodHist = [{ v: 17, menu: false, pay: false }];
+const env = { staging: { v: 17, menu: false, pay: false }, production: { v: 17, menu: false, pay: false } };
+const errHist = { staging: Array(40).fill(0), production: Array(40).fill(0.2) };
+const shipped = {};
+const RING = { wait: 'M14 3a11 11 0 1 1 0 22a11 11 0 1 1 0-22', check: 'M9 14.5l3.2 3.2L19 11', x: 'M10 10l8 8M18 10l-8 8' };
+function ringSVG(s) {
+  if (s === 'run') return `<svg viewBox="0 0 28 28" aria-hidden="true"><circle cx="14" cy="14" r="11" fill="none" style="stroke:color-mix(in srgb, var(--l4) 30%, transparent)" stroke-width="3"/><path d="M14 3a11 11 0 0 1 11 11" fill="none" style="stroke:var(--l4)" stroke-width="3" stroke-linecap="round"/></svg>`;
+  if (s === 'pass') return `<svg viewBox="0 0 28 28" aria-hidden="true"><circle cx="14" cy="14" r="12" style="fill:var(--l3)"/><path d="${RING.check}" fill="none" stroke="#fff" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
+  if (s === 'fail') return `<svg viewBox="0 0 28 28" aria-hidden="true"><circle cx="14" cy="14" r="12" style="fill:var(--l1)"/><path d="${RING.x}" fill="none" stroke="#fff" stroke-width="2.6" stroke-linecap="round"/></svg>`;
+  if (s === 'skip') return `<svg viewBox="0 0 28 28" aria-hidden="true"><circle cx="14" cy="14" r="11" fill="none" style="stroke:var(--ink-2)" stroke-width="2" stroke-dasharray="3 4"/><path d="M9 14h10" style="stroke:var(--ink-2)" stroke-width="2" stroke-linecap="round"/></svg>`;
+  return `<svg viewBox="0 0 28 28" aria-hidden="true"><circle cx="14" cy="14" r="11" fill="none" style="stroke:color-mix(in srgb, var(--ink) 18%, transparent)" stroke-width="3"/></svg>`;
+}
+function renderStages(pop) {
+  $('#stages').innerHTML = STAGES.map(([k, name]) => {
+    const s = stageSt[k] || { s: 'wait', det: k === 'commit' ? 'Pick a change and press Deploy.' : 'Waiting', tm: '' };
+    return `<li class="stage ${s.s}${pop === k ? ' done-pop' : ''}"><span class="ring">${ringSVG(s.s)}</span><span class="st-t"><b>${name}</b><span class="det">${s.det}</span></span><span class="tm">${s.tm || ''}</span></li>`;
+  }).join('');
+}
+function renderPick() {
+  $('#pick').innerHTML = Object.entries(CHANGES).map(([k, c]) => `<button class="pickbtn" data-pick="${k}" aria-pressed="${pick === k}" ${deploying ? 'disabled' : ''}><b>${esc(c.t)}</b><small>${esc(c.sub)}</small><span class="local">Works on your laptop</span>${shipped[k] ? `<span class="shipped">${shipped[k]}</span>` : ''}</button>`).join('');
+  $('#skipBtn').setAttribute('aria-pressed', skip); $('#skipBtn').disabled = deploying;
+  $('#deployBtn').disabled = deploying;
+  $('#deployBtn').textContent = deploying ? 'Deploying…' : skip ? 'Deploy, skipping staging' : 'Deploy';
+}
+function spark(arr, max = 50) {
+  const pts = arr.map((v, i) => `${(i / (arr.length - 1) * 200).toFixed(1)},${(32 - Math.min(v, max) / max * 28).toFixed(1)}`).join(' ');
+  const bad = arr[arr.length - 1] > 5;
+  return `<svg class="spark" viewBox="0 0 200 34" preserveAspectRatio="none" aria-hidden="true"><polyline points="${pts}" fill="none" style="stroke:${bad ? 'var(--l1)' : 'var(--l3)'}" stroke-width="2" vector-effect="non-scaling-stroke" stroke-linejoin="round"/></svg>`;
+}
+let bumped = {};
+function envCard(k) {
+  const e = env[k], broken = e.pay, isProd = k === 'production';
+  const err = errHist[k][errHist[k].length - 1];
+  const prev = prodHist.length > 1 ? prodHist[prodHist.length - 2] : null;
+  return `<div class="env glass"><div class="env-head"><span class="hdot${broken ? ' bad' : ''}"></span><b>${isProd ? 'Production' : 'Staging'}</b><span class="ver${bumped[k] ? ' bump' : ''}">v${e.v}</span></div>
+    <div class="mini" aria-label="${isProd ? 'Production' : 'Staging'} website preview"><div class="mini-bar"><i></i><i></i><i></i><span>${isProd ? 'rosastacos.app' : 'staging.rosastacos.app'}</span></div>
+      <div class="mini-body"><h4>Rosa's Tacos</h4><ul class="mini-menu"><li><span>Carnitas</span><span>$3.00</span></li><li><span>Pollo asado</span><span>$3.00</span></li><li><span>Nopales</span><span>$2.50</span></li>${e.menu ? `<li class="${bumped[k] ? 'new' : ''}"><span>Al pastor<span class="tag">new</span></span><span>$3.50</span></li>` : ''}</ul>
+      <div class="mini-pay${broken ? ' bad' : ''}">${broken ? 'Payment failed' : 'Pay with card'}</div></div></div>
+    <div class="env-foot"><div class="stat${broken ? ' bad' : ''}"><span>${isProd ? 'Payment errors' : 'Errors'}</span><span>${err.toFixed(err < 1 ? 1 : 0)}%</span></div>${spark(errHist[k])}
+    ${isProd ? `<button class="btn${broken ? ' primary' : ''}" id="rollbackBtn" ${prev && !deploying ? '' : 'disabled'}>${prev ? `Roll back to v${prev.v}` : 'Roll back'}</button>` : ''}</div></div>`;
+}
+function renderEnvs() { $('#envs').innerHTML = envCard('staging') + envCard('production'); bumped = {}; }
+function tip1(html, kind = '') { const t = $('#tip1'); t.className = 'o4 note ' + kind; t.innerHTML = html; }
+// the error-rate graphs tick along like a real dashboard
+setInterval(() => {
+  ['staging', 'production'].forEach(k => {
+    const h = errHist[k], last = h[h.length - 1];
+    const target = env[k].pay ? 38 + Math.random() * 8 : (k === 'production' ? 0.1 + Math.random() * 0.3 : 0);
+    h.push(last + (target - last) * 0.45); h.shift();
+  });
+  if (!document.hidden) {
+    $$('#envs .env').forEach((card, i) => {
+      const k = i ? 'production' : 'staging', h = errHist[k], v = h[h.length - 1];
+      const sp = $('.spark', card); if (sp) sp.outerHTML = spark(h);
+      const st = $('.env-foot .stat span:last-child', card); if (st) st.textContent = `${v.toFixed(v < 1 ? 1 : 0)}%`;
+    });
+  }
+}, 600);
+$('#pick').addEventListener('click', e => { const b = e.target.closest('[data-pick]'); if (!b || deploying) return; pick = b.dataset.pick; renderPick(); });
+$('#skipBtn').addEventListener('click', () => { if (deploying) return; skip = !skip; renderPick(); if (skip) tip1('<strong>Staging will be skipped.</strong> Your change goes from the tests straight to customers.'); });
+$('#envs').addEventListener('click', e => {
+  if (!e.target.closest('#rollbackBtn') || deploying || prodHist.length < 2) return;
+  const wasBroken = env.production.pay;
+  const gone = prodHist.pop();
+  if (gone.k) shipped[gone.k] = `Rolled back from v${gone.v}`;
+  const prev = prodHist[prodHist.length - 1];
+  env.production = { ...prev }; bumped.production = true;
+  renderEnvs(); renderPick();
+  if (wasBroken) { CS.tick('p1', 'rollback'); tip1(`<strong>Rolled back.</strong> Production runs v${prev.v} again, and payments work within seconds, because the old build was kept. Now you can investigate calmly instead of fixing in a panic. You'll find and fix the missing setting in part 3.`, 'good'); }
+  else tip1(`<strong>Rolled back to v${prev.v}.</strong> Nothing was broken, so this only undid a working change. Rollbacks are for when production is hurting.`);
+});
+$('#deployBtn').addEventListener('click', async () => {
+  if (deploying) return;
+  deploying = true;
+  const k = pick, c = CHANGES[k];
+  const v = ++ver, hash = CS.hex(7);
+  const base = prodHist[prodHist.length - 1];
+  const build = { v, menu: base.menu || k === 'menu', pay: k === 'pay' };
+  STAGES.forEach(([s]) => delete stageSt[s]);
+  renderPick(); renderStages(); renderEnvs();
+  const run = async (s, runDet, ms) => { stageSt[s] = { s: 'run', det: runDet }; renderStages(); await wait(ms); };
+  const pass = (s, det, tm) => { stageSt[s] = { s: 'pass', det, tm }; renderStages(s); };
+  const fail = (s, det, tm) => { stageSt[s] = { s: 'fail', det, tm }; renderStages(s); };
+  const rest = from => { let on = false; STAGES.forEach(([s]) => { if (s === from) on = true; else if (on) stageSt[s] = { s: 'wait', det: 'Never reached. Customers are safe.' }; }); renderStages(); };
+  await run('commit', 'Saving the change…', 350); pass('commit', `<code>${hash}</code> ${esc(c.msg)}`, '');
+  await run('build', `Building v${v}…`, 800); pass('build', `Built v${v}: 212 files bundled`, '14 s');
+  await run('tests', 'Running 48 tests…', 900);
+  if (c.failAt === 'tests') {
+    fail('tests', esc(c.failMsg), '31 s'); rest('tests');
+    CS.tick('p1', 'caught'); shipped[k] = 'Stopped at tests';
+    tip1('<strong>Stopped at Tests.</strong> Two tests caught the AI\'s rewrite charging tax twice. The deploy stopped there, so neither staging nor production ever saw it. This is why every change runs the tests, however confident the AI sounds.', 'good');
+    deploying = false; renderPick(); renderEnvs(); return;
+  }
+  pass('tests', '48 passed', '31 s');
+  if (skip) { stageSt.staging = { s: 'skip', det: 'Skipped. Nobody tried this version before customers.' }; renderStages(); await wait(300); }
+  else {
+    await run('staging', `Deploying v${v} to staging, then trying the key pages…`, 1000);
+    env.staging = { ...build }; bumped.staging = true; renderEnvs();
+    if (c.failAt === 'staging') {
+      await wait(500);
+      fail('staging', esc(c.failMsg), '48 s'); rest('staging');
+      CS.tick('p1', 'staging'); shipped[k] = 'Stopped at staging';
+      tip1('<strong>Stopped at Staging.</strong> The tests passed, because they use a fake payment service. But on staging the real service needs a secret key called <code>PAYMENTS_KEY</code>, and staging doesn\'t have it. Your laptop does, in its <code>.env</code> file, so it "worked on your machine". Customers never saw the problem. Now see what happens without that safety net: switch on <b>Skip staging</b> and ship it again.', 'good');
+      deploying = false; renderPick(); renderEnvs(); return;
+    }
+    pass('staging', 'Tried the key pages: menu, order, pay. All fine.', '48 s');
+  }
+  await run('prod', `Releasing v${v} to customers…`, 900);
+  env.production = { ...build }; prodHist.push({ ...build, k }); bumped.production = true;
+  pass('prod', `v${v} is live for customers`, '22 s');
+  deploying = false; shipped[k] = `Live as v${v}`;
+  renderPick(); renderEnvs();
+  if (k === 'menu') {
+    CS.tick('p1', 'menu');
+    tip1(skip ? '<strong>Live, and it worked this time.</strong> But nobody tried it before customers did. Staging costs a minute and catches the surprises tests miss.' : `<strong>Shipped.</strong> Commit, build, tests, staging, production: every check passed, so v${v} went live. Look for al pastor on the production menu.`, 'good');
+  } else if (k === 'pay') {
+    CS.tick('p1', 'skip');
+    tip1(`<strong>Production is broken.</strong> Customers can't pay and the error graph is climbing. When production breaks, the first move isn't fixing the code, it's stopping the damage. Press <b>Roll back to v${prodHist[prodHist.length - 2].v}</b>.`, 'bad');
+  }
+});
+renderPick(); renderStages(); renderEnvs();
+
+/* ---------------- Part 2: traffic simulator ---------------- */
+const S = { L: 40, n: 1, cache: false, index: false, auto: false, playing: false, hour: null };
+function model(L = S.L, n = S.n) {
+  const app = L * (S.cache ? 0.45 : 1);
+  const db = L * (S.cache ? 0.3 : 1) * (S.index ? 0.35 : 1);
+  const us = app / (n * 90), ud = db / 220;
+  const q = u => { const c = Math.min(u, 0.97); return c / (1 - c); };
+  let lat = 90 + 35 * q(us) + 55 * q(ud);
+  const over = Math.max(us, ud);
+  const err = over > 1 ? 1 - 1 / over : 0;
+  if (err > 0) lat = Math.max(lat, 1800 + 2400 * Math.min(err, 1));
+  return { us, ud, lat: Math.min(lat, 5000), err, cost: n * 20 + (S.cache ? 15 : 0) + 25, app, db };
+}
+const autoN = L => clamp(Math.ceil(L * (S.cache ? 0.45 : 1) / (90 * 0.7)), 1, 10);
+let shown = model(), dots = [], acc = 0, autoCool = 0, errFor = 0, dayStats = null;
+const cv = $('#sim');
+function simDraw(dt) {
+  const { ctx, w, h } = fitCanvas(cv, cv.clientHeight || 250);
+  const m = model();
+  ctx.clearRect(0, 0, w, h);
+  const cx = w * 0.3, sx = w * 0.5, sw = Math.min(110, w * 0.2), dbx = w * 0.84, top = 34, bottom = h - 20;
+  const n = S.n, gap = n > 6 ? 4 : 7, bh = Math.min(34, (bottom - top - gap * (n - 1)) / n), stackH = n * bh + (n - 1) * gap, sTop = top + (bottom - top - stackH) / 2;
+  const sy = i => sTop + i * (bh + gap) + bh / 2;
+  const dby = (top + bottom) / 2;
+  const font = px => `700 ${px}px Overpass, "Helvetica Neue", Arial, sans-serif`;
+  ctx.font = font(13); ctx.fillStyle = COL['ink-2'];
+  ctx.fillText('visitors', 8, 20); ctx.fillText('servers', sx, 20); ctx.textAlign = 'center'; ctx.fillText('database', dbx, 20); if (S.cache) ctx.fillText('cache', cx, 20); ctx.textAlign = 'left';
+  // spawn and move request dots
+  if (dt > 0) {
+    acc += dt * Math.min(S.L / 6, 60);
+    while (acc > 1) { acc--; const cached = S.cache && Math.random() < 0.55; dots.push({ x: 0, y: top + Math.random() * (bottom - top), st: cached ? 'cache' : 'srv', srv: Math.random() * n | 0, a: 1, vy: 0 }); }
+    // each leg slows down when the part it leads to is busy, so queues form in front of the bottleneck
+    const slow = u => u < 0.7 ? 1 : clamp(1 - (u - 0.7) * 1.5, 0.22, 1);
+    const vSrv = 260 * slow(m.us), vDb = 260 * slow(m.ud);
+    dots.forEach(d => {
+      let tx, ty;
+      if (d.st === 'cache') { tx = cx; ty = d.y; }
+      else if (d.st === 'srv') { const i = Math.min(d.srv, n - 1); tx = sx; ty = sy(i); }
+      else if (d.st === 'db') { tx = dbx - 26; ty = dby; }
+      else if (d.st === 'back') { d.x -= dt * 200; d.a -= dt * 2.2; return; }
+      else if (d.st === 'drop') { d.vy += dt * 500; d.y += d.vy * dt; d.x += dt * 30; d.a -= dt * 1.3; return; }
+      else { d.a -= dt * 4; return; }
+      const dx = tx - d.x, dy = ty - d.y, dist = Math.hypot(dx, dy), mv = (d.st === 'cache' ? 300 : d.st === 'db' ? vDb : vSrv) * dt;
+      if (dist <= mv) {
+        d.x = tx; d.y = ty;
+        if (d.st === 'cache') d.st = 'back';
+        else if (d.st === 'srv') { const pErrSrv = m.us > 1 ? 1 - 1 / m.us : 0, pDb = m.app ? m.db / m.app : 1; d.st = Math.random() < pErrSrv ? 'drop' : Math.random() < pDb ? 'db' : 'done'; if (d.st === 'db') d.x = sx + sw; }
+        else if (d.st === 'db') d.st = (m.ud > 1 && Math.random() < 1 - 1 / m.ud) ? 'drop' : 'done';
+      } else { d.x += dx / dist * mv; d.y += dy / dist * mv; }
+    });
+    dots = dots.filter(d => d.a > 0 && d.y < h + 10).slice(-800);
+  }
+  // cache bar
+  if (S.cache) { ctx.fillStyle = COL.l3; ctx.globalAlpha = 0.22; rrect(ctx, cx - 7, top, 14, bottom - top, 7); ctx.fill(); ctx.globalAlpha = 1; }
+  // servers
+  for (let i = 0; i < n; i++) {
+    const y = sy(i) - bh / 2;
+    ctx.fillStyle = COL['glass-strong']; rrect(ctx, sx, y, sw, bh, Math.min(8, bh / 2)); ctx.fill(); ctx.strokeStyle = COL.hair; ctx.lineWidth = 1; ctx.stroke();
+    ctx.fillStyle = loadCol(m.us); ctx.globalAlpha = 0.85; rrect(ctx, sx + 3, y + 3, Math.max(4, (sw - 6) * Math.min(m.us, 1)), bh - 6, Math.min(6, (bh - 6) / 2)); ctx.fill(); ctx.globalAlpha = 1;
+  }
+  // database cylinder
+  const dw = 52, dh = Math.min(120, bottom - top - 10), dTop = dby - dh / 2, ry = 8;
+  ctx.fillStyle = COL['glass-strong']; ctx.strokeStyle = COL.hair;
+  ctx.beginPath(); ctx.ellipse(dbx, dTop + dh, dw / 2, ry, 0, 0, Math.PI); ctx.lineTo(dbx - dw / 2, dTop); ctx.ellipse(dbx, dTop, dw / 2, ry, 0, Math.PI, 0, true); ctx.closePath(); ctx.fill(); ctx.stroke();
+  const fillH = (dh - 4) * Math.min(m.ud, 1);
+  ctx.fillStyle = loadCol(m.ud); ctx.globalAlpha = 0.85;
+  ctx.beginPath(); ctx.ellipse(dbx, dTop + dh, dw / 2 - 3, ry - 2, 0, 0, Math.PI); ctx.lineTo(dbx - dw / 2 + 3, dTop + dh - fillH); ctx.ellipse(dbx, dTop + dh - fillH, dw / 2 - 3, ry - 2, 0, Math.PI, 0, true); ctx.closePath(); ctx.fill(); ctx.globalAlpha = 1;
+  ctx.fillStyle = COL['glass-strong']; ctx.beginPath(); ctx.ellipse(dbx, dTop, dw / 2, ry, 0, 0, 7); ctx.fill(); ctx.stroke();
+  // dots on top
+  dots.forEach(d => { ctx.globalAlpha = clamp(d.a, 0, 1); ctx.fillStyle = d.st === 'drop' ? COL.l1 : d.st === 'back' ? COL.l3 : COL.l2; ctx.beginPath(); ctx.arc(d.x, d.y, 3.2, 0, 7); ctx.fill(); });
+  ctx.globalAlpha = 1;
+}
+const fmtMs = v => v >= 1000 ? (v / 1000).toFixed(1) + ' s' : Math.round(v) + ' ms';
+function paintStats() {
+  const m = model();
+  shown = { ...m };
+  const lvl = (el, v, a, b) => { el.className = 'stat-box ' + (v < a ? 'good' : v < b ? 'warn' : 'bad'); };
+  $('#stLat').textContent = fmtMs(m.lat); lvl($('#bLat'), m.lat, 350, 1000);
+  $('#stErr').textContent = (m.err * 100 < 0.1 ? '0' : (m.err * 100).toFixed(m.err < 0.1 ? 1 : 0)) + '%'; lvl($('#bErr'), m.err, 0.001, 0.01);
+  $('#stCost').textContent = '$' + m.cost; $('#bCost').className = 'stat-box';
+  const bar = (el, t, u) => { el.style.width = Math.min(u, 1) * 100 + '%'; el.style.background = loadCol(u); t.textContent = Math.round(u * 100) + '%'; };
+  bar($('#mSrv'), $('#mSrvT'), m.us); bar($('#mDb'), $('#mDbT'), m.ud);
+  $('#srvOut').textContent = S.auto ? `${S.n} auto` : S.n;
+  $('#srvMinus').disabled = S.auto || S.n <= 1; $('#srvPlus').disabled = S.auto || S.n >= 10;
+  $('#trafficOut').textContent = `${S.L} visitors / s`;
+  $('#clock').hidden = S.hour === null;
+  if (S.hour !== null) { const hh = Math.floor(S.hour) % 24, mm = Math.floor((S.hour % 1) * 60 / 10) * 10; $('#clock').textContent = `${String(hh).padStart(2, '0')}:${String(mm).padStart(2, '0')}`; }
+  const al = errFor > 0.8, ae = $('#alert');
+  if (ae.classList.contains('on') !== al) { ae.classList.toggle('on', al); ae.firstChild.textContent = al ? `Alert sent to Rosa's phone: errors above 1%` : 'Monitoring: all quiet'; }
+  checkTasks(m);
+}
+function tip2(html, kind = '') { const t = $('#tip2'); t.className = 'o3 note ' + kind; t.innerHTML = html; }
+let lastAdvice = '';
+function advise(force) {
+  const m = model();
+  let key, html, kind = '';
+  if (S.playing) return;
+  if (S.L < 300) { key = 'quiet'; html = `<strong>${S.L} visitors a second.</strong> ${m.err ? 'Even this is too much for the setup.' : 'Easy. Everything is green and cheap.'} Try the <b>Lunch rush</b>.`; kind = m.err ? 'bad' : ''; }
+  else if (m.err > 0.01 && m.us > 1 && m.ud <= 1) { key = 'srv'; html = `<strong>The servers are drowning.</strong> Each one handles about 90 visitors a second, so ${S.n === 1 ? 'one server' : S.n + ' servers'} can't keep up with ${S.L}. Requests queue, pages crawl, then fail (the red dots). Try adding servers.`; kind = 'bad'; }
+  else if (m.err > 0.01 && m.ud > 1 && m.us <= 1) { key = 'db'; html = `<strong>More servers stopped helping.</strong> Look at the database meter: ${Math.round(m.ud * 100)}%. Every page view runs the same slow menu query, and adding servers just sends more queries to the same database. Try the cache or fixing the query.`; kind = 'bad'; }
+  else if (m.err > 0.01) { key = 'both'; html = '<strong>Everything is overloaded.</strong> Both the servers and the database are past 100%. Add servers, and take load off the database.'; kind = 'bad'; }
+  else if (m.lat >= 500) { key = 'slow'; html = `<strong>No errors, but ${fmtMs(m.lat)} per page.</strong> Things are close to full, so requests wait in line. People give up on slow pages too.`; }
+  else if (m.cost >= 150) { key = 'pricey'; html = `<strong>Fast and reliable, for $${m.cost} a month.</strong> Can you get the same result for less? Look at which meter is doing the work.`; kind = 'good'; }
+  else { key = 'great'; html = `<strong>Handled: ${fmtMs(m.lat)} pages, no errors, $${m.cost} a month.</strong> ${S.index ? 'Fixing the slow query did more than any server could.' : S.cache ? 'The cache means most visitors never reach a server or the database.' : 'Nice balance.'}`; kind = 'good'; }
+  if (key !== lastAdvice || force) { lastAdvice = key; tip2(html, kind); }
+}
+function checkTasks(m) {
+  if (S.L >= 350) CS.tick('p2', 'rush');
+  if (S.playing) return;
+  if (S.L >= 350 && m.err < 0.01 && CS.ticked('p2', 'rush')) CS.tick('p2', 'fix');
+  if (S.L >= 350 && m.err < 0.01 && m.lat < 500 && m.cost < 150) CS.tick('p2', 'cheap');
+}
+function setL(v) { S.L = clamp(Math.round(v / 10) * 10, 10, 500); $('#traffic').value = S.L; if (S.auto) S.n = autoN(S.L); }
+$('#traffic').addEventListener('input', e => { if (S.playing) return; setL(+e.target.value); paintStats(); advise(); });
+$$('[data-l]').forEach(b => b.addEventListener('click', () => { if (S.playing) return; setL(+b.dataset.l); paintStats(); advise(true); }));
+$('#srvPlus').addEventListener('click', () => { S.n = Math.min(10, S.n + 1); paintStats(); advise(true); });
+$('#srvMinus').addEventListener('click', () => { S.n = Math.max(1, S.n - 1); paintStats(); advise(true); });
+const toggle = (id, key, say) => $(id).addEventListener('click', () => {
+  S[key] = !S[key]; $(id).setAttribute('aria-pressed', S[key]);
+  if (key === 'auto' && S.auto) S.n = autoN(S.L);
+  paintStats();
+  if (S[key] && say && !S.playing) { tip2(say, 'info'); lastAdvice = 'toggle'; } else advise(true);
+});
+toggle('#cacheBtn', 'cache', '<strong>Cache on.</strong> A ready-made copy of the menu page answers most visitors (the teal dots bouncing back), so fewer requests reach the servers and the database. $15 a month.');
+toggle('#indexBtn', 'index', '<strong>Query fixed.</strong> An index is like a book\'s index for the database: it finds the menu without reading every row. Each query is about three times cheaper, and it costs nothing per month.');
+toggle('#autoBtn', 'auto', '<strong>Autoscaling on.</strong> The server count now follows traffic. Press <b>Play a whole day</b> to watch it work.');
+$('#playDay').addEventListener('click', () => {
+  if (S.playing) return;
+  S.playing = true; S.hour = 0; dayStats = { nh: 0, peak: 0, min: 10, errSum: 0, auto: S.auto, cost: 0 };
+  $$('#p2 .quick .btn, #traffic').forEach(b => b.disabled = true);
+  tip2(S.auto ? '<strong>Playing a day with autoscaling.</strong> Watch the server count follow the crowd.' : '<strong>Playing a day.</strong> The server count stays fixed. Watch the lunch and dinner rushes.', 'info');
+});
+const dayL = hr => 15 + 385 * Math.exp(-(((hr - 12.5) / 1.1) ** 2)) + 230 * Math.exp(-(((hr - 18.7) / 1.3) ** 2)) + 45 * Math.exp(-(((hr - 8.5) / 1.4) ** 2));
+function dayTick(dt) {
+  S.hour += dt * 24 / (reduce ? 4 : 14);
+  if (S.hour >= 24) {
+    S.playing = false; S.hour = null;
+    $$('#p2 .quick .btn, #traffic').forEach(b => b.disabled = false);
+    const avg = dayStats.nh / 24, errPct = dayStats.errSum / 24 * 100;
+    if (dayStats.auto && S.auto) {
+      CS.tick('p2', 'auto');
+      tip2(`<strong>A whole day, on autopilot.</strong> Autoscaling ran between ${dayStats.min} and ${dayStats.peak} servers, ${avg.toFixed(1)} on average. A fixed setup big enough for lunch would run ${dayStats.peak} all day and cost about $${(dayStats.peak - avg) * 20 | 0} a month more.${errPct > 0.5 ? ' Some requests still failed at the peak: the database needs help too.' : ''}`, 'good');
+    } else tip2(`<strong>Day over.</strong> ${S.n} fixed server${S.n > 1 ? 's' : ''} all day: ${errPct > 0.5 ? 'too few at the rushes, so visitors got errors.' : 'plenty at lunch, but you paid for them all night too.'} Now switch on <b>Autoscaling</b> and play the day again.`, errPct > 0.5 ? 'bad' : '');
+    lastAdvice = 'day';
+    return;
+  }
+  setL(dayL(S.hour));
+  const m = model();
+  dayStats.nh += S.n * dt * 24 / (reduce ? 4 : 14); dayStats.peak = Math.max(dayStats.peak, S.n); dayStats.min = Math.min(dayStats.min, S.n); dayStats.errSum += m.err * dt * 24 / (reduce ? 4 : 14);
+}
+let simLast = performance.now(), simVisible = false, statT = 0;
+new IntersectionObserver(es => { simVisible = es.some(e => e.isIntersecting); }).observe(cv);
+(function simFrame(now) {
+  const real = Math.min(0.25, (now - simLast) / 1000), dt = Math.min(0.05, real); simLast = now;
+  if (S.playing) dayTick(real);
+  if (S.auto) { autoCool -= real; const want = autoN(S.L); if (want !== S.n && autoCool <= 0) { S.n += Math.sign(want - S.n); autoCool = 0.35; } }
+  const m = model();
+  errFor = m.err > 0.01 ? errFor + real : 0;
+  if (simVisible && !document.hidden) simDraw(reduce ? 0 : dt);
+  statT -= dt; if (statT <= 0) { paintStats(); statT = 0.15; }
+  requestAnimationFrame(simFrame);
+})(simLast);
+addEventListener('resize', () => simDraw(0));
+paintStats(); simDraw(0);
+
+/* ---------------- Part 3: practice terminal ---------------- */
+const T = { staging: { v: 18, ok: true }, production: { v: 18, ok: true }, keys: { staging: true, production: false }, prodErr: 0.1, stagedV19: false };
+function renderOps(flash) {
+  const row = (k, name, where, e) => `<div class="oprow${flash === k ? ' flash' : ''}"><span class="hdot${e.ok === false ? ' bad' : ''}"></span><span><b>${name}</b><span class="osub${e.ok === false ? ' bad' : ''}">${where}</span></span><span class="v">v${e.v}</span></div>`;
+  $('#ops').innerHTML = row('local', 'Local', 'Your laptop. .env has a test key.', { v: 19 }) +
+    row('staging', 'Staging', T.staging.ok ? 'Healthy · 0% errors' : 'Failing', T.staging) +
+    row('production', 'Production', T.production.ok ? `Healthy · ${T.prodErr}% errors` : '31% of requests failing', T.production);
+}
+function renderEnvGrid(flash) {
+  const cell = (ok, txt, f) => `<td class="${ok ? 'ok' : 'miss'}${f ? ' flash' : ''}">${txt}</td>`;
+  $('#envgrid').innerHTML = `<table class="envgrid"><thead><tr><th>Variable</th><th>Local</th><th>Staging</th><th>Production</th></tr></thead><tbody>
+    <tr><td>DATABASE_URL</td>${cell(1, 'set')}${cell(1, 'set')}${cell(1, 'set')}</tr>
+    <tr><td>PAYMENTS_KEY</td>${cell(1, 'test key')}${cell(T.keys.staging, T.keys.staging ? 'test key' : 'missing')}${cell(T.keys.production, T.keys.production ? 'live key' : 'missing', flash)}</tr>
+    <tr><td>SEND_TEXTS</td>${cell(1, 'false')}${cell(1, 'false')}${cell(1, 'true')}</tr></tbody></table>`;
+}
+const envArg = (a, fallback) => { const i = a.findIndex(x => x === '--env' || x === '-e'); if (i >= 0) return a[i + 1]; const eq = a.find(x => x.startsWith('--env=')); if (eq) return eq.slice(6); return a.find(x => /^(staging|production|prod)$/.test(x)) || fallback; };
+const normEnv = e => e === 'prod' ? 'production' : e;
+function deployLines(io, env, v, after) {
+  const { print } = io;
+  print(`<span class="dim">→</span> Building v${v} … <span class="g">done</span> <span class="dim">(14 s)</span>\n<span class="dim">→</span> Running 48 tests … <span class="g">48 passed</span>\n<span class="dim">→</span> Releasing v${v} to ${env} … <span class="g">done</span>`);
+  if (after) after();
+}
+function termRun(a, line, io, api) {
+  const { print, tutor } = io;
+  const cmd = a[0];
+  if (cmd === 'help') { print(`Commands you can use here:\n  <span class="y">status</span>                         what's running where?\n  <span class="y">deploy staging</span>                 ship to the rehearsal copy\n  <span class="y">deploy production</span>              ship to customers\n  <span class="y">rollback</span>                       production back to the last version\n  <span class="y">logs --tail</span>                    recent log lines from production\n  <span class="y">env list</span>                       settings for each environment\n  <span class="y">env set KEY=value --env NAME</span>   add or change a setting\n  <span class="y">clear</span>  <span class="y">hint</span>`); return null; }
+  if (cmd === 'status') {
+    const st = e => e.ok ? '<span class="g">healthy</span>' : '<span class="r">failing</span>';
+    print(`ENVIRONMENT   VERSION   STATUS     ERRORS (5 min)\nlocal         v19       <span class="dim">-</span>          <span class="dim">-</span>\nstaging       v${T.staging.v}       ${st(T.staging)}    ${T.staging.ok ? '0.0%' : '<span class="r">100%</span>'}\nproduction    v${T.production.v}       ${st(T.production)}    ${T.production.ok ? T.prodErr.toFixed(1) + '%' : '<span class="r">31%</span>'}`);
+    return { k: 'status' };
+  }
+  if (cmd === 'deploy') {
+    const env = normEnv(a[1]);
+    if (!env || !/^(staging|production)$/.test(env)) { print('usage: deploy &lt;staging|production&gt;', 'r'); tutor('Say where to deploy, like <b>deploy staging</b>.'); return null; }
+    if (env === 'production' && !T.stagedV19) { print('✗ v19 has not been on staging yet. This project requires staging first.', 'r'); tutor('Good rule. Ship to <b>staging</b> first, check it, then production.'); return null; }
+    if (env === 'staging') {
+      deployLines(io, 'staging', 19);
+      print(`<span class="dim">→</span> Trying key pages: /menu <span class="g">200</span> · /order <span class="g">200</span> · /pay <span class="g">200</span>\n<span class="g">✓ staging is running v19</span> · https://staging.rosastacos.app`);
+      T.staging = { v: 19, ok: true }; T.stagedV19 = true; renderOps('staging');
+      tutor('Staging looks healthy. It uses a <b>test</b> payments key, so no real money moves there.');
+      return { k: 'deploy', env };
+    }
+    deployLines(io, 'production', 19);
+    T.production = { v: 19, ok: T.keys.production };
+    if (T.keys.production) {
+      T.prodErr = 0.1;
+      print(`<span class="g">✓ production is running v19</span> · https://rosastacos.app · payments working · errors 0.1%`);
+      renderOps('production');
+      return { k: 'deploy', env, broken: false };
+    }
+    print(`<span class="g">✓ production is running v19</span> · https://rosastacos.app`);
+    renderOps('production');
+    setTimeout(() => {
+      print('<span class="r">[ALERT] production: 31% of requests failing (POST /api/pay → 500)</span>');
+      T.production.ok = false; renderOps('production');
+      tutor('Customers can\'t pay. Don\'t start debugging yet. First, stop the damage: <b>rollback</b>.');
+    }, reduce ? 0 : 900);
+    return { k: 'deploy', env, broken: true };
+  }
+  if (cmd === 'rollback') {
+    const env = normEnv(envArg(a, 'production'));
+    if (env !== 'production') { print('Staging is a rehearsal copy. Only production needs a rollback here.'); return null; }
+    if (T.production.v === 18) { print('Nothing to roll back: production is already on v18, the last good version.'); return { k: 'rollback' }; }
+    print(`<span class="dim">→</span> Switching production traffic back to v18 … <span class="g">done</span> <span class="dim">(4 s)</span>\n<span class="g">✓ production is running v18</span> · errors 0.1% · payments working`);
+    T.production = { v: 18, ok: true }; T.prodErr = 0.1; renderOps('production');
+    tutor('Damage stopped in 4 seconds. The v18 build was still there, so nothing had to be rebuilt. Now find out what went wrong.');
+    return { k: 'rollback' };
+  }
+  if (cmd === 'logs') {
+    print(`<span class="dim">10:42:07</span> INFO  v19 started on 2 servers\n<span class="dim">10:42:31</span> INFO  GET /menu 200 <span class="dim">41ms</span>\n<span class="dim">10:42:33</span> <span class="r">ERROR POST /api/pay 500 PaymentsError: PAYMENTS_KEY is not set</span>\n<span class="r">            at createCharge (payments.js:12)\n            at payHandler (routes/pay.js:30)</span>\n<span class="dim">10:42:35</span> <span class="r">ERROR POST /api/pay 500 PaymentsError: PAYMENTS_KEY is not set</span>\n<span class="dim">10:42:40</span> <span class="r">ERROR POST /api/pay 500 PaymentsError: PAYMENTS_KEY is not set</span>${T.production.v === 18 ? '\n<span class="dim">10:43:02</span> INFO  rolled back to v18 by you\n<span class="dim">10:43:09</span> INFO  POST /api/pay 200 <span class="dim">380ms</span>' : ''}`);
+    tutor('Read it like any error: <b>PAYMENTS_KEY is not set</b>, in createCharge, payments.js line 12. Version 19 needs a setting that production doesn\'t have.');
+    return { k: 'logs' };
+  }
+  if (cmd === 'env') {
+    const sub = a[1] || 'list';
+    if (sub === 'list' || sub === 'ls') {
+      const y = v => v ? '<span class="g">set</span>' : '<span class="r">missing</span>';
+      print(`KEY            LOCAL      STAGING       PRODUCTION\nDATABASE_URL   <span class="g">set</span>        <span class="g">set</span>           <span class="g">set</span>\nPAYMENTS_KEY   <span class="g">test key</span>   ${T.keys.staging ? '<span class="g">test key</span>' : y(0)}      ${T.keys.production ? '<span class="g">live key</span>' : y(0)}\nSEND_TEXTS     false      false         true`);
+      tutor(T.keys.production ? 'Every environment has what it needs now.' : 'There it is. Staging has a test key, your laptop has a test key, and production has <b>nothing</b>. Staging caught a lot, but it couldn\'t catch a setting that only production needs.');
+      return { k: 'envlist' };
+    }
+    if (sub === 'set') {
+      const rest = a.slice(2).filter(x => !/^(--env|-e)$/.test(x) && !x.startsWith('--env=') && !/^(staging|production|prod)$/.test(x));
+      const env = normEnv(envArg(a.slice(2), null));
+      let key, val;
+      if (rest[0] && rest[0].includes('=')) { [key, ...val] = rest[0].split('='); val = val.join('='); }
+      else { key = rest[0]; val = rest[1]; }
+      if (!key || !val) { print('usage: env set KEY=value --env &lt;staging|production&gt;', 'r'); tutor('Put the name and the value together, like <b>env set PAYMENTS_KEY=live_7f3a9c --env production</b>.'); return null; }
+      if (!env) { print('✗ Which environment? Add --env staging or --env production.', 'r'); return null; }
+      if (!/^(staging|production)$/.test(env)) { print(`✗ Unknown environment: ${esc(env)}`, 'r'); return null; }
+      print(`<span class="g">✓ ${esc(key)} set for ${env}</span> <span class="dim">(stored encrypted, value hidden)</span>`);
+      if (key.toUpperCase() === 'PAYMENTS_KEY') { T.keys[env] = true; renderEnvGrid(env === 'production'); }
+      if (key.toUpperCase() !== 'PAYMENTS_KEY') tutor(`Saved, but the logs asked for <b>PAYMENTS_KEY</b>, not ${esc(key)}.`);
+      else if (env === 'production') tutor('The key lives in the host\'s settings, not in the code, so it never lands in git. The app reads it when it starts.');
+      return { k: 'envset', key, env };
+    }
+    print(`env: unknown command '${esc(sub)}'. Try <span class="y">env list</span> or <span class="y">env set</span>.`, 'r'); return null;
+  }
+  if (cmd === 'git') { tutor('Git is course 203. Here, v19 is already committed and ready. Use <b>deploy</b>.'); return null; }
+  if (cmd === 'ls') { print('package.json  src/  tests/  .env'); return null; }
+  if (cmd === 'cat' && a[1] === '.env') { print('PAYMENTS_KEY=test_4c1e…   <span class="dim"># test key, local only</span>\nDATABASE_URL=postgres://localhost/tacos'); tutor('This file is on your laptop only. That\'s why the payments change worked here.'); return null; }
+  return undefined;
+}
+CS.terminal($('#term'), {
+  part: 'p3',
+  mission: $('#mission'),
+  prompt: () => '~/rosas-tacos $',
+  intro: 'Type a command below and press Enter.\nStuck? Press "Show a hint", or type <span class="y">help</span>.',
+  steps: [
+    { t: "Check what's running", how: 'Ask for the status of every environment.', cmd: 'status', done: a => a.k === 'status' },
+    { t: 'Ship v19 to staging', how: 'Deploy the new version to the rehearsal copy first.', cmd: 'deploy staging', done: a => a.k === 'deploy' && a.env === 'staging' },
+    { t: 'Ship v19 to production', how: 'Staging is healthy. Release it to customers.', cmd: 'deploy production', done: a => a.k === 'deploy' && a.env === 'production' },
+    { t: 'Stop the damage', how: 'Payments are failing. Roll production back to the last good version.', cmd: 'rollback', done: a => a.k === 'rollback' && T.production.v === 18 },
+    { t: 'Read the logs', how: 'Find out what went wrong in production.', cmd: 'logs --tail', done: a => a.k === 'logs' },
+    { t: 'Compare the settings', how: "List each environment's variables.", cmd: 'env list', done: a => a.k === 'envlist' },
+    { t: 'Add the missing setting', how: 'Rosa copied the live key from her payments dashboard: live_7f3a9c. Set PAYMENTS_KEY for production.', cmd: 'env set PAYMENTS_KEY=live_7f3a9c --env production', done: a => a.k === 'envset' && T.keys.production },
+    { t: 'Ship v19 again', how: 'Deploy to production and check it stays healthy.', cmd: 'deploy production', done: a => a.k === 'deploy' && a.env === 'production' && !a.broken }
+  ],
+  run: termRun,
+  doneHTML: '<b>Mission complete.</b> Try <code>status</code> or <code>logs --tail</code> if you want to explore.',
+  doneTutor: '<b>Mission complete!</b> Staging first, roll back fast, read the logs, fix the setting, ship again. That\'s how calm teams handle a bad deploy.'
+});
+renderOps(); renderEnvGrid();
+
+/* ---------------- Part 4: steer the AI ---------------- */
+CS.steer($('#steer'), [
+  { ai: "It's 6:45 on Friday evening. The new booking flow is done, so I'm deploying it straight to production now so it's live for the weekend!",
+    opts: [["Great, ship it before we log off.", 0, "If it breaks at 7 p.m. on a Friday, nobody is watching and customers suffer all weekend. Deploy when someone can watch for an hour."],
+           ["Put it on staging tonight so we can try it. We'll ship to production Monday morning, when we can watch it.", 1, "Right. Staging first, and release when people are around to spot trouble and roll back."],
+           ["Skip the tests this time so it goes out faster.", 0, "Tests are the cheapest safety net you have. Skipping them makes a Friday deploy riskier, not safer."]] },
+  { ai: "The payments weren't working in production, so I pasted the live payments key directly into config.js. It works now!",
+    opts: [["Nice, as long as it works.", 0, "The key is now in the code and in git history, where anyone with access to the repository can read it and spend Rosa's money."],
+           ["Take it out of the code and set it as an environment variable on the host. Then create a new key, because this one has been exposed.", 1, "Exactly. Secrets belong in environment variables, and a key that touched the code should be treated as leaked and replaced."],
+           ["Fine, but make the repository private.", 0, "Private repositories get shared, cloned and leaked. The key still shouldn't be in the code at all."]] },
+  { ai: "For your booking app with about 50 users, I recommend Kubernetes across three regions, a message queue and six microservices. It will scale to millions.",
+    opts: [["Sounds professional, let's do it.", 0, "That setup takes a team to run and costs hundreds a month. Fifty users need none of it."],
+           ["That's far more than we need. What's the simplest hosting that handles 50 users, with easy deploys and one-click rollbacks?", 1, "Right. Start simple and cheap. You can grow later if you actually get millions of users. Most apps never do."],
+           ["Use it, but only in one region.", 0, "Still a big, complex system for a small app. The question is whether you need Kubernetes at all."]] },
+  { ai: "The menu page takes 4 seconds to load. I'll upgrade us from 2 to 8 servers to fix it.",
+    opts: [["Before paying for servers, look at the logs and metrics. Which part is slow? If it's one database query, fix that first.", 1, "Yes. More servers can't speed up a slow query, as you saw in the simulator. Measure first, then fix the slow part."],
+           ["Go to 16 servers to be safe.", 0, "That quadruples the bill again, and a slow query stays slow no matter how many servers call it."],
+           ["Tell users to try again later.", 0, "Slow pages lose customers. It's worth finding the cause."]] }
+], { part: 'p4', counter: $('#steerCount') });
+
+/* ---------------- Part 5: quiz ---------------- */
+CS.quiz($('#quiz'), [
+  { q: 'What is staging for?', a: [['Trying a new version in a copy of production before customers see it', 1], ['Storing old versions of the code', 0], ['Making the live app faster', 0]], why: 'Staging is a rehearsal: set up like production, with fake data and test keys, so problems show up before real customers meet them.' },
+  { q: 'A deploy breaks production during the lunch rush. What do you do first?', a: [['Ask the AI to fix the code quickly', 0], ['Roll back to the last version that worked', 1], ['Add more servers', 0]], why: 'Stop the damage first. A rollback takes seconds and restores a known good version. Then investigate calmly.' },
+  { q: 'Why keep API keys in environment variables instead of in the code?', a: [['It makes the app load faster', 0], ['Secrets stay out of the code and git history, and each environment can have its own value', 1], ['Environment variables are encrypted in the code', 0]], why: 'Code gets copied, shared and committed. Environment variables stay on the host, and staging can use a test key while production uses the live one.' },
+  { q: 'At the rush, adding servers stops helping and the database meter is at 180%. What now?', a: [['Add even more servers', 0], ['Cache the page or fix the slow query', 1], ['Turn on autoscaling', 0]], why: 'The bottleneck is the database, not the servers. Take load off it with a cache, or make the query cheaper with an index.' },
+  { q: 'Which one wakes someone up when the error rate crosses 1%?', a: [['A log', 0], ['A metric', 0], ['An alert', 1]], why: 'Logs record what happened, metrics track numbers over time, and an alert is the rule that pings a person when a metric crosses a line.' }
+], { part: 'p5', doneCard: $('#doneCard'), doneTitle: 'You can run software now.', doneText: 'You know local, staging and production, why deploys go through checks, how to roll back, what environment variables are for, and how to handle a crowd without burning money.' });
+})();
+</script>
+</body>
+</html>

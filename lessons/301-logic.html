@@ -1,0 +1,915 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Logic &amp; how computers decide · CS School</title>
+<meta name="description" content="Course 301: true, false, AND, OR, NOT, and the circuits built from them, so you can catch logic bugs in AI-written conditions.">
+<link rel="icon" href="../assets/favicon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="../assets/cs-school.css">
+<style>
+/* lesson-specific styles: wires and lamps, switch boxes, truth tables, condition circuits, test results */
+.w{fill:none; stroke:color-mix(in srgb, var(--ink) 22%, var(--paper)); stroke-width:3.5; stroke-linecap:round; stroke-linejoin:round; transition:stroke .25s}
+.w.on{stroke:var(--l4); stroke-width:4.5}
+.flow{fill:none; stroke:#fff; stroke-opacity:.8; stroke-width:1.8; stroke-dasharray:2 14; stroke-linecap:round; animation:flow .9s linear infinite; pointer-events:none}
+@keyframes flow{to{stroke-dashoffset:-16}}
+.lever{stroke:var(--ink); stroke-width:4.5; stroke-linecap:round; transition:stroke .2s}
+.lever.on{stroke:var(--l4)}
+.pivot{fill:var(--ink)}
+.contact{fill:var(--paper); stroke:var(--ink); stroke-width:2}
+.junction{fill:color-mix(in srgb, var(--ink) 40%, transparent)}
+.junction.on{fill:var(--l4)}
+.plate{stroke:var(--ink); stroke-linecap:round}
+.svg-t{font-family:var(--f-display); font-weight:800; fill:var(--ink)}
+.svg-s{font-family:var(--f-body); fill:var(--ink-2)}
+.lamp .glow{fill:var(--l4); opacity:0; transition:opacity .3s}
+.lamp .bulb{fill:var(--paper); stroke:color-mix(in srgb, var(--ink) 35%, transparent); stroke-width:2.5; transition:fill .3s, stroke .3s}
+.lamp .fil{fill:none; stroke:color-mix(in srgb, var(--ink) 45%, transparent); stroke-width:2; stroke-linejoin:round}
+.lamp .rays{stroke:var(--l4); stroke-width:2.5; stroke-linecap:round; opacity:0; transition:opacity .3s}
+.lamp.on .glow{opacity:.3}
+.lamp.on .bulb{fill:var(--l4); stroke:var(--l4)}
+.lamp.on .fil{stroke:#6B4200}
+.lamp.on .rays{opacity:1}
+.lid{fill:var(--panel-2)}
+.box-bg{fill:color-mix(in srgb, var(--ink) 4%, transparent)}
+.inner{animation:rise .5s}
+
+/* switch boxes */
+.machine{border-radius:20px; padding:18px 18px 20px; display:flex; flex-direction:column; gap:14px}
+.machine svg{width:100%; max-width:500px; margin:0 auto; height:auto; display:block}
+.m-head{display:flex; justify-content:space-between; align-items:baseline; gap:12px; flex-wrap:wrap}
+.m-head h3{font-size:1.25rem}
+.m-head .muted{font-size:1rem}
+.switches{display:flex; gap:12px; flex-wrap:wrap}
+.sw{display:inline-flex; align-items:center; gap:12px; font-family:var(--f-display); font-weight:800; font-size:1rem; color:var(--ink); background:var(--glass-strong); border:1px solid var(--hair); border-radius:14px; padding:8px 16px 8px 8px; min-height:52px; cursor:pointer; box-shadow:0 1px 3px rgba(18,20,23,.08); flex:1 1 150px}
+.sw .track{flex:none; width:58px; height:34px; border-radius:99px; background:color-mix(in srgb, var(--ink) 16%, transparent); position:relative; transition:background .2s}
+.sw .track::after{content:""; position:absolute; top:4px; left:4px; width:26px; height:26px; border-radius:50%; background:var(--paper); box-shadow:0 1px 4px rgba(0,0,0,.28); transition:transform .25s cubic-bezier(.3,1.5,.5,1)}
+.sw[aria-pressed="true"] .track{background:var(--l3)}
+.sw[aria-pressed="true"] .track::after{transform:translateX(24px)}
+.sw .txt{display:flex; flex-direction:column; line-height:1.15; text-align:left; white-space:nowrap}
+.sw .txt small{font-family:var(--f-body); font-weight:400; font-size:.9rem; color:var(--ink-2)}
+.seg-control.boxes{display:flex; flex-wrap:wrap}
+.seg-control.boxes button{flex:1 1 0; min-width:64px; min-height:44px}
+.seg-control.boxes button .ok{display:inline-block; width:8px; height:8px; border-radius:50%; background:var(--good); margin-left:6px; vertical-align:2px}
+
+/* truth tables */
+.tt-wrap{border-radius:14px; overflow:hidden; background:var(--glass-strong)}
+table.tt{min-width:0; font-size:1rem}
+.tt th,.tt td{padding:9px 14px; text-align:center; border-bottom:1px solid var(--hair)}
+.tt th{background:transparent; font-size:.95rem}
+.tt tr.cur td{background:color-mix(in srgb, var(--l2) 12%, transparent)}
+.tt tr.fresh td{animation:flash .9s}
+.tt td.out{font-family:var(--f-display); font-weight:800}
+.dot{display:inline-block; width:12px; height:12px; border-radius:50%; margin-right:8px; vertical-align:-1px; background:color-mix(in srgb, var(--ink) 18%, transparent)}
+.dot.on{background:var(--l4); box-shadow:0 0 0 4px color-mix(in srgb, var(--l4) 30%, transparent)}
+.tt .unk{color:var(--ink-2); font-weight:700}
+.guess{display:flex; flex-direction:column; gap:8px}
+.guess .btn{justify-content:flex-start; text-align:left}
+.guess .btn.wrong{background:var(--bad-bg); color:var(--bad)}
+.guess .btn.right{background:var(--good-bg); color:var(--good); opacity:1}
+
+/* gate table + adder */
+.gates td:first-child{font-family:var(--f-display); font-weight:800}
+.adder{display:grid; grid-template-columns:minmax(0,1fr) minmax(0,1fr); gap:14px; align-items:center}
+.adder .outs{display:flex; flex-direction:column; gap:10px}
+.bulbline{display:flex; align-items:center; gap:10px; font-size:1rem}
+.bulbline .dot{width:18px; height:18px; margin:0}
+.adder .sum{font-family:var(--f-mono); font-size:1rem; color:var(--ink)}
+
+/* part 2: customers, circuit, trace */
+.rule{border-radius:20px; padding:18px 22px; max-width:760px; margin-bottom:24px}
+.rule p{font-family:var(--f-display); font-weight:800; font-size:1.3rem; line-height:1.3; max-width:none}
+.cust{display:flex; flex-direction:column; gap:8px}
+.cust-row{display:block; width:100%; text-align:left; font:inherit; color:var(--ink); background:var(--glass-strong); border:1px solid var(--hair); border-radius:14px; padding:10px 14px; cursor:pointer; min-height:56px; transition:background .15s, box-shadow .15s}
+.cust-row:hover{background:var(--paper)}
+.cust-row[aria-pressed="true"]{background:var(--paper); box-shadow:0 0 0 2px var(--ink)}
+.cust-row .nm{font-family:var(--f-display); font-weight:800; font-size:1.05rem}
+.cust-row .top{display:flex; justify-content:space-between; align-items:center; gap:12px}
+.cust-row .facts{margin-top:2px; display:flex; flex-wrap:wrap; gap:4px 12px; font-size:.95rem; color:var(--ink-2)}
+.cust-row .res{font-family:var(--f-display); font-weight:800; font-size:.92rem; border-radius:99px; padding:3px 11px; white-space:nowrap}
+.res.free{background:var(--good-bg); color:var(--good)}
+.res.pays{background:color-mix(in srgb, var(--ink) 8%, transparent); color:var(--ink-2)}
+.res.flagged{background:var(--bad-bg); color:var(--bad)}
+.res.none{color:var(--ink-2); font-weight:700}
+.variants{display:flex; flex-direction:column; gap:8px}
+.variant{display:flex; flex-direction:column; gap:2px; text-align:left; font:inherit; color:var(--ink); background:var(--glass-strong); border:1px solid var(--hair); border-radius:12px; padding:10px 14px; cursor:pointer; min-height:44px}
+.variant:hover{background:var(--paper)}
+.variant[aria-pressed="true"]{background:var(--ink); color:var(--paper); border-color:var(--ink)}
+.variant b{font-family:var(--f-display); font-weight:800; font-size:.95rem}
+.variant code{background:none; padding:0; font-size:.92rem; white-space:normal; color:inherit}
+.circuit-box{border-radius:20px; padding:14px 14px 10px}
+.circuit-box svg{display:block; width:100%; height:auto}
+.gate{fill:var(--glass-strong); stroke:color-mix(in srgb, var(--ink) 45%, transparent); stroke-width:2; transition:fill .3s}
+.gate.on{fill:color-mix(in srgb, var(--l4) 22%, var(--paper)); stroke:var(--l4)}
+.pill{fill:var(--glass-strong); stroke:var(--hair); stroke-width:1.5; transition:fill .3s}
+.pill.on{fill:color-mix(in srgb, var(--l4) 22%, var(--paper)); stroke:color-mix(in srgb, var(--l4) 70%, transparent)}
+.pill-t{font-family:var(--f-mono); font-size:14px; fill:var(--ink)}
+.pill-v{font-family:var(--f-display); font-weight:800; font-size:12px; fill:var(--ink-2)}
+.gate-t{font-family:var(--f-display); font-weight:800; font-size:12px; fill:var(--ink)}
+.trace{min-height:10.5em}
+.trace .hl{background:rgba(255,197,61,.22); color:#FFE08A; border-radius:3px; padding:0 2px}
+.trace .d{color:var(--term-dim)}
+.prec{display:grid; grid-template-columns:minmax(0,1fr) minmax(0,1fr); gap:18px}
+.prec > div{border-radius:18px; padding:16px 18px; display:flex; flex-direction:column; gap:6px}
+.prec .big{font-family:var(--f-mono); font-size:1.15rem; font-weight:600}
+.prec .big i{font-style:normal; background:color-mix(in srgb, var(--l2) 16%, transparent); border-radius:6px; padding:0 4px}
+.dm{display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:10px}
+.dm table{min-width:0; font-size:.95rem}
+.dm th,.dm td{padding:6px 8px; text-align:center}
+.dm .bad td.o{background:var(--bad-bg); color:var(--bad); font-weight:700}
+.dm-cap{font-family:var(--f-mono); font-size:.9rem; text-align:center; margin-bottom:4px}
+
+/* part 3: tests */
+.tests{display:flex; flex-direction:column; gap:14px}
+.tgroup h4{font-family:var(--f-display); font-weight:800; font-size:1.05rem; margin:0 0 6px; display:flex; justify-content:space-between; gap:10px; align-items:baseline}
+.tgroup h4 span{font-size:.92rem; color:var(--ink-2); font-weight:700}
+.trow{display:grid; grid-template-columns:22px minmax(0,1fr); gap:8px; align-items:baseline; padding:5px 0; font-size:.95rem; border-bottom:1px solid var(--hair)}
+.trow:last-child{border-bottom:0}
+.trow code{background:none; padding:0; font-size:.9rem; overflow-wrap:anywhere}
+.trow .mk{font-weight:800}
+.trow.pass .mk{color:var(--good)} .trow.fail .mk{color:var(--bad)}
+.trow .lbl{display:block; font-size:.92rem; color:var(--ink-2)}
+.trow .want{color:var(--bad); font-weight:700}
+.rules-list{margin:0; padding:0; list-style:none; display:flex; flex-direction:column; gap:10px; font-size:1rem}
+.rules-list li{display:flex; gap:10px}
+.rules-list .n{flex:none; width:26px; height:26px; border-radius:50%; display:grid; place-items:center; font-family:var(--f-display); font-weight:800; font-size:.85rem; background:color-mix(in srgb, var(--ink) 9%, transparent)}
+.cl-out .pass{color:#8BF0A8} .cl-out .fail{color:#FF9A8A}
+
+.cl-lines{font-size:16px}
+@media (max-width:900px){ .pg{align-items:stretch} .pg > *, .pg-col > *{min-width:0} .prec,.adder{grid-template-columns:minmax(0,1fr)} .dm{grid-template-columns:minmax(0,1fr)} }
+@media (max-width:640px){ .sw{gap:9px; padding-right:10px} .sw .track{width:50px} .sw[aria-pressed="true"] .track::after{transform:translateX(16px)} .trace{font-size:.9rem; padding:14px} .machine{padding:14px 12px 16px} .rule p{font-size:1.15rem} .tt th,.tt td{padding:8px 8px} }
+</style>
+</head>
+<body>
+<main id="top">
+  <section class="wrap hero">
+    <div>
+      <div class="kicker">Theory elective · Course 301 · Logic &amp; how computers decide</div>
+      <h1>Every decision a computer makes comes down to true or false.</h1>
+      <p class="lede">Behind every "if" in your app sit three tiny rules called AND, OR and NOT. You'll discover them by flipping switches, see how they turn into code, and learn to catch the logic slips AI tools make in conditions.</p>
+      <ul class="facts">
+        <li>About 15 minutes</li>
+        <li>5 parts</li>
+        <li>Code lab</li>
+        <li>No math needed</li>
+      </ul>
+      <div class="row hero-cta"><a class="btn primary" href="#p1">Start the lesson</a></div>
+    </div>
+    <figure style="margin:0">
+      <div class="hero-visual glass">
+        <svg id="heroArt" role="img" aria-label="An animated logic circuit. Three inputs, isMember, total of 30 or more, and inZone, flip between true and false. An OR gate and an AND gate combine them, and a lamp for free delivery lights up when the whole condition is true."></svg>
+        <div class="legend"><span><i style="background:var(--l4)"></i>true: current flows</span><span><i style="background:color-mix(in srgb, var(--ink) 24%, transparent)"></i>false</span></div>
+      </div>
+      <div class="hero-caption glass" aria-hidden="true"><span>if</span><span id="heroCap">(true || false) &amp;&amp; true</span></div>
+    </figure>
+  </section>
+
+  <div class="wrap">
+  <!-- PART 1 -->
+  <section class="part" id="p1">
+    <span class="bullet glass" data-p="p1">1</span>
+    <div class="part-head">
+      <div class="kicker">Part 1 of 5</div>
+      <h2>Crack the switch boxes</h2>
+      <p>Each box below has switches on the outside and a lamp. Inside, the wires follow a rule. Flip the switches, watch the lamp, and work out each rule.</p>
+    </div>
+
+    <div class="chat" aria-label="Example conversation">
+      <div class="msg me"><span class="who">You</span>Add free delivery for members or orders over $30, but only in our delivery zone.</div>
+      <div class="msg ai"><span class="who">AI assistant</span>Done! I added the condition to Rosie's Bakery checkout.</div>
+      <div class="msg me"><span class="who">You</span>A member who lives in another city just got free delivery. How?</div>
+    </div>
+    <p class="muted" style="margin:-12px 0 24px">To see how, you first need the three building blocks every condition is made of. Let's find them.</p>
+
+    <div class="task glass" data-part="p1">
+      <h3>Your task</h3>
+      <ol>
+        <li data-t="table"><span>Try all four switch combinations on Box 1.</span></li>
+        <li data-t="name1"><span>Name the rule inside Box 1.</span></li>
+        <li data-t="more"><span>Crack Box 2 and Box 3.</span></li>
+        <li data-t="not"><span>Crack Box 4, the one with a single switch.</span></li>
+      </ol>
+    </div>
+
+    <div class="pg">
+      <div class="pg-col">
+        <div class="o1 ctl glass">
+          <h3 class="ctl-title">Pick a box</h3>
+          <div class="seg-control boxes" id="boxPick" role="group" aria-label="Switch boxes"></div>
+        </div>
+        <div class="o3 ctl glass">
+          <h3 class="ctl-title">What you've seen</h3>
+          <p class="ctl-sub">Every combination you try is written down here. This is called a <b>truth table</b>.</p>
+          <div class="tt-wrap"><table class="tt" id="tt"></table></div>
+          <div class="row" style="margin-top:12px; gap:8px">
+            <span class="muted small">Write it as</span>
+            <div class="seg-control" id="fmt" role="group" aria-label="Truth table format">
+              <button aria-pressed="true" data-f="0">on / off</button><button aria-pressed="false" data-f="1">true / false</button><button aria-pressed="false" data-f="2">1 / 0</button>
+            </div>
+          </div>
+        </div>
+        <div class="o4 ctl glass">
+          <h3 class="ctl-title">What makes the lamp light?</h3>
+          <p class="ctl-sub" id="guessSub">Try every row of the table first. A rule has to fit all of them.</p>
+          <div class="guess" id="guess"></div>
+        </div>
+      </div>
+      <div class="pg-col">
+        <div class="o2 machine glass">
+          <div class="m-head"><h3 id="mTitle">Box 1</h3><span class="muted" id="mSub">Rule unknown</span></div>
+          <svg id="machine" viewBox="0 0 408 240" role="img" aria-label="A battery, a closed box with switches, and a lamp"></svg>
+          <div class="switches" id="switches"></div>
+        </div>
+        <div class="o5 note" id="boxNote" aria-live="polite">Flip a switch and watch the lamp.</div>
+      </div>
+    </div>
+
+    <div class="stack" style="margin-top:56px">
+      <h3>You just found the basic gates</h3>
+      <p>Each box is a <b>logic gate</b>: a tiny rule that takes true/false inputs and gives one true/false answer. Computers call on <b>true</b> and off <b>false</b>. In code, a question like <code>total &gt;= 30</code> works like a switch: the data flips it.</p>
+      <div class="table-wrap glass">
+        <table class="gates">
+          <thead><tr><th>Gate</th><th>True when…</th><th>In JavaScript</th><th>At Rosie's Bakery</th></tr></thead>
+          <tbody>
+            <tr><td>AND</td><td>both inputs are true</td><td><code>a &amp;&amp; b</code></td><td><code>isOpen &amp;&amp; inZone</code>: we can deliver now</td></tr>
+            <tr><td>OR</td><td>at least one input is true</td><td><code>a || b</code></td><td><code>isMember || total &gt;= 30</code>: a reason for free delivery</td></tr>
+            <tr><td>NOT</td><td>its input is false</td><td><code>!a</code></td><td><code>!soldOut</code>: show the Order button</td></tr>
+            <tr><td>XOR</td><td>exactly one input is true</td><td><code>a !== b</code></td><td>Rare in apps. It's the hallway light with a switch at each end.</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p>Every decision in software, from "show the checkout button" to "is this password right", is built by combining these. When an AI writes <code>if (…)</code>, it's wiring gates together.</p>
+      <details class="deeper glass">
+        <summary>Under the hood: how gates add numbers <small>optional</small></summary>
+        <div>
+          <p>Computers store numbers in binary, using only 1s and 0s. Adding two single digits needs just two gates: <b>XOR</b> gives the digit you write down, and <b>AND</b> tells you whether to carry. Flip the bits and check.</p>
+          <div class="adder">
+            <div class="switches" id="adderSw"></div>
+            <div class="outs">
+              <div class="bulbline"><span class="dot" id="aSum"></span><span><b>Sum digit</b> (A XOR B)</span></div>
+              <div class="bulbline"><span class="dot" id="aCarry"></span><span><b>Carry</b> (A AND B)</span></div>
+              <div class="sum" id="aText" aria-live="polite"></div>
+            </div>
+          </div>
+          <p>Chain these for every digit and you can add any two numbers. Loop two gates back into each other and they hold their answer after the input goes away: that's one bit of memory. A modern chip has billions of gates, built from tiny switches called transistors.</p>
+        </div>
+      </details>
+    </div>
+  </section>
+
+  <!-- PART 2 -->
+  <section class="part" id="p2">
+    <span class="bullet glass" data-p="p2">2</span>
+    <div class="part-head">
+      <div class="kicker">Part 2 of 5</div>
+      <h2>From gates to code: the free delivery bug</h2>
+      <p>In code, AND is written <code>&amp;&amp;</code>, OR is <code>||</code> and NOT is <code>!</code>. Here's the condition the AI wrote for Rosie. Run it on real customers and find out who gets free delivery by mistake.</p>
+    </div>
+
+    <div class="rule glass">
+      <div class="kicker" style="margin-bottom:4px">Rosie's rule</div>
+      <p>Free delivery for members or orders of $30 or more, but only inside the delivery zone.</p>
+    </div>
+
+    <div class="task glass" data-part="p2">
+      <h3>Your task</h3>
+      <ol>
+        <li data-t="test"><span>Run the AI's code for all five customers.</span></li>
+        <li data-t="flag"><span>Flag the customer who gets free delivery by mistake.</span></li>
+        <li data-t="c"><span>Try Version C and see how it compares.</span></li>
+        <li data-t="fix"><span>Pick the version that matches Rosie's rule.</span></li>
+      </ol>
+    </div>
+
+    <div class="pg">
+      <div class="pg-col">
+        <div class="o1 ctl glass">
+          <h3 class="ctl-title">Customers</h3>
+          <p class="ctl-sub">Pick a customer to run the code with their order.</p>
+          <div class="cust" id="cust"></div>
+          <div class="row" style="margin-top:12px"><button class="btn danger" id="flagBtn" disabled>Flag as a mistake</button></div>
+        </div>
+        <div class="o4 ctl glass">
+          <h3 class="ctl-title">Which code?</h3>
+          <p class="ctl-sub">Same parts, different parentheses.</p>
+          <div class="variants" id="variants"></div>
+        </div>
+      </div>
+      <div class="pg-col">
+        <div class="o2 stack" style="gap:10px">
+          <div class="label">How the computer works it out</div>
+          <div class="code trace" id="trace" aria-live="polite"></div>
+        </div>
+        <div class="o3 circuit-box glass">
+          <svg id="circ" role="img" aria-label="The condition drawn as a circuit of gates"></svg>
+        </div>
+        <div class="o5 note" id="p2Note" aria-live="polite">Pick a customer to start.</div>
+      </div>
+    </div>
+
+    <div class="stack" style="margin-top:56px">
+      <h3>Why the computer read it that way</h3>
+      <p>Code has an order of operations, just like math. In math, × goes before +. In code, <code>&amp;&amp;</code> goes before <code>||</code>. So the AI's line was read as "members, <i>or</i> big orders in the zone". Cleo is a member, so the zone never mattered.</p>
+      <div class="prec">
+        <div class="glass"><span class="label">In math</span><span class="big">2 + <i>3 × 4</i> = 14</span><span class="muted small">Not 20. The × happens first.</span></div>
+        <div class="glass"><span class="label">In code</span><span class="big">m || <i>t &amp;&amp; z</i></span><span class="muted small">The &amp;&amp; happens first. Parentheses change the order.</span></div>
+      </div>
+      <p>This kind of bug is easy to write and hard to see, for people and AI alike. The code looks like the sentence. Two habits catch it: ask for <b>parentheses</b> whenever a condition mixes <code>&amp;&amp;</code> and <code>||</code>, and <b>test the combinations</b>. Three true/false inputs have 8 combinations. Six have 64. That's why a table of cases beats reading the code.</p>
+      <details class="deeper glass">
+        <summary>Under the hood: De Morgan's laws <small>optional</small></summary>
+        <div>
+          <p>A sign says "No food or drinks." That means no food <i>and</i> no drinks. When you push a NOT inside parentheses, every OR flips to AND (and every AND flips to OR). This is <b>De Morgan's law</b>, and "simplifying" it wrong is a classic AI slip.</p>
+          <div class="dm" id="dm"></div>
+          <p>The first two tables match on every row, so they're the same rule. The third looks similar but disagrees in the red rows: it would let in someone with food but no drink.</p>
+        </div>
+      </details>
+    </div>
+  </section>
+
+  <!-- PART 3 -->
+  <section class="part" id="p3">
+    <span class="bullet glass" data-p="p3">3</span>
+    <div class="part-head">
+      <div class="kicker">Part 3 of 5</div>
+      <h2>Try it: write Rosie's rules</h2>
+      <p>Time to write conditions yourself. Each rule has tests that check it with real cases, including the tricky ones at the edges. Make every test pass.</p>
+    </div>
+
+    <div class="lab">
+      <div class="a-mission ctl glass">
+        <h3 class="ctl-title">Your mission</h3>
+        <p class="ctl-sub" style="margin-top:0">Rosie's order app needs three rules. The AI wrote the first one, bug included. Fix it, then write the other two.</p>
+        <ol class="mission" id="mission"></ol>
+      </div>
+      <div class="a-work" id="lab"></div>
+      <div class="a-side ctl glass">
+        <h3 class="ctl-title">Rosie's rules</h3>
+        <ol class="rules-list">
+          <li><span class="n">1</span><span><b>Free delivery</b> for members or orders of $30 or more, only inside the zone.</span></li>
+          <li><span class="n">2</span><span><b>Open</b> from 8:00 until 18:00 (6pm), every day except Sunday.</span></li>
+          <li><span class="n">3</span><span><b>Cakes</b> need 2 days' notice. Members can order with 1 day's notice.</span></li>
+        </ol>
+        <p class="muted small" style="margin-top:14px">You'll need <code>&amp;&amp;</code>, <code>||</code>, <code>!==</code> (is not), <code>&gt;=</code> (at least) and <code>&lt;</code> (less than).</p>
+      </div>
+      <div class="a-extra ctl glass">
+        <h3 class="ctl-title">Tests</h3>
+        <div class="tests" id="tests"><p class="muted small">Press Run to check your rules.</p></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- PART 4 -->
+  <section class="part" id="p4">
+    <span class="bullet glass" data-p="p4">4</span>
+    <div class="part-head">
+      <div class="kicker">Part 4 of 5</div>
+      <h2>Steer the AI</h2>
+      <p>AI tools write conditions fast and describe them confidently. The logic is where they slip. Pick the reply you'd send.</p>
+    </div>
+    <p class="counter" id="steerCount"></p>
+    <div id="steer"></div>
+  </section>
+
+  <!-- PART 5 -->
+  <section class="part" id="p5">
+    <span class="bullet glass" data-p="p5">5</span>
+    <div class="part-head">
+      <div class="kicker">Part 5 of 5</div>
+      <h2>Check your understanding</h2>
+      <p>Five quick questions. Each answer explains itself.</p>
+    </div>
+    <div id="quiz"></div>
+    <div id="doneCard" aria-live="polite"></div>
+  </section>
+  </div>
+
+  <section class="after" id="cheat">
+    <div class="wrap stack">
+      <h2>Cheat sheet</h2>
+      <p class="muted">The pieces of every condition, and where AI-written ones go wrong.</p>
+      <div class="table-wrap glass">
+        <table>
+          <thead><tr><th>In code</th><th>Name</th><th>True when…</th><th>Watch out for</th></tr></thead>
+          <tbody>
+            <tr><td><code>a &amp;&amp; b</code></td><td>AND</td><td>both are true</td><td>Something can't be two things at once: <code>day === "Sat" &amp;&amp; day === "Sun"</code> is never true.</td></tr>
+            <tr><td><code>a || b</code></td><td>OR</td><td>at least one is true</td><td>Mixed with <code>&amp;&amp;</code>, the <code>&amp;&amp;</code> goes first. Ask for parentheses.</td></tr>
+            <tr><td><code>!a</code></td><td>NOT</td><td>a is false</td><td><code>!(a || b)</code> equals <code>!a &amp;&amp; !b</code>, not <code>!a || !b</code>.</td></tr>
+            <tr><td><code>a !== b</code></td><td>XOR, for true/false</td><td>exactly one is true</td><td>Rare in apps. Check it's really what's meant.</td></tr>
+            <tr><td><code>&gt;</code> vs <code>&gt;=</code></td><td>Comparisons</td><td>more than / at least</td><td>"$30 or more" needs <code>&gt;=</code>. Test the exact boundary.</td></tr>
+            <tr><td><code>( … )</code></td><td>Parentheses</td><td>grouped part goes first</td><td>Free and clear. Ask for them whenever <code>&amp;&amp;</code> and <code>||</code> mix.</td></tr>
+            <tr><td>A table of cases</td><td>Truth table</td><td>every combination listed</td><td>Ask the AI for one, then turn each row into a test.</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+</main>
+<script src="../assets/cs-school.js"></script>
+<script>
+(() => {
+const { $, $$, esc, reduce } = CS;
+
+CS.lesson({
+  id: '301',
+  parts: [
+    { id: 'p1', title: 'Switch boxes' },
+    { id: 'p2', title: 'The delivery bug' },
+    { id: 'p3', title: 'Try it' },
+    { id: 'p4', title: 'Steer the AI' },
+    { id: 'p5', title: 'Check' }
+  ]
+});
+
+/* ---------------- shared drawing helpers ---------------- */
+const wire = (d, on) => `<path class="w${on ? ' on' : ''}" d="${d}"/>` + (on && !reduce ? `<path class="flow" d="${d}"/>` : '');
+function lever(px, py, cx, cy, closed, lit) {
+  let ex = cx, ey = cy;
+  if (!closed) { const dx = cx - px, dy = cy - py, a = -Math.PI / 6; ex = px + dx * Math.cos(a) - dy * Math.sin(a); ey = py + dx * Math.sin(a) + dy * Math.cos(a); }
+  return `<line class="lever${lit ? ' on' : ''}" x1="${px}" y1="${py}" x2="${ex.toFixed(1)}" y2="${ey.toFixed(1)}"/><circle class="contact" cx="${cx}" cy="${cy}" r="4.5"/><circle class="pivot" cx="${px}" cy="${py}" r="5"/>`;
+}
+const lampSVG = (x, y, on, r = 22) => {
+  let rays = '';
+  for (let i = 0; i < 8; i++) { const a = i * Math.PI / 4 + Math.PI / 8; rays += `M${(x + Math.cos(a) * (r + 8)).toFixed(1)} ${(y + Math.sin(a) * (r + 8)).toFixed(1)}L${(x + Math.cos(a) * (r + 15)).toFixed(1)} ${(y + Math.sin(a) * (r + 15)).toFixed(1)}`; }
+  return `<g class="lamp${on ? ' on' : ''}"><circle class="glow" cx="${x}" cy="${y}" r="${r * 2}"/><path class="rays" d="${rays}"/><circle class="bulb" cx="${x}" cy="${y}" r="${r}"/><path class="fil" d="M${x - r * .4} ${y + r * .3}l${r * .18} ${-r * .5}l${r * .22} ${r * .38}l${r * .22} ${-r * .38}l${r * .18} ${r * .5}"/></g>`;
+};
+
+/* ---------------- condition circuits (hero + part 2) ---------------- */
+const LEAF = {
+  m: { src: 'isMember', sub: c => String(c.member) },
+  t: { src: 'total >= 30', sub: c => `${c.total} >= 30` },
+  z: { src: 'inZone', sub: c => String(c.zone) }
+};
+const leafVals = c => ({ m: !!c.member, t: c.total >= 30, z: !!c.zone });
+const evalNode = (n, v) => n.leaf ? v[n.leaf] : n.op === 'and' ? n.kids.every(k => evalNode(k, v)) : n.kids.some(k => evalNode(k, v));
+const colOf = n => n.leaf ? 0 : 1 + Math.max(...n.kids.map(colOf));
+function circuitSVG(tree, v, W, opts = {}) {
+  const leaves = []; (function walk(n) { if (n.leaf) leaves.push(n); else n.kids.forEach(walk); })(tree);
+  const maxCol = colOf(tree);
+  const rowH = opts.rowH || 60, top = opts.top || 30;
+  const pw = Math.min(opts.pw || 150, Math.round(W * .36)), ph = 44;
+  const lampX = W - 34;
+  const gx0 = pw + 16, gx1 = lampX - 46;
+  const dx = (gx1 - gx0) / maxCol;
+  const pos = new Map();
+  leaves.forEach((n, i) => pos.set(n, { x: 4 + pw, y: top + i * rowH }));
+  (function place(n) { if (n.leaf) return; n.kids.forEach(place); const c = colOf(n); const ys = n.kids.map(k => pos.get(k).y); pos.set(n, { x: gx0 + (c - .5) * dx + 22, y: ys.reduce((a, b) => a + b, 0) / ys.length }); })(tree);
+  const H = top + (leaves.length - 1) * rowH + 40;
+  let wires = '', parts = '';
+  leaves.forEach(n => {
+    const p = pos.get(n), on = v[n.leaf];
+    parts += `<rect class="pill${on ? ' on' : ''}" x="4" y="${p.y - ph / 2}" width="${pw}" height="${ph}" rx="12"/>`
+      + `<text class="pill-t" x="15" y="${p.y - 1}">${esc(LEAF[n.leaf].src)}</text>`
+      + `<text class="pill-v" x="15" y="${p.y + 15}">${on ? 'true' : 'false'}</text>`;
+  });
+  const outX = n => n.leaf ? 4 + pw : pos.get(n).x + (n.op === 'and' ? 22 : 24);
+  (function draw(n) {
+    if (n.leaf) return;
+    const p = pos.get(n), on = evalNode(n, v);
+    n.kids.forEach((k, i) => {
+      const kp = pos.get(k), sx = outX(k), sy = kp.y;
+      const inY = p.y + (i === 0 ? -11 : 11), inX = p.x - 22 + (n.op === 'or' ? 5 : 0);
+      const mx = (sx + inX) / 2;
+      wires += wire(`M${sx} ${sy}C${mx} ${sy} ${mx} ${inY} ${inX} ${inY}`, evalNode(k, v));
+      draw(k);
+    });
+    const l = p.x - 22, t = p.y - 22, b = p.y + 22;
+    const d = n.op === 'and'
+      ? `M${l} ${t}H${p.x}A22 22 0 0 1 ${p.x} ${b}H${l}Z`
+      : `M${l} ${t}Q${l + 12} ${p.y} ${l} ${b}Q${p.x + 4} ${b} ${p.x + 24} ${p.y}Q${p.x + 4} ${t} ${l} ${t}Z`;
+    parts += `<path class="gate${on ? ' on' : ''}" d="${d}"/><text class="gate-t" x="${p.x - (n.op === 'and' ? 4 : 2)}" y="${p.y + 4.5}" text-anchor="middle">${n.op.toUpperCase()}</text>`;
+  })(tree);
+  const rp = pos.get(tree), out = evalNode(tree, v);
+  wires += wire(`M${outX(tree)} ${rp.y}H${lampX - 20}`, out);
+  parts += lampSVG(lampX, rp.y, out, 16);
+  if (opts.lampLabel) parts += `<text class="svg-s" x="${W - 2}" y="${rp.y + 44}" text-anchor="end" style="font-size:13px">${opts.lampLabel}</text>`;
+  return { svg: wires + parts, H: Math.max(H, rp.y + 52) };
+}
+
+/* ---------------- hero ---------------- */
+const TREE_B = { op: 'and', kids: [{ op: 'or', paren: 1, kids: [{ leaf: 'm' }, { leaf: 't' }] }, { leaf: 'z' }] };
+(function hero() {
+  const svg = $('#heroArt'), cap = $('#heroCap');
+  const seq = [[1, 0, 1], [0, 1, 1], [1, 1, 0], [0, 0, 1], [1, 1, 1], [0, 1, 0], [1, 0, 0], [0, 0, 0]];
+  let i = 0;
+  const draw = () => {
+    const [m, t, z] = seq[i % seq.length];
+    const v = { m: !!m, t: !!t, z: !!z };
+    const W = Math.max(300, Math.round(svg.getBoundingClientRect().width) || 520);
+    const r = circuitSVG(TREE_B, v, W, { pw: 150, rowH: W < 440 ? 58 : 70, top: 34, lampLabel: 'free delivery' });
+    svg.setAttribute('viewBox', `0 0 ${W} ${r.H}`);
+    svg.innerHTML = r.svg;
+    cap.innerHTML = `(${!!m} || ${!!t}) &amp;&amp; ${!!z}  →  ${(!!m || !!t) && !!z}`;
+  };
+  draw();
+  addEventListener('resize', draw);
+  if (reduce) return;
+  setInterval(() => { i++; draw(); }, 2200);
+})();
+
+/* ---------------- Part 1: switch boxes ---------------- */
+const BOXES = [
+  { name: 'AND', n: 2, f: (a, b) => a && b, answer: 'both',
+    why: '<strong>Box 1 is an AND gate.</strong> The lamp lights only when A <i>and</i> B are both on. Inside, the switches sit one after the other on a single wire, so the current has to get through both.' },
+  { name: 'OR', n: 2, f: (a, b) => a || b, answer: 'any',
+    why: '<strong>Box 2 is an OR gate.</strong> The lamp lights when A <i>or</i> B is on, or both. Inside, each switch has its own path to the lamp, so either one is enough.' },
+  { name: 'XOR', n: 2, f: (a, b) => a !== b, answer: 'one',
+    why: '<strong>Box 3 is an XOR gate</strong>, short for "exclusive or". The lamp lights when exactly one switch is on. It\'s how a hallway light with a switch at each end works: flipping either switch changes the light.' },
+  { name: 'NOT', n: 1, f: a => !a, answer: 'off',
+    why: '<strong>Box 4 is a NOT gate.</strong> It flips its input: switch on, lamp off. Inside, the switch is a shortcut around the lamp. When it closes, the current takes the easy path and skips the lamp. Early chips worked much like this, with a transistor as the switch.' }
+];
+const GUESS2 = [['both', 'Both switches are on'], ['any', 'At least one switch is on'], ['one', 'Exactly one switch is on']];
+const GUESS1 = [['on', 'The switch is on'], ['off', 'The switch is off']];
+const predict = (g, a, b) => g === 'both' ? a && b : g === 'any' ? a || b : g === 'one' ? a !== b : g === 'on' ? a : !a;
+const P1 = { box: 0, sw: [false, false], seen: BOXES.map(() => new Set()), cracked: BOXES.map(() => false), fmt: 0, last: null };
+const FMT = [['off', 'on'], ['false', 'true'], ['0', '1']];
+const combos = n => n === 2 ? [[0, 0], [0, 1], [1, 0], [1, 1]] : [[0], [1]];
+
+function machineSVG(bi, a, b, cracked) {
+  const bx = BOXES[bi];
+  const out = bi === 3 ? !a : bx.f(a, b);
+  const flowing = bi === 3 ? true : out;
+  let s = '';
+  // battery, outer loop and lamp. Rail at y=96, return wire at y=226, box from x=72 to 304.
+  s += `<line class="plate" x1="10" y1="132" x2="46" y2="132" stroke-width="4"/><line class="plate" x1="19" y1="145" x2="37" y2="145" stroke-width="7"/>`;
+  s += `<text class="svg-s" x="4" y="124" style="font-size:15px">+</text>`;
+  s += wire('M28 132V96H72', flowing);
+  s += wire('M304 96H356V124', out);
+  s += wire('M356 172V226H262', out);
+  s += wire('M262 226H28V145', flowing);
+  if (bi === 3) s += wire('M262 182V226', !!a);
+  s += `<circle class="junction${flowing ? ' on' : ''}" cx="262" cy="226" r="${bi === 3 && cracked ? 5 : 0}"/>`;
+  s += lampSVG(356, 148, out, 24);
+  if (!cracked) {
+    s += `<rect class="lid" x="72" y="16" width="232" height="166" rx="20"/>`;
+    s += `<text class="svg-t" x="188" y="112" text-anchor="middle" style="font-size:52px; fill:var(--ink-2)">?</text>`;
+    s += `<text class="svg-s" x="188" y="150" text-anchor="middle" style="font-size:17px">${bx.n === 2 ? 'switches A and B inside' : 'switch A inside'}</text>`;
+    return s;
+  }
+  let g = `<rect class="box-bg" x="72" y="16" width="232" height="166" rx="20"/>`;
+  const lab = (x, y, t) => `<text class="svg-t" x="${x}" y="${y}" text-anchor="middle" style="font-size:19px">${t}</text>`;
+  if (bi === 0) {
+    g += wire('M72 96H118', out) + lever(118, 96, 174, 96, a, out) + wire('M174 96H202', out) + lever(202, 96, 258, 96, b, out) + wire('M258 96H304', out);
+    g += lab(146, 136, 'A') + lab(230, 136, 'B');
+  } else if (bi === 1) {
+    g += wire('M72 96H100', out) + wire('M100 96V58H160', a) + lever(160, 58, 216, 58, a, a) + wire('M216 58H276V96', a);
+    g += wire('M100 96V138H160', b) + lever(160, 138, 216, 138, b, b) + wire('M216 138H276V96', b) + wire('M276 96H304', out);
+    g += lab(188, 88, 'A') + lab(188, 168, 'B');
+  } else if (bi === 2) {
+    const aTop = !!a, bTop = !b;
+    const sw2 = (px, cx, top) => `<line class="lever${out ? ' on' : ''}" x1="${px}" y1="96" x2="${cx}" y2="${top ? 62 : 130}"/><circle class="contact" cx="${cx}" cy="62" r="5"/><circle class="contact" cx="${cx}" cy="130" r="5"/><circle class="pivot" cx="${px}" cy="96" r="5.5"/>`;
+    g += wire('M72 96H112', out) + sw2(112, 162, aTop);
+    g += wire('M162 62H214', out && aTop) + wire('M162 130H214', out && !aTop);
+    g += sw2(264, 214, bTop) + wire('M264 96H304', out);
+    g += lab(104, 132, 'A') + lab(272, 132, 'B');
+  } else {
+    g += wire('M72 96H90l6 -11l12 22l12 -22l12 22l12 -22l12 22l6 -11H262', true);
+    g += wire('M262 96H304', out);
+    g += wire('M262 96V116', !!a) + lever(262, 116, 262, 166, a, !!a) + wire('M262 166V226', !!a);
+    g += `<circle class="junction on" cx="262" cy="96" r="5"/>`;
+    g += lab(240, 150, 'A') + `<text class="svg-s" x="126" y="134" text-anchor="middle" style="font-size:15px">resistor</text>`;
+  }
+  return s + `<g class="inner">${g}</g>`;
+}
+
+function renderBoxPick() {
+  $('#boxPick').innerHTML = BOXES.map((b, i) => `<button aria-pressed="${i === P1.box}" data-b="${i}">${P1.cracked[i] ? b.name + '<span class="ok" aria-label="cracked"></span>' : 'Box ' + (i + 1)}</button>`).join('');
+}
+function renderSwitches() {
+  const bx = BOXES[P1.box];
+  $('#switches').innerHTML = ['A', 'B'].slice(0, bx.n).map((l, i) => `<button class="sw" aria-pressed="${P1.sw[i]}" data-sw="${i}"><span class="track"></span><span class="txt">Switch ${l}<small>${P1.sw[i] ? 'on' : 'off'}</small></span></button>`).join('');
+}
+function renderTable() {
+  const bx = BOXES[P1.box], seen = P1.seen[P1.box], F = FMT[P1.fmt];
+  const cur = P1.sw.slice(0, bx.n).map(Number).join('');
+  const head = bx.n === 2 ? '<th>A</th><th>B</th>' : '<th>A</th>';
+  $('#tt').innerHTML = `<thead><tr>${head}<th>Lamp</th></tr></thead><tbody>` + combos(bx.n).map(c => {
+    const k = c.join(''), s = seen.has(k), out = bx.n === 2 ? bx.f(!!c[0], !!c[1]) : bx.f(!!c[0]);
+    return `<tr class="${k === cur ? 'cur' : ''}${k === P1.last ? ' fresh' : ''}">${c.map(x => `<td>${F[x]}</td>`).join('')}<td class="out">${s ? `<span class="dot${out ? ' on' : ''}"></span>${F[+out]}` : '<span class="unk">?</span>'}</td></tr>`;
+  }).join('') + '</tbody>';
+  P1.last = null;
+}
+function renderGuess() {
+  const bx = BOXES[P1.box], all = P1.seen[P1.box].size === combos(bx.n).length;
+  const opts = bx.n === 2 ? GUESS2 : GUESS1;
+  $('#guessSub').textContent = P1.cracked[P1.box] ? `Cracked: it's ${bx.name}.` : all ? 'You\'ve seen every row. Which rule fits them all?' : `Try every row of the table first. ${combos(bx.n).length - P1.seen[P1.box].size} to go.`;
+  $('#guess').innerHTML = opts.map(([k, t]) => `<button class="btn${P1.cracked[P1.box] && k === bx.answer ? ' right' : ''}" data-g="${k}" ${!all || P1.cracked[P1.box] ? 'disabled' : ''}>${t}</button>`).join('');
+}
+function renderMachine() {
+  const bx = BOXES[P1.box];
+  $('#machine').innerHTML = machineSVG(P1.box, P1.sw[0], P1.sw[1], P1.cracked[P1.box]);
+  $('#mTitle').textContent = `Box ${P1.box + 1}`;
+  $('#mSub').textContent = P1.cracked[P1.box] ? `${bx.name === 'NOT' ? 'a' : 'an'} ${bx.name} gate` : 'rule unknown';
+  const on = P1.box === 3 ? !P1.sw[0] : bx.f(P1.sw[0], P1.sw[1]);
+  $('#machine').setAttribute('aria-label', `Box ${P1.box + 1}. Switch A is ${P1.sw[0] ? 'on' : 'off'}${bx.n === 2 ? `, switch B is ${P1.sw[1] ? 'on' : 'off'}` : ''}. The lamp is ${on ? 'on' : 'off'}.`);
+}
+function renderP1() { renderBoxPick(); renderSwitches(); renderTable(); renderGuess(); renderMachine(); }
+function boxNote(html, kind = '') { CS.say($('#boxNote'), html, kind); $('#boxNote').classList.add('o5'); }
+function record() {
+  const bx = BOXES[P1.box], k = P1.sw.slice(0, bx.n).map(Number).join('');
+  const fresh = !P1.seen[P1.box].has(k);
+  P1.seen[P1.box].add(k);
+  if (fresh) P1.last = k;
+  const left = combos(bx.n).length - P1.seen[P1.box].size;
+  if (P1.box === 0 && !left) CS.tick('p1', 'table');
+  if (!P1.cracked[P1.box]) {
+    const on = bx.n === 2 ? bx.f(P1.sw[0], P1.sw[1]) : bx.f(P1.sw[0]);
+    if (left) boxNote(`The lamp is <b>${on ? 'on' : 'off'}</b>. ${fresh ? 'New row added to the table.' : 'You\'ve seen this one.'} ${left} combination${left > 1 ? 's' : ''} left to try.`);
+    else boxNote('<strong>Table complete.</strong> Now look at the rows where the lamp is on. What do they have in common? Pick the rule.', '');
+  }
+}
+$('#boxPick').addEventListener('click', e => {
+  const b = e.target.closest('[data-b]'); if (!b) return;
+  P1.box = +b.dataset.b; P1.sw = [false, false];
+  record(); renderP1();
+  if (P1.cracked[P1.box]) boxNote(BOXES[P1.box].why, 'good');
+});
+$('#switches').addEventListener('click', e => {
+  const b = e.target.closest('[data-sw]'); if (!b) return;
+  P1.sw[+b.dataset.sw] = !P1.sw[+b.dataset.sw];
+  record(); renderP1();
+  const nb = $(`#switches [data-sw="${b.dataset.sw}"]`); if (nb) nb.focus({ preventScroll: true });
+});
+$('#fmt').addEventListener('click', e => {
+  const b = e.target.closest('[data-f]'); if (!b) return;
+  P1.fmt = +b.dataset.f;
+  $$('#fmt button').forEach(x => x.setAttribute('aria-pressed', x === b));
+  renderTable();
+});
+$('#guess').addEventListener('click', e => {
+  const b = e.target.closest('[data-g]'); if (!b || b.disabled) return;
+  const bx = BOXES[P1.box], g = b.dataset.g;
+  if (g === bx.answer) {
+    P1.cracked[P1.box] = true;
+    const nextBox = P1.cracked.findIndex(c => !c);
+    boxNote(bx.why + (nextBox >= 0 ? `<div class="row" style="margin-top:10px"><button class="btn" data-go-box="${nextBox}">Try Box ${nextBox + 1}</button></div>` : ' <b>All four cracked.</b> Scroll on to see what you found.'), 'good');
+    if (P1.box === 0) CS.tick('p1', 'name1');
+    if (P1.cracked[1] && P1.cracked[2]) CS.tick('p1', 'more');
+    if (P1.cracked[3]) CS.tick('p1', 'not');
+    renderP1();
+  } else {
+    b.classList.add('wrong'); b.disabled = true;
+    const F = ['off', 'on'];
+    const row = combos(bx.n).find(c => predict(g, !!c[0], !!c[1]) !== (bx.n === 2 ? bx.f(!!c[0], !!c[1]) : bx.f(!!c[0])));
+    const desc = bx.n === 2 ? `A ${F[row[0]]}, B ${F[row[1]]}` : `A ${F[row[0]]}`;
+    const actual = bx.n === 2 ? bx.f(!!row[0], !!row[1]) : bx.f(!!row[0]);
+    boxNote(`<strong>Not quite.</strong> Look at the row <b>${desc}</b>: the lamp was <b>${actual ? 'on' : 'off'}</b>, but "${b.textContent}" says it would be ${actual ? 'off' : 'on'}. A rule has to fit every row. Try another.`, 'bad');
+  }
+});
+$('#boxNote').addEventListener('click', e => {
+  const b = e.target.closest('[data-go-box]'); if (!b) return;
+  P1.box = +b.dataset.goBox; P1.sw = [false, false];
+  record(); renderP1();
+  $('#machine').scrollIntoView({ behavior: reduce ? 'auto' : 'smooth', block: 'center' });
+});
+P1.seen[0].add('00');
+renderP1();
+
+/* half adder */
+const AD = [false, false];
+function renderAdder() {
+  $('#adderSw').innerHTML = ['A', 'B'].map((l, i) => `<button class="sw" aria-pressed="${AD[i]}" data-ad="${i}"><span class="track"></span><span class="txt">Bit ${l}<small>${+AD[i]}</small></span></button>`).join('');
+  const s = AD[0] !== AD[1], c = AD[0] && AD[1];
+  $('#aSum').className = 'dot' + (s ? ' on' : ''); $('#aCarry').className = 'dot' + (c ? ' on' : '');
+  $('#aText').innerHTML = `${+AD[0]} + ${+AD[1]} = ${+c}${+s} in binary, which is ${+AD[0] + +AD[1]}`;
+}
+$('#adderSw').addEventListener('click', e => { const b = e.target.closest('[data-ad]'); if (!b) return; AD[+b.dataset.ad] = !AD[+b.dataset.ad]; renderAdder(); const nb = $(`#adderSw [data-ad="${b.dataset.ad}"]`); if (nb) nb.focus({ preventScroll: true }); });
+renderAdder();
+
+/* ---------------- Part 2: the delivery bug ---------------- */
+const CUSTOMERS = [
+  { name: 'Ana', member: true, total: 12, zone: true, where: 'lives two streets away' },
+  { name: 'Ben', member: false, total: 45, zone: true, where: 'lives in town' },
+  { name: 'Cleo', member: true, total: 18, zone: false, where: 'lives in another city' },
+  { name: 'Dev', member: false, total: 52, zone: false, where: 'lives out in the hills' },
+  { name: 'Eli', member: false, total: 9, zone: true, where: 'lives in town' }
+];
+const ruleOK = c => (c.member || c.total >= 30) && c.zone;
+const L = k => ({ leaf: k });
+const VARIANTS = [
+  { id: 'ai', label: "The AI's code", code: 'isMember || total >= 30 && inZone', tree: { op: 'or', kids: [L('m'), { op: 'and', kids: [L('t'), L('z')] }] } },
+  { id: 'b', label: 'Version B', code: '(isMember || total >= 30) && inZone', tree: TREE_B },
+  { id: 'c', label: 'Version C', code: 'isMember || (total >= 30 && inZone)', tree: { op: 'or', kids: [L('m'), { op: 'and', paren: 1, kids: [L('t'), L('z')] }] } }
+];
+const P2 = { cust: null, variant: 0, tested: new Set(), flagged: false };
+const result = (c, vi = P2.variant) => evalNode(VARIANTS[vi].tree, leafVals(c));
+
+function traceHTML(tree, c, narrow) {
+  const v = leafVals(c);
+  const gates = []; (function walk(n) { if (!n.leaf) { n.kids.forEach(walk); gates.push(n); } })(tree);
+  const maxCol = colOf(tree);
+  const lines = [];
+  const show = (n, stage, done, fresh) => {
+    if (done.has(n)) { const s = String(n.leaf ? v[n.leaf] : evalNode(n, v)); return fresh.has(n) ? `<span class="hl">${s}</span>` : s; }
+    if (n.leaf) return stage === 0 ? LEAF[n.leaf].src : LEAF[n.leaf].sub(c);
+    const inner = n.kids.map(k => show(k, stage, done, fresh)).join(n.op === 'and' ? ' &amp;&amp; ' : ' || ');
+    return n.paren ? `(${inner})` : inner;
+  };
+  const done = new Set();
+  lines.push([show(tree, 0, done, new Set()), '']);
+  lines.push([show(tree, 1, done, new Set()), `plug in ${c.name}'s order`]);
+  const lvs = []; (function w(n) { if (n.leaf) lvs.push(n); else n.kids.forEach(w); })(tree);
+  const cmp = new Set(lvs.filter(n => n.leaf === 't'));
+  lvs.forEach(n => done.add(n));
+  lines.push([show(tree, 2, done, cmp), 'compare']);
+  for (let col = 1; col <= maxCol; col++) {
+    const now = new Set(gates.filter(g => colOf(g) === col));
+    now.forEach(g => done.add(g));
+    const g0 = [...now][0];
+    let note = '';
+    if (col < maxCol) note = g0.paren ? 'parentheses first' : g0.op === 'and' ? '&amp;&amp; goes before ||' : '';
+    else note = evalNode(tree, v) ? 'free delivery' : 'pays for delivery';
+    lines.push([show(tree, 3, done, now), note]);
+  }
+  const w = Math.max(...lines.slice(1).map(l => l[0].replace(/<[^>]+>/g, '').replace(/&amp;/g, '&').length));
+  if (narrow) return lines.map(([t, n], i) => (n ? `<span class="d">// ${i === lines.length - 1 ? '→ ' : ''}${n}</span>\n` : '') + (i ? '  ' : '') + t).join('\n');
+  return lines.map(([t, n], i) => {
+    const plain = t.replace(/<[^>]+>/g, '').replace(/&amp;/g, '&').length;
+    return `${i === 0 ? '<span class="k">if</span> (' : '    '}${t}${i === 0 ? ')' : ''}${n ? ' '.repeat(Math.max(2, w - plain + 2)) + `<span class="d">// ${i === lines.length - 1 ? '→ ' : ''}${n}</span>` : ''}`;
+  }).join('\n');
+}
+function renderCircuit() {
+  const svg = $('#circ');
+  const W = Math.max(300, Math.round(svg.getBoundingClientRect().width) || 480);
+  const c = P2.cust !== null ? CUSTOMERS[P2.cust] : { member: false, total: 0, zone: false };
+  const r = circuitSVG(VARIANTS[P2.variant].tree, leafVals(c), W, { pw: 132, rowH: 58, top: 28, lampLabel: 'free delivery' });
+  svg.setAttribute('viewBox', `0 0 ${W} ${r.H}`);
+  svg.innerHTML = r.svg;
+}
+function renderP2() {
+  $('#cust').innerHTML = CUSTOMERS.map((c, i) => {
+    const tested = P2.tested.has(i + ':' + P2.variant);
+    const r = result(c);
+    const flagged = P2.flagged && i === 2 && P2.variant === 0;
+    const res = !tested ? '<span class="res none">not run</span>' : flagged ? '<span class="res flagged">flagged</span>' : r ? '<span class="res free">free delivery</span>' : '<span class="res pays">pays $4</span>';
+    return `<button class="cust-row" aria-pressed="${P2.cust === i}" data-c="${i}"><span class="top"><span class="nm">${c.name}</span>${res}</span><span class="facts"><span>${c.member ? 'Member' : 'Not a member'}</span><span>$${c.total} order</span><span>${c.where}</span></span></button>`;
+  }).join('');
+  $('#variants').innerHTML = VARIANTS.map((v, i) => `<button class="variant" aria-pressed="${P2.variant === i}" data-v="${i}"><b>${v.label}</b><code>${esc(v.code)}</code></button>`).join('');
+  $('#flagBtn').disabled = P2.cust === null;
+  $('#flagBtn').textContent = P2.cust === null ? 'Flag as a mistake' : `Flag ${CUSTOMERS[P2.cust].name}'s result as a mistake`;
+  const narrow = $('#trace').clientWidth < 480, code = esc(VARIANTS[P2.variant].code);
+  $('#trace').innerHTML = P2.cust === null ? `${narrow ? code : `<span class="k">if</span> (${code})`}\n\n<span class="d">// pick a customer to run it</span>` : traceHTML(VARIANTS[P2.variant].tree, CUSTOMERS[P2.cust], narrow);
+  renderCircuit();
+}
+function p2Note(html, kind = '') { CS.say($('#p2Note'), html, kind); $('#p2Note').classList.add('o5'); }
+$('#cust').addEventListener('click', e => {
+  const b = e.target.closest('[data-c]'); if (!b) return;
+  const i = +b.dataset.c, c = CUSTOMERS[i];
+  P2.cust = i; P2.tested.add(i + ':' + P2.variant);
+  if (P2.variant === 0 && CUSTOMERS.every((_, j) => P2.tested.has(j + ':0'))) CS.tick('p2', 'test');
+  const r = result(c);
+  const left = CUSTOMERS.filter((_, j) => !P2.tested.has(j + ':' + P2.variant)).length;
+  p2Note(`<b>${c.name}</b> ${r ? 'gets free delivery' : 'pays for delivery'} with ${P2.variant === 0 ? "the AI's code" : VARIANTS[P2.variant].label}. Compare that with Rosie's rule. ${left ? `${left} customer${left > 1 ? 's' : ''} left to run.` : 'Is anyone getting the wrong result?'}`);
+  renderP2();
+  const nb = $(`#cust [data-c="${i}"]`); if (nb) nb.focus({ preventScroll: true });
+});
+$('#flagBtn').addEventListener('click', () => {
+  if (P2.cust === null) return;
+  const c = CUSTOMERS[P2.cust], r = result(c), ok = ruleOK(c);
+  if (r !== ok) {
+    P2.flagged = P2.variant === 0 || P2.flagged;
+    CS.tick('p2', 'flag');
+    p2Note(`<strong>Found it.</strong> ${c.name} is a member, but she lives outside the zone, so Rosie's rule says she pays. The code gave her free delivery anyway. Look at the trace: <code>&amp;&amp;</code> was worked out first, and then <code>true || …</code> is true no matter what. Now try the other versions below.`, 'bad');
+  } else {
+    const why = c.zone ? (ok ? `${c.name} ${c.member ? 'is a member' : `spent $${c.total}`} and lives in the zone, so the rule gives free delivery.` : `${c.name} isn't a member and spent under $30, so the rule says pay.`) : `${c.name} lives outside the zone, so the rule says pay, and the code agrees.`;
+    p2Note(`<strong>That one's right.</strong> ${why} Keep looking.`, '');
+  }
+  renderP2();
+});
+$('#variants').addEventListener('click', e => {
+  const b = e.target.closest('[data-v]'); if (!b) return;
+  P2.variant = +b.dataset.v;
+  if (P2.cust !== null) P2.tested.add(P2.cust + ':' + P2.variant);
+  const wrong = CUSTOMERS.filter(c => result(c) !== ruleOK(c));
+  if (P2.variant === 2) {
+    CS.tick('p2', 'c');
+    p2Note(`<strong>Version C behaves exactly like the AI's code.</strong> ${wrong.map(c => c.name).join(', ')} still gets free delivery. That's because the computer already read the AI's line this way. The parentheses just make it visible.`, 'bad');
+  } else if (P2.variant === 1) {
+    CS.tick('p2', 'fix');
+    p2Note('<strong>Version B matches Rosie\'s rule.</strong> The parentheses make the OR happen first ("member or $30+"), and then the AND checks the zone. Cleo now pays, and everyone else is unchanged. Run the customers again to check.', 'good');
+  } else p2Note("Back to the AI's code. Pick customers to run it.");
+  CUSTOMERS.forEach((_, j) => { if (P2.tested.has(j + ':0')) P2.tested.add(j + ':' + P2.variant); });
+  renderP2();
+});
+renderP2();
+let rT; addEventListener('resize', () => { clearTimeout(rT); rT = setTimeout(renderP2, 120); });
+
+/* De Morgan tables */
+(function deMorgan() {
+  const rows = [[0, 0], [0, 1], [1, 0], [1, 1]];
+  const T = ['no', 'yes'];
+  const tables = [
+    ['!(food || drink)', (f, d) => !(f || d)],
+    ['!food && !drink', (f, d) => !f && !d],
+    ['!food || !drink', (f, d) => !f || !d]
+  ];
+  $('#dm').innerHTML = tables.map(([cap, fn], ti) => `<div><div class="dm-cap">${esc(cap)}</div><div class="tt-wrap"><table class="tt"><thead><tr><th>food</th><th>drink</th><th>let in?</th></tr></thead><tbody>${rows.map(([f, d]) => {
+    const o = fn(!!f, !!d), ref = !(f || d);
+    return `<tr class="${ti === 2 && o !== ref ? 'bad' : ''}"><td>${T[f]}</td><td>${T[d]}</td><td class="o">${o ? 'yes' : 'no'}</td></tr>`;
+  }).join('')}</tbody></table></div></div>`).join('');
+})();
+
+/* ---------------- Part 3: code lab ---------------- */
+const TESTS = {
+  freeDelivery: [[[true, 12, true], true, 'member in the zone'], [[false, 45, true], true, '$45 order in the zone'], [[true, 18, false], false, 'member outside the zone'], [[false, 52, false], false, 'big order outside the zone'], [[false, 9, true], false, 'small order'], [[false, 30, true], true, 'exactly $30']],
+  isOpen: [[['Mon', 9], true, 'Monday morning'], [['Mon', 7], false, 'before 8'], [['Sat', 17], true, 'Saturday, 5pm'], [['Tue', 18], false, 'closes at 18:00'], [['Sun', 10], false, 'Sunday'], [['Wed', 8], true, 'opens at 8:00']],
+  canOrderCake: [[[3, false], true, '3 days ahead'], [[2, false], true, 'exactly 2 days'], [[1, false], false, '1 day, not a member'], [[1, true], true, '1 day, member'], [[0, true], false, 'same day, member'], [[0, false], false, 'same day']]
+};
+const fmtArg = a => typeof a === 'string' ? `'${a}'` : String(a);
+function runTests(code) {
+  const res = CS.runJS(code + '\n;return { freeDelivery: typeof freeDelivery === "function" ? freeDelivery : null, isOpen: typeof isOpen === "function" ? isOpen : null, canOrderCake: typeof canOrderCake === "function" ? canOrderCake : null };');
+  const out = { logs: res.logs, error: res.error, groups: {}, ran: !res.error };
+  const fns = res.value || {};
+  for (const name in TESTS) {
+    out.groups[name] = TESTS[name].map(([args, want, label]) => {
+      let got, err = null;
+      if (!fns[name]) err = 'missing';
+      else { try { got = fns[name](...args); } catch (e) { err = e.message; } }
+      return { call: `${name}(${args.map(fmtArg).join(', ')})`, want, got, err, label, pass: !err && got === want };
+    });
+  }
+  const pass = g => out.groups[g].every(t => t.pass);
+  out.pass = { freeDelivery: pass('freeDelivery'), isOpen: pass('isOpen'), canOrderCake: pass('canOrderCake') };
+  const all = Object.values(out.groups).flat();
+  const n = all.filter(t => t.pass).length;
+  if (!res.error) out.html = `<div>${n} of ${all.length} tests pass${n === all.length ? ' <span class="pass">✓ all green</span>' : ''}</div>` + Object.keys(out.groups).map(g => { const f = out.groups[g].filter(t => !t.pass).length; return `<div class="${f ? 'fail' : 'pass'}">${f ? '✗' : '✓'} ${g}: ${out.groups[g].length - f} of ${out.groups[g].length}</div>`; }).join('');
+  renderTests(out);
+  return out;
+}
+function renderTests(out) {
+  if (out.error) { $('#tests').innerHTML = `<p class="muted small">The code didn't run, so no tests could run. Fix the error shown under the editor, then press Run.</p>`; return; }
+  $('#tests').innerHTML = Object.keys(out.groups).map((g, gi) => {
+    const ts = out.groups[g], p = ts.filter(t => t.pass).length;
+    return `<div class="tgroup"><h4>Rule ${gi + 1}: ${g}<span>${p} of ${ts.length} pass</span></h4>${ts.map(t => `<div class="trow ${t.pass ? 'pass' : 'fail'}"><span class="mk">${t.pass ? '✓' : '✗'}</span><span><code>${esc(t.call)} → ${t.err ? (t.err === 'missing' ? 'no function' : 'error') : esc(String(t.got))}</code><span class="lbl">${esc(t.label)}${t.pass ? '' : ` · <span class="want">should be ${t.want}</span>`}</span></span></div>`).join('')}</div>`;
+  }).join('');
+}
+const firstFail = (r, g) => r.groups[g].find(t => !t.pass);
+CS.codeLab($('#lab'), {
+  part: 'p3', mission: $('#mission'), language: 'JavaScript',
+  starter: `// Rosie's Bakery: three rules.
+// Press Run. The tests check each one.
+
+// Rule 1 (the AI wrote this one):
+// free delivery for members OR $30+,
+// but only inside the delivery zone.
+function freeDelivery(isMember, total, inZone) {
+  return isMember || total >= 30 && inZone;
+}
+
+// Rule 2: open 8 until 18, not Sundays.
+// day: 'Mon' ... 'Sun'. hour: 0 to 23.
+function isOpen(day, hour) {
+  return false; // your turn
+}
+
+// Rule 3: cakes need 2 days' notice.
+// Members only need 1 day.
+function canOrderCake(daysAhead, isMember) {
+  return false; // your turn
+}
+`,
+  run: runTests,
+  steps: [
+    { t: 'Run the tests', how: 'Press Run and look at which tests fail.', hint: 'Press the <b>Run</b> button under the editor.', check: r => r.ran },
+    { t: 'Fix the free delivery bug', how: 'Add parentheses so the OR is worked out before the zone check.', hint: 'Change the line to <b>return (isMember || total &gt;= 30) &amp;&amp; inZone;</b>', check: r => r.pass.freeDelivery,
+      nudge: r => { const t = firstFail(r, 'freeDelivery'); return t ? `<b>${esc(t.call)}</b> (${t.label}) should be <b>${t.want}</b>. ${t.label === 'member outside the zone' ? 'The zone check has to apply to members too. Group the OR part with parentheses.' : ''}` : ''; } },
+    { t: 'Write isOpen', how: 'Not Sunday, AND at least 8, AND before 18.', hint: 'Try <b>return day !== \'Sun\' &amp;&amp; hour &gt;= 8 &amp;&amp; hour &lt; 18;</b>', check: r => r.pass.isOpen,
+      nudge: r => { const t = firstFail(r, 'isOpen'); if (!t) return ''; if (t.label === 'closes at 18:00') return `<b>${esc(t.call)}</b> should be <b>false</b>: at 18:00 the doors are shut. Use <b>hour &lt; 18</b>, not <b>&lt;=</b>.`; if (t.label === 'opens at 8:00') return `<b>${esc(t.call)}</b> should be <b>true</b>: 8:00 counts as open. Use <b>hour &gt;= 8</b>.`; if (t.label === 'Sunday') return `<b>${esc(t.call)}</b> should be <b>false</b>. Add <b>day !== 'Sun'</b> with <b>&amp;&amp;</b>.`; return `<b>${esc(t.call)}</b> (${t.label}) should be <b>${t.want}</b>.`; } },
+    { t: 'Write canOrderCake', how: '2 or more days ahead, OR a member with at least 1 day.', hint: 'Try <b>return daysAhead &gt;= 2 || (isMember &amp;&amp; daysAhead &gt;= 1);</b>', check: r => r.pass.canOrderCake,
+      nudge: r => { const t = firstFail(r, 'canOrderCake'); if (!t) return ''; if (t.label === 'same day, member') return `<b>${esc(t.call)}</b> should be <b>false</b>. Members still need 1 day. Check <b>daysAhead &gt;= 1</b> for members.`; return `<b>${esc(t.call)}</b> (${t.label}) should be <b>${t.want}</b>.`; } }
+  ],
+  explainError: e => /SyntaxError/.test(e) ? 'A <b>SyntaxError</b> means the code isn\'t written in a shape JavaScript understands. Check that every <b>(</b> has a matching <b>)</b> and every <b>{</b> a matching <b>}</b>.' : /ReferenceError/.test(e) ? 'A <b>ReferenceError</b> means a name is misspelled or doesn\'t exist. Use the exact names from the function, like <b>isMember</b> and <b>daysAhead</b>.' : '',
+  doneTutor: '<b>All green!</b> You fixed an AI\'s precedence bug and wrote two rules from plain English, with tests guarding the edges. That\'s exactly what a good reviewer does.'
+});
+
+/* ---------------- Part 4: steer the AI ---------------- */
+CS.steer($('#steer'), [
+  { ai: 'I added the publish check: if (user.isAdmin || user.isEditor && user.isVerified). Admins and verified editors can publish now.',
+    opts: [['Looks right, ship it.', 0, "Maybe, but you can't tell by reading. Because && goes first, an unverified admin can publish, and nobody has said whether that's intended."],
+           ['Add parentheses to show the grouping you mean, and add a test for an unverified admin.', 1, 'Parentheses make the grouping visible to everyone, and the test pins down the exact case that is easy to get wrong.'],
+           ['Rewrite it without && or || so it is simpler.', 0, "You'd end up with nested ifs that are harder to check. The fix is clarity, not avoiding the operators."]] },
+  { ai: 'I simplified !(isBanned || isMuted) to !isBanned || !isMuted. Same logic, easier to read.',
+    opts: [['Nice, much cleaner.', 0, "They aren't the same. A banned user who isn't muted would pass the new version."],
+           ["That's not the same rule. It should be !isBanned && !isMuted. Please add tests for a banned user and a muted user.", 1, "Right. Moving a NOT inside the parentheses flips OR into AND (De Morgan's law), and the tests catch it if anyone simplifies it again."],
+           ['Just drop the NOT to keep it simple.', 0, 'That flips the rule: only banned or muted users would pass.']] },
+  { ai: 'Weekend pricing is done: if (day === "Saturday" && day === "Sunday") applyWeekendPrice(). All tests pass.',
+    opts: [['Great, thanks.', 0, 'The condition can never be true. The tests pass only because none of them tries a Saturday.'],
+           ["A day can't be both. Use ||, and add a test that a Saturday gets the weekend price.", 1, "Exactly. It's an AND/OR mix-up, and a test for a real Saturday would have caught it."],
+           ['Change it to day === "Weekend".', 0, 'The day holds names like "Saturday", so that would never match either.']] },
+  { ai: 'The refund rule joins six conditions with && and ||. I checked it carefully. Should I deploy?',
+    opts: [["Yes, if you've checked it.", 0, "Confidence isn't evidence. Six true/false conditions have 64 combinations, and nobody has looked at them."],
+           ['First list the kinds of customer in a table, with refund yes or no for each, and turn every row into a test.', 1, 'A table of cases makes the rule checkable by you, and the tests keep it right when the code changes later.'],
+           ['Make it simpler by removing some conditions.', 0, 'Each condition is probably part of the business rule. Dropping some changes who gets refunds.']] }
+], { part: 'p4', counter: $('#steerCount') });
+
+/* ---------------- Part 5: quiz ---------------- */
+CS.quiz($('#quiz'), [
+  { q: 'A lamp is wired so the current passes through switch A and then switch B, one after the other. Which gate is that?', a: [['AND', 1], ['OR', 0], ['NOT', 0]], why: 'The current has to get through both switches, so both must be on. Switches side by side, each with its own path, would be OR.' },
+  { q: 'In isMember || total >= 30 && inZone, which part does the computer work out first?', a: [['isMember || total >= 30', 0], ['total >= 30 && inZone', 1], ['Left to right, as written', 0]], why: '&& goes before ||, the way × goes before + in math. So any member passes, wherever they live. Parentheses set the order you actually mean.' },
+  { q: 'For a weekend discount, an AI wrote day === "Sat" && day === "Sun". What happens?', a: [['The discount works on both days', 0], ['The discount never applies', 1], ['The discount applies every day', 0]], why: "A day can't be Saturday and Sunday at once, so the AND is always false. The rule needs ||." },
+  { q: 'A sign says "No food or drinks." Which condition decides who may come in?', a: [['!hasFood && !hasDrink', 1], ['!hasFood || !hasDrink', 0], ['hasFood && hasDrink', 0]], why: 'Not (food or drink) means no food and no drink. Pushing the NOT inside flips OR into AND. The second option would let in someone carrying food but no drink.' },
+  { q: 'Rosie\'s rule is "free delivery on orders of $30 or more". The AI wrote total > 30. Which order gets the wrong answer?', a: [['$29', 0], ['Exactly $30', 1], ['$45', 0]], why: '> means "more than", so exactly 30 fails. "30 or more" needs >=. Edges like this are where tests earn their keep.' }
+], { part: 'p5', doneCard: $('#doneCard'), doneTitle: 'You can read the logic now.', doneText: 'You know AND, OR and NOT, how they combine into conditions, why && goes before ||, and how to make an AI prove its conditions with a table of cases and tests.' });
+})();
+</script>
+</body>
+</html>

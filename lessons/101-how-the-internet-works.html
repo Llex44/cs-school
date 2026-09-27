@@ -1,0 +1,1182 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>How computers &amp; the internet work · CS School</title>
+<meta name="description" content="Course 101: follow a click from your laptop to a server and back, and learn what DNS, requests, responses and status codes mean.">
+<link rel="icon" href="../assets/favicon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="../assets/cs-school.css">
+<style>
+/* lesson-specific styles: network stage, address bar, trip log, mock bakery website, error pages, status code explorer, case notes */
+
+/* ---------- network stage (svg) ---------- */
+.stage{border-radius:20px; padding:12px 12px 8px}
+.stage svg{display:block; width:100%; height:auto; overflow:visible}
+.st-edge{fill:none; stroke:color-mix(in srgb, var(--ink) 16%, transparent); stroke-width:2; stroke-linecap:round}
+.st-router .dot{fill:var(--paper); stroke:color-mix(in srgb, var(--ink) 38%, transparent); stroke-width:2.2}
+.st-router.lit .dot{stroke:var(--c, var(--l2)); fill:var(--c, var(--l2))}
+.st-dev{fill:var(--glass-strong); stroke:var(--ink); stroke-width:2.2; stroke-linejoin:round}
+.st-scr{fill:var(--paper)}
+.st-bar{fill:color-mix(in srgb, var(--ink) 16%, transparent)}
+.st-bar.a{fill:var(--l4)} .st-bar.b{fill:var(--l1); opacity:.75}
+.st-slot{fill:color-mix(in srgb, var(--ink) 18%, transparent)}
+.st-led{fill:var(--l3); transition:fill .3s}
+.st-halo{fill:var(--c, var(--l2)); opacity:0; transition:opacity .35s}
+.nd.active .st-halo{opacity:.16}
+.nd.busy .st-led{fill:var(--l4); animation:blink .35s steps(2) infinite}
+.nd.bad .st-led{fill:var(--l1)}
+.nd.bad .st-halo{--c:var(--l1); opacity:.16}
+.nd.off .st-dev{opacity:.45}
+.nd.off .st-led{fill:var(--ink-2); opacity:.3}
+.st-card{fill:var(--glass-strong); stroke:color-mix(in srgb, var(--ink) 18%, transparent); stroke-width:1.5}
+.nd-dns.bad .st-card{fill:var(--bad-bg)}
+.st-label{font-family:var(--f-display); font-weight:800; fill:var(--ink)}
+.st-sub{font-family:var(--f-mono); fill:var(--ink-2)}
+.st-mesh{font-family:var(--f-display); font-weight:700; fill:var(--ink-2)}
+.st-rt{fill:none; stroke-width:4; stroke-linecap:round; stroke-dasharray:1; stroke-dashoffset:1; transition:opacity .4s}
+.st-rt.fade{opacity:0}
+.pk{transition:opacity .35s}
+.pk.fade{opacity:0}
+.pk-bg{fill:var(--ink)}
+.pk-t{font-family:var(--f-mono); font-weight:600; fill:var(--paper)}
+.st-x{stroke:var(--l1); stroke-width:4; stroke-linecap:round}
+@keyframes blink{50%{fill:var(--l1)}}
+.stage-cap{font-size:1.02rem; padding:6px 8px 4px; min-height:3.3em; color:var(--ink)}
+.stage-cap b{font-family:var(--f-display); font-weight:800}
+
+/* ---------- address bar card ---------- */
+.addr-row{display:flex; gap:10px; flex-wrap:wrap; align-items:stretch}
+.addr-field{flex:1 1 180px; min-width:0; display:flex; align-items:center; gap:0; border:1px solid var(--hair); border-radius:12px; background:var(--glass-strong); box-shadow:inset 0 1px 2px rgba(18,20,23,.06); padding-left:12px}
+.addr-field:focus-within{border-color:var(--l2); box-shadow:0 0 0 3px color-mix(in srgb, var(--l2) 25%, transparent)}
+.addr-field .scheme{font-family:var(--f-mono); font-size:1rem; color:var(--ink-2)}
+.addr-field input{flex:1; min-width:0; border:0; background:transparent; font-family:var(--f-mono); font-size:1rem; color:var(--ink); padding:10px 12px 10px 2px; min-height:44px; outline:none}
+.addr-opts{display:flex; gap:8px; flex-wrap:wrap; margin-top:12px; align-items:center}
+.addr-opts .btn{font-family:var(--f-mono); font-weight:600; font-size:.95rem}
+.mode-row{display:flex; gap:12px; flex-wrap:wrap; align-items:center; margin-top:14px}
+
+/* ---------- trip log ---------- */
+.log{list-style:none; margin:0; padding:0; display:flex; flex-direction:column; gap:8px}
+.log li{display:grid; grid-template-columns:14px minmax(0,1fr) auto; gap:4px 12px; align-items:baseline; background:var(--glass-strong); border-radius:12px; padding:10px 14px; animation:rise .35s}
+.log li i{width:10px; height:10px; border-radius:50%; background:var(--c); align-self:center}
+.log li b{font-family:var(--f-display); font-weight:800}
+.log li .ms{font-family:var(--f-mono); font-size:.9rem; color:var(--ink-2); white-space:nowrap}
+.log li code{grid-column:2 / 4; background:none; padding:0; font-size:.9rem; color:var(--ink-2); overflow-wrap:anywhere}
+.log li.fast .ms{color:var(--good); font-weight:600}
+.log .empty{display:block; color:var(--ink-2); background:none; padding:4px 0; animation:none}
+.log-total{margin-top:10px; font-family:var(--f-display); font-weight:700; color:var(--ink-2); font-size:1rem}
+
+/* ---------- mock browser & bakery site ---------- */
+.browser{border-radius:18px; overflow:hidden; background:var(--glass-strong); box-shadow:var(--float); border:1px solid var(--glass-edge)}
+.browser-bar{display:flex; align-items:center; gap:6px; padding:9px 12px; background:color-mix(in srgb, var(--ink) 6%, transparent)}
+.browser-bar > i{width:11px; height:11px; border-radius:50%; background:color-mix(in srgb, var(--ink) 20%, transparent); display:block; flex:none}
+.addr{margin-left:8px; flex:1; min-width:0; display:flex; align-items:center; gap:8px; background:var(--paper); border-radius:99px; padding:5px 12px; font-family:var(--f-mono); font-size:.85rem; color:var(--ink-2); white-space:nowrap; overflow:hidden}
+.addr span{overflow:hidden; text-overflow:ellipsis}
+.addr .lock{flex:none; width:10px; height:12px}
+.addr .spin{flex:none; width:14px; height:14px; border-radius:50%; border:2px solid color-mix(in srgb, var(--ink) 20%, transparent); border-top-color:var(--l2); animation:spin .8s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+.addr .redir{flex:none; font-family:var(--f-display); font-weight:700; font-size:.78rem; color:var(--l2)}
+.view{position:relative; min-height:330px; background:#FFF8EF; color:#3B2414; overflow:hidden}
+.view.blank{background:#FFFFFF; display:grid; place-items:center; color:#6B7280; font-size:1rem}
+.layers{display:flex; gap:10px; align-items:center; flex-wrap:wrap; padding:10px 12px; background:color-mix(in srgb, var(--ink) 4%, transparent)}
+.layers .muted{font-size:.95rem}
+
+.bk{padding:18px 20px 20px; font-family:Georgia,"Times New Roman",serif; animation:rise .35s}
+.bk .top{display:flex; align-items:center; justify-content:space-between; gap:10px; flex-wrap:wrap}
+.bk .logo{display:flex; align-items:center; gap:8px; font-weight:700; font-size:1.3rem; color:#5A2E12; letter-spacing:-.01em}
+.bk .logo svg{width:30px; height:30px}
+.bk nav{display:flex; gap:6px}
+.bk nav a{font-family:system-ui,-apple-system,"Segoe UI",sans-serif; font-size:.85rem; font-weight:600; color:#5A2E12; text-decoration:none; background:#FBE3CC; padding:4px 11px; border-radius:99px}
+.bk .hero-b{display:grid; grid-template-columns:minmax(0,1fr) auto; gap:12px; align-items:center; margin-top:14px; background:#FDE9D6; border-radius:16px; padding:14px 16px}
+.bk h2{font-family:Georgia,serif; font-size:1.45rem; line-height:1.15; color:#4A2511; font-weight:700; letter-spacing:0}
+.bk .hero-b p{font-family:system-ui,-apple-system,"Segoe UI",sans-serif; font-size:.9rem; color:#7A4A2A; margin-top:6px}
+.bk .pic{width:96px; height:72px}
+.bk ul{list-style:none; margin:14px 0 0; padding:0; display:grid; gap:6px; font-family:system-ui,-apple-system,"Segoe UI",sans-serif; font-size:.95rem}
+.bk li{display:flex; justify-content:space-between; gap:12px; border-bottom:1px dashed #E8C9AA; padding:4px 2px}
+.bk li b{font-weight:600}
+.bk .buy{display:flex; align-items:center; gap:12px; margin-top:14px; flex-wrap:wrap; font-family:system-ui,-apple-system,"Segoe UI",sans-serif}
+.bk button{font:inherit; font-weight:700; font-size:.9rem; background:#E8793A; color:#fff; border:0; border-radius:99px; padding:9px 18px; cursor:pointer; min-height:40px}
+.bk .basket{font-size:.9rem; color:#7A4A2A}
+.bk .hours{font-family:system-ui,-apple-system,"Segoe UI",sans-serif; font-size:.8rem; color:#9A6A48; margin-top:12px}
+.bk .js-note{font-family:system-ui,sans-serif; font-size:.85rem; color:#9A3412; background:#FFEDD5; border-radius:8px; padding:6px 10px; animation:rise .3s}
+/* "HTML only": every style removed, the browser's plain defaults take over */
+.bk.raw{background:#FFFFFF; color:#000; font-family:"Times New Roman",Times,serif; font-size:16px; line-height:1.3; min-height:330px; padding:8px 10px}
+.bk.raw *:not(svg, svg *){all:revert}
+.bk.raw .pic{width:80px; height:60px}
+.bk.raw .logo svg{width:24px; height:24px}
+.view.css-only .bk .basket{visibility:hidden}
+
+/* error pages inside the mock browser */
+.err-pg{min-height:330px; padding:28px 24px; display:flex; flex-direction:column; gap:8px; animation:rise .35s}
+.err-pg.browser-err{background:#F4F5F7; color:#202124; font-family:system-ui,-apple-system,"Segoe UI",sans-serif}
+.err-pg.browser-err svg{width:52px; height:52px; margin-bottom:6px}
+.err-pg.browser-err h4{font-size:1.35rem; font-weight:600; margin:0; font-family:inherit}
+.err-pg.browser-err p{font-size:.95rem; color:#3C4043}
+.err-pg.browser-err code{background:none; padding:0; font-size:.78rem; color:#5F6368; margin-top:8px}
+.err-pg.plain{background:#FFFFFF; color:#000; font-family:"Times New Roman",Times,serif; align-items:center; text-align:center}
+.err-pg.plain h4{font-size:1.6rem; font-weight:700; margin:0; font-family:inherit}
+.err-pg.plain hr{width:100%; border:0; border-top:1px solid #ccc; margin:6px 0}
+.err-pg.plain p{font-size:.95rem}
+.err-pg.bake404{background:#FFF8EF; color:#3B2414; font-family:Georgia,serif; align-items:flex-start}
+.err-pg.bake404 .big{font-size:3rem; font-weight:700; color:#E8793A; line-height:1}
+.err-pg.bake404 h4{font-size:1.3rem; margin:0; font-family:inherit}
+.err-pg.bake404 p{font-family:system-ui,sans-serif; font-size:.95rem; color:#7A4A2A}
+.err-pg.bake404 a{font-family:system-ui,sans-serif; font-size:.9rem; color:#5A2E12; font-weight:600}
+.view .waiting{position:absolute; inset:0; display:grid; place-items:center; background:#FFFFFF; color:#6B7280; font-family:system-ui,sans-serif; font-size:.95rem}
+
+/* ---------- part 2: scenarios & readout ---------- */
+.scen{display:grid; grid-template-columns:1fr 1fr; gap:8px}
+.scen .btn{justify-content:flex-start; text-align:left; font-size:.95rem}
+.scen .btn[aria-pressed="true"]{background:var(--ink); color:var(--paper); border-color:var(--ink)}
+.scen .btn[aria-pressed="true"] i{box-shadow:0 0 0 2px var(--paper)}
+.scen .btn i{flex:none; width:9px; height:9px; border-radius:50%; background:var(--c)}
+.readout{margin:0; display:flex; flex-direction:column; gap:10px}
+.readout div{display:grid; grid-template-columns:9.5em minmax(0,1fr); gap:12px; align-items:baseline}
+.readout dt{font-family:var(--f-display); font-weight:800; font-size:1rem; color:var(--ink-2)}
+.readout dd{margin:0; font-size:1rem}
+.code-chip{display:inline-flex; align-items:center; gap:8px; font-family:var(--f-mono); font-weight:600; font-size:.95rem; border-radius:99px; padding:2px 12px; background:color-mix(in srgb, var(--c, var(--ink-2)) 16%, transparent)}
+.code-chip::before{content:""; width:8px; height:8px; border-radius:50%; background:var(--c, var(--ink-2))}
+
+/* status code explorer */
+.fams{display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:14px}
+.fam{border-radius:18px; padding:16px}
+.fam .fh{display:flex; align-items:center; gap:10px}
+.fam .fh i{width:12px; height:12px; border-radius:50%; background:var(--c)}
+.fam h4{font-family:var(--f-display); font-weight:900; font-size:1.5rem; margin:0}
+.fam .fs{font-size:.95rem; color:var(--ink-2); margin:4px 0 10px; line-height:1.35}
+.fam .pills{display:flex; flex-wrap:wrap; gap:6px}
+.fam .pills button{font-family:var(--f-mono); font-weight:600; font-size:.95rem; border:1px solid var(--hair); background:var(--glass-strong); color:var(--ink); border-radius:99px; padding:6px 12px; min-height:40px; cursor:pointer}
+.fam .pills button:hover{background:var(--paper)}
+.fam .pills button[aria-pressed="true"]{background:color-mix(in srgb, var(--c) 22%, var(--paper)); border-color:transparent}
+
+/* ---------- part 1 explainer ---------- */
+.steps4{margin:0; display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:16px 22px}
+.steps4 > div{border-radius:18px; padding:16px 18px; display:grid; align-content:start; grid-template-columns:auto minmax(0,1fr); gap:4px 14px}
+.steps4 .n{grid-row:span 2; width:34px; height:34px; border-radius:11px; display:grid; place-items:center; font-family:var(--f-display); font-weight:900; background:color-mix(in srgb, var(--c) 20%, transparent); color:var(--ink)}
+.steps4 dt{font-family:var(--f-display); font-weight:800; font-size:1.12rem; line-height:1.3; padding-top:4px}
+.steps4 dd{margin:0; font-size:1rem; color:var(--ink-2)}
+.steps4 dd em{display:block; margin-top:6px; font-style:normal; color:var(--ink)}
+
+/* ---------- part 3: case notes & response anatomy ---------- */
+.notes{display:flex; flex-direction:column; gap:8px}
+.nrow{display:grid; grid-template-columns:12px minmax(0,1fr) auto; gap:10px; align-items:center; background:var(--glass-strong); border-radius:12px; padding:9px 12px; font-size:1rem}
+.nrow i{width:10px; height:10px; border-radius:50%; background:color-mix(in srgb, var(--ink) 20%, transparent)}
+.nrow.ok i{background:var(--good)} .nrow.warn i{background:var(--l4)} .nrow.bad i{background:var(--bad)} .nrow.info i{background:var(--l2)}
+.nrow b{font-family:var(--f-display); font-weight:800}
+.nrow span{font-family:var(--f-mono); font-size:.88rem; color:var(--ink-2); text-align:right}
+.nrow.flash{animation:flash .9s}
+.anat{display:flex; flex-direction:column; gap:12px}
+.anat > div{display:grid; grid-template-columns:minmax(0,1.1fr) minmax(0,1fr); gap:14px; align-items:center}
+.anat pre{margin:0; font-family:var(--f-mono); font-size:.88rem; background:var(--term); color:var(--term-ink); border-radius:10px; padding:10px 12px; overflow-x:auto; line-height:1.55}
+.anat pre .g{color:#8BF0A8} .anat pre .d{color:var(--term-dim)}
+.anat p{font-size:1rem}
+.anat p b{font-family:var(--f-display); font-weight:800}
+
+@media (max-width:900px){
+  .pg{align-items:stretch}
+  .fams{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .steps4{grid-template-columns:minmax(0,1fr)}
+}
+@media (max-width:640px){
+  .scen{grid-template-columns:minmax(0,1fr)}
+  .fams{grid-template-columns:minmax(0,1fr)}
+  .readout div{grid-template-columns:minmax(0,1fr); gap:0}
+  .anat > div{grid-template-columns:minmax(0,1fr); gap:6px}
+  .bk .hero-b{grid-template-columns:minmax(0,1fr)}
+  .bk .pic{justify-self:start}
+}
+</style>
+</head>
+<body>
+<main id="top">
+  <section class="wrap hero">
+    <div>
+      <div class="kicker">Intro · Course 101 · How computers &amp; the internet work</div>
+      <h1>Every click asks a faraway computer a question.</h1>
+      <p class="lede">Opening a web page is a quick round trip: find the right computer, ask it for the page, get an answer, build what you see. Learn the four steps and you'll know where to look when an AI tells you your site is "down".</p>
+      <ul class="facts">
+        <li>About 15 minutes</li>
+        <li>5 parts</li>
+        <li>Practice terminal</li>
+        <li>No coding experience needed</li>
+      </ul>
+      <div class="row hero-cta"><a class="btn primary" href="#p1">Start the lesson</a></div>
+    </div>
+    <figure style="margin:0">
+      <div class="hero-visual glass">
+        <svg id="heroStage" role="img" aria-label="An animated map of a web request: a laptop asks DNS for the bakery's address, sends a request across a mesh of internet routers to the bakery's server, and the response travels back by a different route."></svg>
+        <div class="legend"><span><i style="background:var(--l5)"></i>Address lookup</span><span><i style="background:var(--l2)"></i>Request</span><span><i style="background:var(--l3)"></i>Response</span></div>
+      </div>
+      <div class="hero-caption glass" aria-hidden="true"><span id="heroCapA">GET</span><span id="heroCap">https://beasbakery.com/</span></div>
+    </figure>
+  </section>
+
+  <div class="wrap">
+  <!-- PART 1 -->
+  <section class="part" id="p1">
+    <span class="bullet glass" data-p="p1">1</span>
+    <div class="part-head">
+      <div class="kicker">Part 1 of 5</div>
+      <h2>The journey of a web page</h2>
+      <p>Bea runs a small bakery, and her website lives on a computer called a <b>server</b>. Your laptop has to find that computer, ask it for the page, and turn the answer into something you can see. Send a request and watch every step.</p>
+    </div>
+
+    <div class="chat" aria-label="Example conversation">
+      <div class="msg me"><span class="who">You</span>My friend says the bakery site won't load for her, but it works fine for me. What's going on?</div>
+      <div class="msg ai"><span class="who">AI assistant</span>Loading a page takes several steps, and any one of them can fail. Let's follow what her browser does, one step at a time, and find the one that's stuck.</div>
+    </div>
+
+    <div class="task glass" data-part="p1">
+      <h3>Your task</h3>
+      <ol>
+        <li data-t="trip"><span>Open beasbakery.com and watch the whole trip.</span></li>
+        <li data-t="cache"><span>Open a second page, /menu, and spot the step that got faster.</span></li>
+        <li data-t="steps"><span>Switch to "Step by step" and replay a trip to the end.</span></li>
+        <li data-t="layers"><span>Take the page apart: view it as HTML only, then add CSS, then JavaScript.</span></li>
+      </ol>
+    </div>
+
+    <div class="stack" style="gap:22px">
+      <div class="ctl glass">
+        <label class="ctl-title" for="url">Open a page</label>
+        <form class="addr-row" id="urlForm" autocomplete="off">
+          <div class="addr-field"><span class="scheme" aria-hidden="true">https://</span><input id="url" type="text" spellcheck="false" autocapitalize="off" value="beasbakery.com"></div>
+          <button class="btn primary" type="submit" id="goBtn">Go</button>
+        </form>
+        <div class="addr-opts"><span class="muted small">Try:</span><button class="btn" type="button" data-url="beasbakery.com">beasbakery.com</button><button class="btn" type="button" data-url="beasbakery.com/menu">beasbakery.com/menu</button></div>
+        <div class="mode-row">
+          <div class="seg-control" role="group" aria-label="Playback">
+            <button type="button" data-mode="play" aria-pressed="true">Whole trip</button>
+            <button type="button" data-mode="step" aria-pressed="false">Step by step</button>
+          </div>
+          <button class="btn" type="button" id="nextBtn" hidden>Next step</button>
+        </div>
+      </div>
+
+      <div class="stage glass">
+        <svg id="stage1" role="img" aria-label="Map of the trip: your browser, DNS, the routers of the internet, and Bea's server"></svg>
+        <div class="stage-cap" id="cap1" aria-live="polite">Press <b>Go</b> to send your first request.</div>
+      </div>
+
+      <div class="split">
+        <div class="ctl glass">
+          <h3 class="ctl-title">Trip log</h3>
+          <p class="ctl-sub">Every step, and how long it took. Real times vary, but these are typical.</p>
+          <ol class="log" id="log1"><li class="empty">Nothing yet. Send a request.</li></ol>
+          <div class="log-total" id="total1"></div>
+        </div>
+        <div class="stack" style="gap:10px">
+          <div class="browser">
+            <div class="browser-bar"><i></i><i></i><i></i><div class="addr" id="addr1"><span>about:blank</span></div></div>
+            <div class="view blank" id="view1">Nothing loaded yet</div>
+            <div class="layers" id="layers1" hidden>
+              <div class="seg-control" role="group" aria-label="Which parts of the page to show">
+                <button type="button" data-layer="html" aria-pressed="false">HTML only</button>
+                <button type="button" data-layer="css" aria-pressed="false">+ CSS</button>
+                <button type="button" data-layer="js" aria-pressed="true">+ JavaScript</button>
+              </div>
+            </div>
+          </div>
+          <div class="note info" id="layerNote" aria-live="polite" hidden></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="stack" style="margin-top:56px">
+      <h3>What just happened</h3>
+      <p class="muted">Every web page you have ever opened took these four steps. So does every app that talks to a server.</p>
+      <dl class="steps4">
+        <div class="glass" style="--c:var(--l5)"><span class="n">1</span><dt>Look up the address (DNS)</dt><dd>Computers find each other by number, an <b>IP address</b> like <code>203.0.113.42</code>. <b>DNS</b> is the internet's address book: it turns the name into the number. Your browser remembers the answer for a while, which is why the second page skipped this step. <em>When the AI says "the domain doesn't resolve", this step failed.</em></dd></div>
+        <div class="glass" style="--c:var(--l2)"><span class="n">2</span><dt>Send a request</dt><dd>Your browser, the <b>client</b>, sends a short message: <code>GET /menu</code>, "please give me the page at /menu". It travels in small pieces called <b>packets</b>, hopping between routers. <em>"Connection timed out" means nothing answered.</em></dd></div>
+        <div class="glass" style="--c:var(--l3)"><span class="n">3</span><dt>The server responds</dt><dd>A <b>server</b> is just a computer that waits for requests and answers them. Its <b>response</b> starts with a <b>status code</b> (200 means "here you go") and then the page itself. <em>You'll meet the other codes in part 2.</em></dd></div>
+        <div class="glass" style="--c:var(--l4)"><span class="n">4</span><dt>The browser builds the page</dt><dd>The page arrives as <b>HTML</b> (the content), which asks for <b>CSS</b> (the looks) and <b>JavaScript</b> (the behavior). The browser fetches those too, then draws everything. <em>A page with no styling usually means the CSS failed to load.</em></dd></div>
+      </dl>
+      <details class="deeper glass">
+        <summary>Under the hood: packets, routers and HTTPS <small>optional</small></summary>
+        <div>
+          <p>Nothing travels as one big piece. Your request and the server's response are chopped into <b>packets</b> of about 1,500 bytes, each labeled with where it's going. <b>Routers</b> pass each packet one hop closer, and different packets can take different routes. The receiving computer puts them back in order.</p>
+          <p>The <b>https</b> at the start of an address means the connection is encrypted. Before the request is sent, the browser and server agree on a secret key (the "TLS handshake"), so routers along the way can carry the packets but can't read them. The padlock in the address bar tells you this worked.</p>
+          <p>Real DNS has more layers too: your computer asks a <b>resolver</b> (often run by your internet provider), which may ask several other DNS servers before it finds the answer. Every level remembers answers for a set time, called the <b>TTL</b>.</p>
+        </div>
+      </details>
+    </div>
+  </section>
+
+  <!-- PART 2 -->
+  <section class="part" id="p2">
+    <span class="bullet glass" data-p="p2">2</span>
+    <div class="part-head">
+      <div class="kicker">Part 2 of 5</div>
+      <h2>When a page won't load</h2>
+      <p>"The site is down" can mean many different things. Each of the four steps can fail, and each failure looks a little different from the outside. Break the bakery on purpose and learn to tell them apart.</p>
+    </div>
+
+    <div class="task glass" data-part="p2">
+      <h3>Your task</h3>
+      <ol>
+        <li data-t="ok"><span>Load the page while everything works. Note the status code.</span></li>
+        <li data-t="404"><span>Ask for a page that doesn't exist and get a 404.</span></li>
+        <li data-t="500"><span>Put a bug in the server's code and get a 500.</span></li>
+        <li data-t="dns"><span>Delete the DNS record. Notice the server is fine, yet nobody can reach it.</span></li>
+      </ol>
+    </div>
+
+    <div class="pg">
+      <div class="pg-col">
+        <div class="o1 ctl glass">
+          <h3 class="ctl-title">What goes wrong?</h3>
+          <p class="ctl-sub">Pick a situation. The browser loads the bakery with that problem.</p>
+          <div class="scen" id="scen"></div>
+        </div>
+        <div class="o4 ctl glass">
+          <h3 class="ctl-title">What happened</h3>
+          <dl class="readout" id="readout"><div><dt>Waiting</dt><dd class="muted">Pick a situation above to load the page.</dd></div></dl>
+        </div>
+        <div class="o5 note" id="tip2" aria-live="polite" hidden></div>
+      </div>
+      <div class="pg-col">
+        <div class="o2 stage glass">
+          <svg id="stage2" role="img" aria-label="Map of the trip, showing where it fails"></svg>
+          <div class="stage-cap" id="cap2" aria-live="polite">Pick a situation to start.</div>
+        </div>
+        <div class="o3 browser">
+          <div class="browser-bar"><i></i><i></i><i></i><div class="addr" id="addr2"><span>about:blank</span></div></div>
+          <div class="view blank" id="view2">What a visitor sees will appear here</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="stack" style="margin-top:56px">
+      <h3>Status codes come in families</h3>
+      <p class="muted">Every response starts with a three-digit number. The first digit tells you who has a problem. Tap a code to see what it means.</p>
+      <div class="fams" id="fams"></div>
+      <div class="note info" id="famNote" aria-live="polite"><strong>Tap any code above.</strong> You'll see these numbers in error messages, browser tools and AI explanations.</div>
+    </div>
+
+    <div class="stack" style="margin-top:48px">
+      <h3>What "the server is down" really means</h3>
+      <p>People say "down" for all of the failures you just caused. But the fix depends completely on which step broke. A missing DNS record has nothing to do with your code, and a 500 error has nothing to do with your domain name. Before you let anyone (or any AI) start fixing, find the step that failed.</p>
+      <div class="table-wrap glass">
+        <table>
+          <thead><tr><th>What the visitor sees</th><th>Step that failed</th><th>Where to look</th></tr></thead>
+          <tbody>
+            <tr><td>"This site can't be reached", mentions DNS</td><td>1. Look up the address</td><td>The spelling, then the domain's DNS settings</td></tr>
+            <tr><td>"Took too long to respond" or "refused to connect"</td><td>2. Send the request</td><td>Is the server running? Check the hosting dashboard</td></tr>
+            <tr><td>A 4xx page, like 404 Not Found</td><td>3. The response (the request was wrong)</td><td>The link or address that was asked for</td></tr>
+            <tr><td>A 5xx page, like 500 or 503</td><td>3. The response (the server failed)</td><td>The server's logs and the latest code change</td></tr>
+            <tr><td>Page loads but looks broken or unstyled</td><td>4. Build the page</td><td>Missing CSS or JavaScript files, or a script error</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
+  <!-- PART 3 -->
+  <section class="part" id="p3">
+    <span class="bullet glass" data-p="p3">3</span>
+    <div class="part-head">
+      <div class="kicker">Part 3 of 5</div>
+      <h2>Try it: be the network detective</h2>
+      <p>Developers and AI tools check websites with a few small commands. You'll use the same ones here. This practice terminal only talks to a pretend version of Bea's site, so nothing can break.</p>
+    </div>
+
+    <div class="lab">
+      <div class="a-mission ctl glass">
+        <h3 class="ctl-title">Your mission</h3>
+        <p class="ctl-sub" style="margin-top:0">Customers say the Cakes link on Bea's site is broken. Check the site step by step, find the problem, then confirm the fix.</p>
+        <ol class="mission" id="mission"></ol>
+      </div>
+      <div class="a-work" id="term"></div>
+      <div class="a-side ctl glass">
+        <h3 class="ctl-title">Case notes</h3>
+        <p class="ctl-sub">What you've found out so far.</p>
+        <div class="notes" id="notes"></div>
+      </div>
+      <div class="a-extra ctl glass">
+        <h3 class="ctl-title">How to read a response</h3>
+        <div class="anat">
+          <div><pre><span class="g">HTTP/2 200</span></pre><p><b>Status line.</b> The status code: did it work, and if not, whose problem is it?</p></div>
+          <div><pre>content-type: text/html
+cache-control: max-age=300</pre><p><b>Headers.</b> Facts about the reply: what kind of file it is, how long to keep it, where to go instead.</p></div>
+          <div><pre><span class="d">&lt;!doctype html&gt;</span>
+<span class="d">&lt;h1&gt;</span>Bea's Bakery<span class="d">&lt;/h1&gt;</span></pre><p><b>Body.</b> The content itself. <code>curl -I</code> skips it and shows only the first two parts.</p></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- PART 4 -->
+  <section class="part" id="p4">
+    <span class="bullet glass" data-p="p4">4</span>
+    <div class="part-head">
+      <div class="kicker">Part 4 of 5</div>
+      <h2>Steer the AI</h2>
+      <p>AI tools are quick to jump to a fix. Often it's the wrong fix, because they guessed which step failed. Pick the reply you'd send.</p>
+    </div>
+    <p class="counter" id="steerCount"></p>
+    <div id="steer"></div>
+  </section>
+
+  <!-- PART 5 -->
+  <section class="part" id="p5">
+    <span class="bullet glass" data-p="p5">5</span>
+    <div class="part-head">
+      <div class="kicker">Part 5 of 5</div>
+      <h2>Check your understanding</h2>
+      <p>Five quick questions. Each answer explains itself.</p>
+    </div>
+    <div id="quiz"></div>
+    <div id="doneCard" aria-live="polite"></div>
+  </section>
+  </div>
+
+  <section class="after" id="cheat">
+    <div class="wrap stack">
+      <h2>Cheat sheet</h2>
+      <p class="muted">The words and commands you'll hear most when an AI talks about websites.</p>
+      <div class="table-wrap glass">
+        <table>
+          <thead><tr><th>Term</th><th>In plain words</th><th>When the AI says…</th></tr></thead>
+          <tbody>
+            <tr><td>Client / server</td><td>The client (your browser or app) asks. The server (a computer somewhere) answers.</td><td>"The client sends a request to the backend server."</td></tr>
+            <tr><td>DNS</td><td>The internet's address book. Turns <code>beasbakery.com</code> into an IP address.</td><td>"The domain doesn't resolve." DNS can't find it.</td></tr>
+            <tr><td>IP address</td><td>A computer's number on the internet, like <code>203.0.113.42</code>.</td><td>"Point the A record at your server's IP."</td></tr>
+            <tr><td>Request / response</td><td>The question the browser sends, and the answer that comes back.</td><td>"The request returned a 500."</td></tr>
+            <tr><td>2xx, 3xx</td><td>It worked (200), or it's somewhere else now (301).</td><td>"Add a 301 redirect so old links keep working."</td></tr>
+            <tr><td>4xx</td><td>The request had a problem: 404 not found, 401 not logged in, 403 not allowed.</td><td>"It's a 404." The server is fine; check the address.</td></tr>
+            <tr><td>5xx</td><td>The server had a problem: 500 crashed, 503 overloaded.</td><td>"It's a 500." Ask to see the server logs.</td></tr>
+            <tr><td>localhost</td><td>This computer. Nobody else can open it.</td><td>"It's running on localhost:3000." Not live yet.</td></tr>
+            <tr><td><code>ping</code> / <code>nslookup</code></td><td>Is the machine reachable? What's the address behind this name?</td><td>"Let me check whether the domain resolves."</td></tr>
+            <tr><td><code>curl -I</code></td><td>Fetch a URL and show only the status code and headers.</td><td>"curl shows a 301 to the new page, so the redirect works."</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+</main>
+<script src="../assets/cs-school.js"></script>
+<script>
+(() => {
+const { $, $$, esc, reduce } = CS;
+const IP = '203.0.113.42';
+const NS = 'http://www.w3.org/2000/svg';
+
+CS.lesson({
+  id: '101',
+  parts: [
+    { id: 'p1', title: 'The journey' },
+    { id: 'p2', title: 'When it breaks' },
+    { id: 'p3', title: 'Try it' },
+    { id: 'p4', title: 'Steer the AI' },
+    { id: 'p5', title: 'Check' }
+  ]
+});
+
+/* ================= network stage =================
+   One drawing, three layouts (wide, mid, tall) so labels stay readable at every width. */
+const LAYOUTS = {
+  wide: { w: 960, h: 300, fs: 15, sub: 12.5, pk: 13,
+    nodes: { laptop: [115, 185], dns: [310, 56], server: [848, 172] },
+    routers: { r1: [300, 205], r2: [395, 132], r3: [420, 258], r4: [515, 196], r5: [600, 110], r6: [640, 258], r7: [725, 180] },
+    mesh: [512, 290],
+    routes: { dns: ['laptop', [190, 95], 'dns'], dnsBack: ['dns', [205, 125], 'laptop'], req: ['laptop', 'r1', 'r2', 'r5', 'r7', 'server'], resp: ['server', 'r6', 'r4', 'r3', [240, 250], 'laptop'] } },
+  mid: { w: 640, h: 380, fs: 16, sub: 13, pk: 13.5,
+    nodes: { laptop: [88, 262], dns: [205, 62], server: [556, 245] },
+    routers: { r1: [210, 250], r2: [285, 172], r3: [300, 318], r4: [372, 240], r5: [425, 150], r6: [440, 322], r7: [482, 232] },
+    mesh: [362, 366],
+    routes: { dns: ['laptop', [110, 150], 'dns'], dnsBack: ['dns', [150, 170], 'laptop'], req: ['laptop', 'r1', 'r2', 'r5', 'r7', 'server'], resp: ['server', 'r6', 'r3', 'r1', 'laptop'] } },
+  tall: { w: 360, h: 490, fs: 16, sub: 13, pk: 14,
+    nodes: { laptop: [82, 78], dns: [268, 66], server: [180, 392] },
+    routers: { r1: [62, 196], r2: [165, 172], r3: [285, 190], r4: [105, 268], r5: [210, 252], r6: [312, 282], r7: [172, 318] },
+    mesh: [262, 134],
+    routes: { dns: ['laptop', [175, 36], 'dns'], dnsBack: ['dns', [180, 108], 'laptop'], req: ['laptop', [150, 104], 'r2', 'r5', 'r6', 'server'], resp: ['server', 'r7', 'r4', 'r1', 'laptop'] } }
+};
+const EDGES = [['r1', 'r2'], ['r1', 'r3'], ['r2', 'r4'], ['r3', 'r4'], ['r2', 'r5'], ['r4', 'r5'], ['r4', 'r6'], ['r3', 'r6'], ['r5', 'r7'], ['r6', 'r7'], ['r4', 'r7']];
+const EDGES_TALL = [['r1', 'r2'], ['r2', 'r3'], ['r1', 'r4'], ['r2', 'r5'], ['r3', 'r5'], ['r3', 'r6'], ['r4', 'r5'], ['r5', 'r6'], ['r4', 'r7'], ['r5', 'r7'], ['r6', 'r7']];
+const el = (tag, attrs = {}, parent) => { const e = document.createElementNS(NS, tag); for (const k in attrs) e.setAttribute(k, attrs[k]); if (parent) parent.appendChild(e); return e; };
+const smooth = pts => {
+  let d = `M${pts[0][0]} ${pts[0][1]}`;
+  for (let i = 0; i < pts.length - 1; i++) {
+    const p0 = pts[i - 1] || pts[i], p1 = pts[i], p2 = pts[i + 1], p3 = pts[i + 2] || p2;
+    const c1 = [p1[0] + (p2[0] - p0[0]) / 6, p1[1] + (p2[1] - p0[1]) / 6], c2 = [p2[0] - (p3[0] - p1[0]) / 6, p2[1] - (p3[1] - p1[1]) / 6];
+    d += ` C${c1[0].toFixed(1)} ${c1[1].toFixed(1)} ${c2[0].toFixed(1)} ${c2[1].toFixed(1)} ${p2[0]} ${p2[1]}`;
+  }
+  return d;
+};
+const ease = t => t < .5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2;
+const wait = ms => new Promise(r => setTimeout(r, reduce ? Math.min(ms, 30) : ms));
+
+class Stage {
+  constructor(svg, { hero = false } = {}) {
+    this.svg = svg; this.hero = hero; this.tok = 0; this.state = {}; this.name = null;
+    this.draw();
+    let t; new ResizeObserver(() => { clearTimeout(t); t = setTimeout(() => { if (this.pick() !== this.name) this.draw(); }, 120); }).observe(svg.parentElement);
+  }
+  pick() { const w = this.svg.parentElement.clientWidth; return w >= 780 ? 'wide' : w >= 470 ? 'mid' : 'tall'; }
+  pt(k) { const L = this.L; return Array.isArray(k) ? k : (L.nodes[k] || L.routers[k]); }
+  draw() {
+    this.name = this.pick(); const L = this.L = LAYOUTS[this.name];
+    const s = this.svg; s.innerHTML = ''; s.setAttribute('viewBox', `0 0 ${L.w} ${L.h}`);
+    const gE = el('g', {}, s);
+    (this.name === 'tall' ? EDGES_TALL : EDGES).forEach(([a, b]) => { const [x1, y1] = L.routers[a], [x2, y2] = L.routers[b]; el('line', { class: 'st-edge', x1, y1, x2, y2 }, gE); });
+    const [lx, ly] = L.nodes.laptop;
+    // faint links from devices into the mesh
+    const first = this.name === 'tall' ? ['r1', 'r2'] : ['r1'], last = this.name === 'tall' ? ['r6', 'r7'] : ['r6', 'r7'];
+    first.forEach(r => { const [x, y] = L.routers[r]; el('line', { class: 'st-edge', x1: lx, y1: ly, x2: x, y2: y }, gE); });
+    last.forEach(r => { const [x, y] = L.routers[r]; const [sx, sy] = L.nodes.server; el('line', { class: 'st-edge', x1: sx, y1: sy, x2: x, y2: y }, gE); });
+    el('text', { class: 'st-mesh', x: L.mesh[0], y: L.mesh[1], 'text-anchor': 'middle', 'font-size': L.fs - 1 }, s).textContent = 'The internet';
+    this.gRt = el('g', {}, s);
+    this.routers = {};
+    Object.entries(L.routers).forEach(([k, [x, y]]) => { const g = el('g', { class: 'st-router' }, s); el('circle', { class: 'dot', cx: x, cy: y, r: 6 }, g); this.routers[k] = g; });
+    // laptop
+    const lap = this.lap = el('g', { class: 'nd nd-laptop', transform: `translate(${lx} ${ly})` }, s);
+    el('circle', { class: 'st-halo', r: 70 }, lap);
+    el('rect', { class: 'st-dev', x: -48, y: -44, width: 96, height: 64, rx: 8 }, lap);
+    el('rect', { class: 'st-scr', x: -41, y: -37, width: 82, height: 50, rx: 3 }, lap);
+    el('rect', { class: 'st-bar a', x: -34, y: -30, width: 28, height: 6, rx: 3 }, lap);
+    el('rect', { class: 'st-bar', x: -34, y: -18, width: 60, height: 4, rx: 2 }, lap);
+    el('rect', { class: 'st-bar', x: -34, y: -10, width: 48, height: 4, rx: 2 }, lap);
+    el('rect', { class: 'st-bar b', x: -34, y: 0, width: 20, height: 6, rx: 3 }, lap);
+    el('path', { class: 'st-dev', d: 'M-60 22H60L53 31H-53Z' }, lap);
+    el('text', { class: 'st-label', y: 56, 'text-anchor': 'middle', 'font-size': L.fs }, lap).textContent = 'Your browser';
+    // dns
+    const [dx, dy] = L.nodes.dns;
+    const dns = this.dns = el('g', { class: 'nd nd-dns', transform: `translate(${dx} ${dy})`, style: '--c:var(--l5)' }, s);
+    el('circle', { class: 'st-halo', r: 64 }, dns);
+    el('rect', { class: 'st-card', x: -70, y: -28, width: 140, height: 56, rx: 16 }, dns);
+    el('text', { class: 'st-label', y: -4, 'text-anchor': 'middle', 'font-size': L.fs + 1 }, dns).textContent = 'DNS';
+    this.dnsSub = el('text', { class: 'st-sub', y: 15, 'text-anchor': 'middle', 'font-size': L.sub }, dns);
+    this.dnsSub.textContent = 'names → numbers';
+    // server
+    const [sx, sy] = L.nodes.server;
+    const srv = this.srv = el('g', { class: 'nd nd-server', transform: `translate(${sx} ${sy})`, style: '--c:var(--l3)' }, s);
+    el('circle', { class: 'st-halo', r: 72 }, srv);
+    for (let i = 0; i < 3; i++) {
+      const y = -46 + i * 31;
+      el('rect', { class: 'st-dev', x: -44, y, width: 88, height: 25, rx: 7 }, srv);
+      el('rect', { class: 'st-slot', x: -33, y: y + 10, width: 30, height: 5, rx: 2.5 }, srv);
+      el('circle', { class: 'st-led', cx: 20, cy: y + 12.5, r: 3.6 }, srv);
+      el('circle', { class: 'st-led', cx: 31, cy: y + 12.5, r: 3.6 }, srv);
+    }
+    el('text', { class: 'st-label', y: 64, 'text-anchor': 'middle', 'font-size': L.fs }, srv).textContent = "Bea's server";
+    this.srvSub = el('text', { class: 'st-sub', y: 82, 'text-anchor': 'middle', 'font-size': L.sub }, srv);
+    this.srvSub.textContent = IP;
+    this.gPk = el('g', {}, s);
+    this.apply();
+  }
+  apply() { // re-apply node states after a redraw
+    const st = this.state;
+    [['dns', this.dns], ['srv', this.srv], ['lap', this.lap]].forEach(([k, g]) => { g.setAttribute('class', g.getAttribute('class').replace(/\s(active|busy|bad|off)/g, '') + (st[k] ? ' ' + st[k] : '')); });
+    if (st.dnsText) this.dnsSub.textContent = st.dnsText;
+    if (st.srvText) this.srvSub.textContent = st.srvText;
+  }
+  set(node, cls, text) { this.state[node] = cls; if (node === 'dns') this.state.dnsText = text || 'names → numbers'; if (node === 'srv') this.state.srvText = text || IP; this.apply(); }
+  begin() { this.tok++; this.gRt.innerHTML = ''; this.gPk.innerHTML = ''; this.state = {}; this.apply(); Object.values(this.routers).forEach(r => r.classList.remove('lit')); return this.tok; }
+  path(route) { return smooth(this.L.routes[route].map(k => this.pt(k))); }
+  packet(color, label) {
+    const g = el('g', { class: 'pk' }, this.gPk);
+    el('circle', { r: 15, style: `fill:${color}`, opacity: .18 }, g);
+    el('circle', { r: 7.5, style: `fill:${color}` }, g);
+    if (label) {
+      const lg = el('g', {}, g), fs = this.L.pk;
+      const r = el('rect', { class: 'pk-bg', height: fs + 12, rx: (fs + 12) / 2 }, lg);
+      const t = el('text', { class: 'pk-t', 'font-size': fs, 'text-anchor': 'middle', y: -22 }, lg); t.textContent = label;
+      let w; try { w = t.getComputedTextLength(); } catch (e) { w = 0; }
+      w = (w || label.length * fs * .62) + 22;
+      r.setAttribute('width', w); r.setAttribute('x', -w / 2); r.setAttribute('y', -22 - fs + 1 - 5);
+      g.lbl = lg; g.lblW = w;
+    }
+    return g;
+  }
+  place(g, p) {
+    let x = p.x, y = p.y;
+    g.setAttribute('transform', `translate(${x} ${y})`);
+    if (g.lbl) { // keep the label pill inside the drawing
+      const half = g.lblW / 2 + 4; let dx = 0;
+      if (x - half < 0) dx = half - x; if (x + half > this.L.w) dx = this.L.w - half - x;
+      g.lbl.setAttribute('transform', `translate(${dx} ${y < 40 ? 50 : 0})`);
+    }
+  }
+  travel(route, { label = '', color = 'var(--l2)', dur = 1000, stopAt = 1, keep = false } = {}) {
+    const tok = this.tok;
+    const rt = el('path', { class: 'st-rt', d: this.path(route), pathLength: 1, style: `stroke:${color}` }, this.gRt);
+    const len = rt.getTotalLength();
+    const pk = this.packet(color, label);
+    const lit = this.L.routes[route].filter(k => typeof k === 'string' && this.routers[k]);
+    return new Promise(res => {
+      const finish = () => {
+        lit.forEach(k => { this.routers[k].style.setProperty('--c', color); this.routers[k].classList.add('lit'); });
+        if (!keep) setTimeout(() => { rt.classList.add('fade'); pk.classList.add('fade'); lit.forEach(k => this.routers[k].classList.remove('lit')); setTimeout(() => { rt.remove(); pk.remove(); }, 420); }, reduce ? 700 : 260);
+        res(tok === this.tok);
+      };
+      if (reduce || !this.svg.isConnected) { rt.style.strokeDashoffset = 1 - stopAt; this.place(pk, rt.getPointAtLength(len * stopAt)); return finish(); }
+      const t0 = performance.now();
+      const frame = now => {
+        if (tok !== this.tok) { rt.remove(); pk.remove(); return res(false); }
+        if (!rt.isConnected) return res(tok === this.tok);
+        const t = Math.min(1, (now - t0) / dur), f = ease(t) * stopAt;
+        this.place(pk, rt.getPointAtLength(len * f));
+        rt.style.strokeDashoffset = 1 - f;
+        if (t < 1) requestAnimationFrame(frame); else finish();
+      };
+      requestAnimationFrame(frame);
+    });
+  }
+  pose(items) { // a still frame for reduced motion
+    items.forEach(([route, label, color, at]) => {
+      const rt = el('path', { class: 'st-rt', d: this.path(route), pathLength: 1, style: `stroke:${color}; stroke-dashoffset:${1 - at}; opacity:.9` }, this.gRt);
+      this.place(this.packet(color, label), rt.getPointAtLength(rt.getTotalLength() * at));
+    });
+  }
+  mark(x, y) { const g = el('g', { class: 'pk' }, this.gPk); el('circle', { r: 16, style: 'fill:var(--bad-bg)' }, g); el('path', { class: 'st-x', d: 'M-6 -6L6 6M6 -6L-6 6' }, g); g.setAttribute('transform', `translate(${x} ${y})`); return g; }
+  markNode(k) { const [x, y] = this.L.nodes[k]; const off = k === 'dns' ? [62, -24] : k === 'server' ? [44, -58] : [48, -50]; return this.mark(x + off[0], y + off[1]); }
+}
+
+/* ================= hero ================= */
+(function hero() {
+  const st = new Stage($('#heroStage'), { hero: true });
+  const a = $('#heroCapA'), c = $('#heroCap');
+  const cap = (x, y) => { a.textContent = x; c.textContent = y; };
+  if (reduce) { st.pose([['req', 'GET /', 'var(--l2)', .55], ['resp', '200 OK', 'var(--l3)', .5]]); return; }
+  const loop = async () => {
+    const tok = st.begin();
+    cap('DNS', 'which address is beasbakery.com?'); st.set('dns', 'active');
+    if (!await st.travel('dns', { label: 'beasbakery.com?', color: 'var(--l5)', dur: 1100 })) return;
+    cap('DNS', `beasbakery.com is at ${IP}`);
+    if (!await st.travel('dnsBack', { label: IP, color: 'var(--l5)', dur: 900 })) return;
+    st.set('dns', '');
+    cap('GET', 'https://beasbakery.com/');
+    if (!await st.travel('req', { label: 'GET /', color: 'var(--l2)', dur: 1500 })) return;
+    st.set('srv', 'busy'); await wait(500); st.set('srv', 'active');
+    cap('200', 'OK · 14 KB of HTML on its way back');
+    if (!await st.travel('resp', { label: '200 OK', color: 'var(--l3)', dur: 1500 })) return;
+    st.set('srv', '');
+    cap('✓', 'page ready in 0.3 seconds');
+    await wait(2600);
+    if (tok === st.tok) loop();
+  };
+  setTimeout(loop, 900);
+})();
+
+/* ================= the bakery website (mock) ================= */
+const CROISSANT = `<svg class="pic" viewBox="0 0 96 72" aria-hidden="true"><ellipse cx="48" cy="62" rx="34" ry="5" fill="#F3D2B3"/><path d="M14 48C10 34 22 22 34 30C36 16 60 16 62 30C74 22 86 34 82 48C70 56 26 56 14 48Z" fill="#E9A15B" stroke="#8A4B1F" stroke-width="2.5" stroke-linejoin="round"/><path d="M34 30C36 40 38 48 40 52M62 30C60 40 58 48 56 52M48 22V52" stroke="#8A4B1F" stroke-width="2" fill="none" stroke-linecap="round"/><path d="M24 36C28 34 31 35 33 38" stroke="#F8D3A0" stroke-width="3" fill="none" stroke-linecap="round"/></svg>`;
+const LOGO = `<svg viewBox="0 0 30 30" aria-hidden="true"><circle cx="15" cy="15" r="14" fill="#E8793A"/><path d="M8 18C7 12 12 9 15 12C18 9 23 12 22 18C18 21 12 21 8 18Z" fill="#FFF3E4"/></svg>`;
+const PAGES = {
+  '/': { title: 'Fresh from the oven, every morning.', sub: 'Small-batch bread and pastries, baked on Maple Street since 2019.', items: [['Butter croissant', '$3'], ['Sourdough loaf', '$6'], ['Cinnamon bun', '$4']] },
+  '/menu': { title: 'Our menu', sub: "Everything is baked today. When it's gone, it's gone.", items: [['Butter croissant', '$3'], ['Pain au chocolat', '$3.50'], ['Sourdough loaf', '$6'], ['Cinnamon bun', '$4'], ['Lemon tart', '$5']] },
+  '/todays-specials': { title: "Today's specials", sub: 'Two treats, only until 4 pm.', items: [['Blueberry scone', '$3.50'], ['Pistachio roll', '$4.50']] }
+};
+function siteHTML(path, layer) {
+  const p = PAGES[path] || PAGES['/'];
+  return `<div class="bk${layer === 'html' ? ' raw' : ''}">
+    <div class="top"><div class="logo">${LOGO}<span>Bea's Bakery</span></div><nav><a href="#" tabindex="-1">Home</a> <a href="#" tabindex="-1">Menu</a> <a href="#" tabindex="-1">Cakes</a></nav></div>
+    <div class="hero-b"><div><h2>${esc(p.title)}</h2><p>${esc(p.sub)}</p></div>${CROISSANT}</div>
+    <ul>${p.items.map(([n, pr]) => `<li><b>${esc(n)}</b><span>${pr}</span></li>`).join('')}</ul>
+    <div class="buy"><button type="button" class="bk-add">Add a croissant to my basket</button><span class="basket">${layer === 'js' ? 'Basket: <b class="bk-n">0</b> items' : ''}</span></div>
+    <div class="bk-msg"></div>
+    <p class="hours">Open daily, 10 am to 4 pm · 12 Maple Street</p></div>`;
+}
+function wireSite(view, layer) {
+  const b = $('.bk-add', view); if (!b) return;
+  b.addEventListener('click', () => {
+    if (layer === 'js') { const n = $('.bk-n', view); n.textContent = +n.textContent + 1; }
+    else { const m = $('.bk-msg', view); m.innerHTML = `<p class="js-note">Nothing happens. This button needs JavaScript to work.</p>`; }
+  });
+}
+const LOCK = `<svg class="lock" viewBox="0 0 10 12" aria-hidden="true"><rect x="1" y="5" width="8" height="7" rx="1.5" fill="currentColor"/><path d="M3 5V3.5a2 2 0 0 1 4 0V5" stroke="currentColor" stroke-width="1.4" fill="none"/></svg>`;
+const setAddr = (box, url, { loading = false, redirected = false, secure = true } = {}) => {
+  box.innerHTML = `${loading ? '<i class="spin" aria-hidden="true"></i>' : secure ? LOCK : ''}<span>${esc(url)}</span>${redirected ? '<b class="redir">redirected</b>' : ''}`;
+};
+
+/* ================= Part 1: the journey ================= */
+const s1 = new Stage($('#stage1'));
+const P1 = { mode: 'play', cached: false, run: null, stepIdx: 0, layer: 'js', path: '/', seen: new Set(), trips: 0 };
+const log1 = $('#log1'), cap1 = $('#cap1'), view1 = $('#view1');
+const rnd = (a, b) => Math.round(a + Math.random() * (b - a));
+function logRow(color, title, detail, ms, fast) {
+  const e = $('.empty', log1); if (e) e.remove();
+  log1.insertAdjacentHTML('beforeend', `<li class="${fast ? 'fast' : ''}"><i style="--c:${color}"></i><b>${title}</b><span class="ms">${ms}</span><code>${detail}</code></li>`);
+}
+function parseUrl(raw) {
+  let s = raw.trim().toLowerCase().replace(/^https?:\/\//, '').replace(/^www\./, '');
+  const i = s.indexOf('/');
+  const host = i < 0 ? s : s.slice(0, i); let path = i < 0 ? '/' : s.slice(i);
+  if (path.length > 1) path = path.replace(/\/+$/, '');
+  return { host, path };
+}
+function renderView1(layer) {
+  view1.className = 'view' + (layer === 'css' ? ' css-only' : '');
+  view1.innerHTML = siteHTML(P1.path, layer);
+  wireSite(view1, layer);
+}
+const LAYER_NOTE = {
+  html: '<strong>HTML only.</strong> This is the raw content: headings, text, a list, a button. With no styling, the browser uses its plain default look. And the button does nothing.',
+  css: '<strong>HTML + CSS.</strong> CSS adds colors, fonts, spacing and layout. Same content, completely different look. The button still does nothing when you press it.',
+  js: '<strong>HTML + CSS + JavaScript.</strong> JavaScript adds behavior. Now the basket button works. Try it.'
+};
+function setLayer(layer, fromUser) {
+  P1.layer = layer;
+  $$('#layers1 [data-layer]').forEach(b => b.setAttribute('aria-pressed', b.dataset.layer === layer ? 'true' : 'false'));
+  renderView1(layer);
+  if (fromUser) {
+    P1.seen.add(layer);
+    CS.say($('#layerNote'), LAYER_NOTE[layer] + (P1.seen.size === 3 ? '' : ` <span class="muted">(${P1.seen.size} of 3 layers viewed)</span>`), 'info');
+    if (P1.seen.size === 3) CS.tick('p1', 'layers');
+  }
+}
+$('#layers1').addEventListener('click', e => { const b = e.target.closest('[data-layer]'); if (b) setLayer(b.dataset.layer, true); });
+
+function stepsFor(url) {
+  const { host, path } = url;
+  const cached = P1.cached;
+  const req = path;
+  const t = { dns: cached ? 0 : rnd(18, 34), req: rnd(38, 60), srv: rnd(22, 40), resp: rnd(40, 64), build: rnd(110, 170) };
+  return [
+    { name: 'Look up the address', async run(tok) {
+      if (cached) {
+        s1.set('lap', 'active');
+        cap1.innerHTML = `<b>1. Look up the address.</b> Your browser already asked DNS about ${esc(host)} a moment ago and remembered the answer, ${IP}. No trip needed. Remembering answers like this is called <b>caching</b>.`;
+        logRow('var(--l5)', 'DNS lookup', `${esc(host)} → ${IP} (remembered)`, '0 ms', true);
+        await wait(900); s1.set('lap', '');
+        return;
+      }
+      s1.set('dns', 'active');
+      cap1.innerHTML = `<b>1. Look up the address.</b> Your browser only knows the name <b>${esc(host)}</b>. Computers find each other by number, so it asks <b>DNS</b>, the internet's address book: "which address is ${esc(host)}?"`;
+      if (!await s1.travel('dns', { label: `${host}?`, color: 'var(--l5)', dur: 1000 })) return;
+      s1.set('dns', 'active', `${host} → ${IP}`);
+      cap1.innerHTML = `<b>1. Look up the address.</b> DNS answers: ${esc(host)} lives at <b>${IP}</b>. That number is the server's <b>IP address</b>.`;
+      if (!await s1.travel('dnsBack', { label: IP, color: 'var(--l5)', dur: 850 })) return;
+      s1.set('dns', '');
+      logRow('var(--l5)', 'DNS lookup', `${esc(host)} → ${IP}`, `${t.dns} ms`);
+    } },
+    { name: 'Send the request', async run() {
+      cap1.innerHTML = `<b>2. Send the request.</b> Your browser sends a short message to ${IP}: <code>GET ${esc(req)}</code>, which means "please give me the page at ${esc(req)}". It hops from router to router across the internet.`;
+      if (!await s1.travel('req', { label: `GET ${req}`, color: 'var(--l2)', dur: 1400 })) return;
+      logRow('var(--l2)', 'Request', `GET ${esc(req)} → ${IP}`, `${t.req} ms`);
+    } },
+    { name: 'The server responds', async run() {
+      s1.set('srv', 'busy');
+      cap1.innerHTML = `<b>3. The server responds.</b> Bea's server finds the page. Its reply starts with a <b>status code</b>: <b>200 OK</b>, meaning "here you go", followed by the page's HTML.`;
+      await wait(650); s1.set('srv', 'active');
+      if (!await s1.travel('resp', { label: '200 OK', color: 'var(--l3)', dur: 1400 })) return;
+      s1.set('srv', '');
+      logRow('var(--l3)', 'Response', '200 OK · 14 KB of HTML (by a different route)', `${t.srv + t.resp} ms`);
+    } },
+    { name: 'Build the page', async run() {
+      cap1.innerHTML = `<b>4. Build the page.</b> The browser reads the HTML and finds it also needs <code>style.css</code>, <code>app.js</code> and a photo. It asks for those too, then draws the page. First the content, then the looks, then the behavior.`;
+      $('#layers1').hidden = true;
+      view1.className = 'view'; view1.innerHTML = '<div class="waiting">Building…</div>';
+      setAddr($('#addr1'), `${host}${path === '/' ? '' : path}`, { loading: true });
+      const extras = [s1.travel('req', { color: 'var(--l4)', dur: 700 }), wait(120).then(() => s1.travel('req', { color: 'var(--l4)', dur: 700 })), wait(240).then(() => s1.travel('req', { color: 'var(--l4)', dur: 700 }))];
+      await wait(300); P1.path = path; renderView1('html');
+      await Promise.all(extras);
+      await Promise.all([s1.travel('resp', { color: 'var(--l4)', dur: 700 }), wait(150).then(() => s1.travel('resp', { color: 'var(--l4)', dur: 700 }))]);
+      renderView1('css'); await wait(500); setLayer('js');
+      setAddr($('#addr1'), `${host}${path === '/' ? '' : path}`);
+      $('#layers1').hidden = false;
+      logRow('var(--l4)', 'Build the page', '3 more requests: style.css, app.js, croissant.svg', `${t.build} ms`);
+      const total = t.dns + t.req + t.srv + t.resp + t.build;
+      $('#total1').textContent = `Total: ${total} ms, about ${(total / 1000).toFixed(1)} seconds.${cached ? ' The lookup was free this time.' : ''}`;
+    } }
+  ];
+}
+async function startTrip(raw) {
+  const url = parseUrl(raw);
+  if (!url.host) { cap1.innerHTML = '<b>Type an address first,</b> like beasbakery.com.'; return; }
+  const tok = s1.begin();
+  log1.innerHTML = ''; $('#total1').textContent = '';
+  setAddr($('#addr1'), `${url.host}${url.path === '/' ? '' : url.path}`, { loading: true });
+  view1.className = 'view blank'; view1.innerHTML = 'Waiting for the server…'; $('#layers1').hidden = true;
+  if (url.host !== 'beasbakery.com') {
+    s1.set('dns', 'active');
+    cap1.innerHTML = `<b>1. Look up the address.</b> Asking DNS about <b>${esc(url.host)}</b>…`;
+    await s1.travel('dns', { label: `${url.host}?`, color: 'var(--l5)', dur: 1000 });
+    if (tok !== s1.tok) return;
+    s1.set('dns', 'bad', 'no such name');
+    await s1.travel('dnsBack', { label: 'not found', color: 'var(--l1)', dur: 850 });
+    if (tok !== s1.tok) return;
+    cap1.innerHTML = `<b>DNS has no address for ${esc(url.host)}.</b> In this lesson only <b>beasbakery.com</b> exists. In real life, a typo here gives "This site can't be reached". You'll break things on purpose in part 2.`;
+    setAddr($('#addr1'), url.host, { secure: false });
+    view1.innerHTML = "This site can't be reached";
+    return;
+  }
+  if (!PAGES[url.path]) url.path = '/';
+  const steps = stepsFor(url);
+  P1.run = { tok, steps, i: 0, url, stepMode: P1.mode === 'step' };
+  if (P1.mode === 'play') {
+    for (const s of steps) { await s.run(tok); if (tok !== s1.tok) return; await wait(250); }
+    finishTrip(P1.run);
+  } else {
+    cap1.innerHTML = `<b>Ready.</b> Press <b>Next step</b> to start the lookup.`;
+    $('#nextBtn').hidden = false; $('#nextBtn').disabled = false; $('#nextBtn').textContent = `Next step: ${steps[0].name}`;
+  }
+}
+function finishTrip(run) {
+  P1.trips++;
+  CS.tick('p1', 'trip');
+  if (P1.cached) CS.tick('p1', 'cache');
+  if (run.stepMode) CS.tick('p1', 'steps');
+  const hadDns = !P1.cached;
+  P1.cached = true;
+  let extra = '';
+  if (!CS.ticked('p1', 'cache')) extra = ' Now open <b>beasbakery.com/menu</b> and compare the first line of the trip log.';
+  else if (!CS.ticked('p1', 'steps')) extra = ' Switch to <b>Step by step</b> and send another request.';
+  else if (!CS.ticked('p1', 'layers')) extra = ' Now use the buttons under the page to take it apart.';
+  cap1.innerHTML = `<b>Page loaded.</b> ${hadDns ? 'Four steps, less than half a second.' : 'Same four steps, but the lookup was already remembered.'}${extra}`;
+  $('#nextBtn').hidden = true;
+}
+$('#nextBtn').addEventListener('click', async () => {
+  const run = P1.run; if (!run || run.busy) return;
+  run.busy = true; $('#nextBtn').disabled = true;
+  await run.steps[run.i].run(run.tok);
+  if (run.tok !== s1.tok) return;
+  run.i++; run.busy = false;
+  if (run.i >= run.steps.length) finishTrip(run);
+  else { $('#nextBtn').disabled = false; $('#nextBtn').textContent = `Next step: ${run.steps[run.i].name}`; }
+});
+$('#urlForm').addEventListener('submit', e => { e.preventDefault(); $('#nextBtn').hidden = true; startTrip($('#url').value); });
+$$('[data-url]').forEach(b => b.addEventListener('click', () => { $('#url').value = b.dataset.url; $('#nextBtn').hidden = true; startTrip(b.dataset.url); }));
+$$('[data-mode]').forEach(b => b.addEventListener('click', () => {
+  P1.mode = b.dataset.mode;
+  $$('[data-mode]').forEach(x => x.setAttribute('aria-pressed', x === b ? 'true' : 'false'));
+  s1.begin(); $('#nextBtn').hidden = true;
+  cap1.innerHTML = P1.mode === 'step' ? 'Step mode is on. Press <b>Go</b> (or pick a page), then press <b>Next step</b> to move forward.' : 'Press <b>Go</b> to play the whole trip.';
+}));
+
+/* ================= Part 2: when it breaks ================= */
+const s2 = new Stage($('#stage2'));
+const view2 = $('#view2'), cap2 = $('#cap2');
+const SAD = `<svg viewBox="0 0 52 52" aria-hidden="true"><path d="M12 6h20l10 10v30H12z" fill="#fff" stroke="#9AA0A6" stroke-width="2.5" stroke-linejoin="round"/><path d="M32 6v10h10" fill="none" stroke="#9AA0A6" stroke-width="2.5" stroke-linejoin="round"/><circle cx="21" cy="27" r="2" fill="#9AA0A6"/><circle cx="33" cy="27" r="2" fill="#9AA0A6"/><path d="M20 37c4-4 10-4 14 0" stroke="#9AA0A6" stroke-width="2.5" fill="none" stroke-linecap="round"/></svg>`;
+const browserErr = (title, line, code) => `<div class="err-pg browser-err">${SAD}<h4>${title}</h4><p>${line}</p><code>${code}</code></div>`;
+const plainErr = (title, line) => `<div class="err-pg plain"><h4>${title}</h4><hr><p>${line}</p></div>`;
+const GOOD = 'var(--good)', WARN = 'var(--l4)', BAD = 'var(--l1)', INFO = 'var(--l2)';
+const chip = (t, c) => `<span class="code-chip" style="--c:${c}">${esc(t)}</span>`;
+const SCEN = [
+  { k: 'ok', label: 'Everything works', c: 'var(--l3)', host: 'beasbakery.com', path: '/',
+    read: ['None. Every step worked.', chip('200 OK', GOOD), 'Running fine', 'Nobody. Have a croissant.'],
+    say: '<strong>200 OK.</strong> The server found the page and sent it. Any code starting with 2 means success.' },
+  { k: 'typo', label: 'Typo in the address', c: 'var(--l5)', host: 'beasbakry.com', path: '/',
+    read: ['1. Look up the address', 'None. No server was contacted.', 'Running fine. You asked for the wrong name.', 'The visitor: fix the spelling. If a link on your site has the typo, fix the link.'],
+    say: '<strong>DNS has never heard of beasbakry.com.</strong> Without an address the browser has nowhere to send the request, so there is no status code at all.' },
+  { k: 'missing', label: "Page that doesn't exist", c: 'var(--l4)', host: 'beasbakery.com', path: '/muffinz',
+    read: ['3. The server responds', chip('404 Not Found', WARN), 'Running fine', 'The site: fix the link, or add the page.'],
+    say: '<strong>404 Not Found.</strong> The server answered, so it is not "down". It just has no page at /muffinz. A 4xx code means the request asked for something wrong.' },
+  { k: 'moved', label: 'Page that moved', c: 'var(--l2)', host: 'beasbakery.com', path: '/specials',
+    read: ['None. The browser followed a redirect.', `${chip('301 Moved', INFO)} then ${chip('200 OK', GOOD)}`, 'Running fine', 'Nobody. Redirects keep old links working.'],
+    say: '<strong>301 Moved Permanently.</strong> The server said "this page lives at /todays-specials now". The browser went there automatically. Look at the address bar.' },
+  { k: 'bug', label: 'Bug in the server code', c: 'var(--l1)', host: 'beasbakery.com', path: '/',
+    read: ['3. The server responds', chip('500 Internal Server Error', BAD), 'Running, but its code crashed on this request', "The developer, or your AI: read the server's logs to find the error."],
+    say: '<strong>500 Internal Server Error.</strong> A 5xx code means the problem is on the server\'s side. The visitor did nothing wrong, and retrying won\'t help until the code is fixed.' },
+  { k: 'dns', label: 'DNS record deleted', c: 'var(--l5)', host: 'beasbakery.com', path: '/',
+    read: ['1. Look up the address', 'None. The server was never contacted.', 'Running perfectly. Nobody can find it.', "Whoever manages the domain's DNS settings, often where the domain was bought."],
+    say: '<strong>The server is fine, but the site is unreachable.</strong> From the outside this looks exactly like "the site is down". Rewriting or restarting the server would not help at all.' },
+  { k: 'off', label: 'Server switched off', c: 'var(--ink-2)', host: 'beasbakery.com', path: '/',
+    read: ['2. Send the request', 'None. Nothing answered.', 'Off', 'The hosting: restart the server, check the hosting dashboard.'],
+    say: '<strong>No answer.</strong> DNS worked, so the browser knew where to go. But nothing answered at that address, so after waiting a while it gave up.' },
+  { k: 'busy', label: 'Huge traffic spike', c: 'var(--l4)', host: 'beasbakery.com', path: '/',
+    read: ['3. The server responds', chip('503 Service Unavailable', BAD), 'Overloaded', 'The hosting: add capacity, or put a cache in front.'],
+    say: '<strong>503 Service Unavailable.</strong> Too many visitors at once. The server is turning some away with "try again later".' }
+];
+const RLABELS = ['Step that failed', 'Status code', 'The server', 'Who can fix it'];
+$('#scen').innerHTML = SCEN.map(s => `<button class="btn" type="button" data-s="${s.k}" aria-pressed="false"><i style="--c:${s.c}"></i>${esc(s.label)}</button>`).join('');
+function readout(s) {
+  $('#readout').innerHTML = s.read.map((v, i) => `<div><dt>${RLABELS[i]}</dt><dd>${v}</dd></div>`).join('');
+}
+async function runScenario(s) {
+  const tok = s2.begin();
+  const addr = $('#addr2');
+  const url = s.host + (s.path === '/' ? '' : s.path);
+  $('#readout').innerHTML = `<div><dt>Loading</dt><dd class="muted">Watch the map…</dd></div>`;
+  $('#tip2').hidden = true;
+  setAddr(addr, url, { loading: true });
+  view2.className = 'view blank'; view2.innerHTML = 'Loading…';
+  const alive = () => tok === s2.tok;
+  if (s.k === 'off') s2.set('srv', 'off', 'switched off');
+  // step 1: DNS
+  s2.set('dns', 'active');
+  cap2.innerHTML = `<b>Looking up ${esc(s.host)}…</b>`;
+  if (!await s2.travel('dns', { label: `${s.host}?`, color: 'var(--l5)', dur: 800 })) return;
+  if (s.k === 'typo' || s.k === 'dns') {
+    s2.set('dns', 'bad', 'no record found');
+    s2.markNode('dns');
+    if (!await s2.travel('dnsBack', { label: 'not found', color: 'var(--l1)', dur: 700 })) return;
+    if (s.k === 'dns') s2.set('srv', 'active', 'running fine');
+    cap2.innerHTML = s.k === 'typo' ? '<b>DNS has no address for that name.</b> The request never leaves your computer.' : "<b>DNS has no record for beasbakery.com any more.</b> Look at the server: it's running happily, but nobody can find it.";
+    setAddr(addr, url, { secure: false });
+    view2.className = 'view';
+    view2.innerHTML = browserErr("This site can't be reached", s.k === 'typo' ? `Check if there is a typo in <b>${esc(s.host)}</b>.` : `<b>${esc(s.host)}</b>'s server IP address could not be found.`, 'DNS_PROBE_FINISHED_NXDOMAIN');
+    return done(s);
+  }
+  s2.set('dns', '');
+  if (!await s2.travel('dnsBack', { label: IP, color: 'var(--l5)', dur: 650 })) return;
+  // step 2: request
+  cap2.innerHTML = `<b>Sending GET ${esc(s.path)} to ${IP}…</b>`;
+  if (s.k === 'busy') { for (let i = 0; i < 7; i++) s2.travel('req', { color: 'var(--ink-2)', dur: 900 + i * 90 }); s2.set('srv', 'busy', 'overloaded'); }
+  if (s.k === 'off') {
+    if (!await s2.travel('req', { label: `GET ${s.path}`, color: 'var(--l2)', dur: 1200, keep: true })) return;
+    s2.markNode('server');
+    cap2.innerHTML = '<b>Nothing answers.</b> The browser waits, and waits…';
+    view2.innerHTML = 'Waiting for beasbakery.com…';
+    await wait(1400); if (!alive()) return;
+    setAddr(addr, url, { secure: false });
+    view2.className = 'view';
+    view2.innerHTML = browserErr("This site can't be reached", `<b>${esc(s.host)}</b> took too long to respond.`, 'ERR_CONNECTION_TIMED_OUT');
+    cap2.innerHTML = '<b>Timed out.</b> The address was right, but nothing was there to answer.';
+    return done(s);
+  }
+  if (!await s2.travel('req', { label: `GET ${s.path}`, color: 'var(--l2)', dur: 1100 })) return;
+  // step 3: the server responds
+  if (s.k !== 'busy') s2.set('srv', 'busy');
+  await wait(s.k === 'busy' ? 900 : 450); if (!alive()) return;
+  const RESP = { ok: ['200 OK', 'var(--l3)', ''], missing: ['404 Not Found', 'var(--l4)', 'active'], moved: ['301 → /todays-specials', 'var(--l2)', 'active'], bug: ['500 Error', 'var(--l1)', 'bad'], busy: ['503 Busy', 'var(--l1)', 'busy'] }[s.k];
+  s2.set('srv', RESP[2] || 'active', s.k === 'bug' ? 'code crashed' : s.k === 'busy' ? 'overloaded' : IP);
+  if (s.k === 'bug') s2.markNode('server');
+  cap2.innerHTML = `<b>The server replies: ${esc(RESP[0])}.</b>`;
+  if (!await s2.travel('resp', { label: RESP[0], color: RESP[1], dur: 1100 })) return;
+  if (s.k === 'moved') {
+    setAddr(addr, 'beasbakery.com/todays-specials', { loading: true, redirected: true });
+    cap2.innerHTML = '<b>Redirect.</b> The browser automatically asks for the new address.';
+    s2.set('srv', '');
+    if (!await s2.travel('req', { label: 'GET /todays-specials', color: 'var(--l2)', dur: 1000 })) return;
+    if (!await s2.travel('resp', { label: '200 OK', color: 'var(--l3)', dur: 1000 })) return;
+    setAddr(addr, 'beasbakery.com/todays-specials', { redirected: true });
+    view2.className = 'view'; view2.innerHTML = siteHTML('/todays-specials', 'js'); wireSite(view2, 'js');
+    cap2.innerHTML = '<b>Arrived.</b> You asked for /specials and ended up at /todays-specials, with no error.';
+    return done(s);
+  }
+  s2.set('srv', s.k === 'bug' ? 'bad' : s.k === 'busy' ? 'busy' : '', s.k === 'bug' ? 'code crashed' : s.k === 'busy' ? 'overloaded' : IP);
+  setAddr(addr, url);
+  view2.className = 'view';
+  if (s.k === 'ok') { view2.innerHTML = siteHTML('/', 'js'); wireSite(view2, 'js'); cap2.innerHTML = '<b>Success.</b> Every step worked.'; }
+  if (s.k === 'missing') { view2.innerHTML = `<div class="err-pg bake404"><span class="big">404</span><h4>We couldn't find that page.</h4><p>Maybe it went stale. There's no page at /muffinz.</p><a href="#" tabindex="-1">Back to the fresh stuff</a></div>`; cap2.innerHTML = '<b>The server is fine.</b> It answered quickly. The page just doesn\'t exist.'; }
+  if (s.k === 'bug') { view2.innerHTML = plainErr('500 Internal Server Error', 'The server encountered an error and could not complete your request.'); cap2.innerHTML = '<b>The server is running, but its code crashed</b> while building this page.'; }
+  if (s.k === 'busy') { view2.innerHTML = plainErr('503 Service Unavailable', 'The server is temporarily unable to handle your request. Please try again later.'); cap2.innerHTML = '<b>Too many visitors.</b> The server is turning some of them away.'; }
+  done(s);
+}
+function done(s) {
+  readout(s);
+  CS.say($('#tip2'), s.say, s.k === 'ok' || s.k === 'moved' ? 'good' : 'bad');
+  const key = { ok: 'ok', missing: '404', bug: '500', dns: 'dns' }[s.k];
+  if (key) CS.tick('p2', key);
+}
+$('#scen').addEventListener('click', e => {
+  const b = e.target.closest('[data-s]'); if (!b) return;
+  $$('#scen [data-s]').forEach(x => x.setAttribute('aria-pressed', x === b ? 'true' : 'false'));
+  runScenario(SCEN.find(s => s.k === b.dataset.s));
+});
+
+/* status code explorer */
+const FAMS = [
+  { f: '2xx', c: 'var(--l3)', t: 'Success. It worked.', codes: [['200', 'OK', "Here's what you asked for. The code you want to see."], ['201', 'Created', 'Your new thing was saved, for example after submitting a sign-up form.']] },
+  { f: '3xx', c: 'var(--l2)', t: "It's somewhere else. Look over there.", codes: [['301', 'Moved Permanently', 'This page has a new address for good. Browsers follow it automatically, and search engines update their links.'], ['304', 'Not Modified', "Nothing changed since your last visit, so use the copy you already have. It makes pages load faster."]] },
+  { f: '4xx', c: 'var(--l4)', t: 'The request has a problem.', codes: [['400', 'Bad Request', "The server couldn't understand what was sent, for example a form with missing fields."], ['401', 'Unauthorized', 'You need to log in first.'], ['403', 'Forbidden', "You're logged in, but you're not allowed to see this."], ['404', 'Not Found', "There's nothing at this address. The server itself is fine."], ['429', 'Too Many Requests', 'Slow down. You sent too many requests in a short time. Common with AI and payment APIs.']] },
+  { f: '5xx', c: 'var(--l1)', t: 'The server has a problem.', codes: [['500', 'Internal Server Error', "The server's code crashed. The details are in the server's logs, not in the browser."], ['502', 'Bad Gateway', 'A server in the middle got a broken answer from the server behind it. Often the app behind it crashed.'], ['503', 'Service Unavailable', 'Overloaded or under maintenance. Try again later.'], ['504', 'Gateway Timeout', 'A server in the middle waited too long for the server behind it.']] }
+];
+$('#fams').innerHTML = FAMS.map(f => `<div class="fam glass" style="--c:${f.c}"><div class="fh"><i></i><h4>${f.f}</h4></div><p class="fs">${f.t}</p><div class="pills">${f.codes.map(([n, name]) => `<button type="button" data-code="${n}" aria-pressed="false" title="${esc(name)}">${n}</button>`).join('')}</div></div>`).join('');
+$('#fams').addEventListener('click', e => {
+  const b = e.target.closest('[data-code]'); if (!b) return;
+  $$('#fams [data-code]').forEach(x => x.setAttribute('aria-pressed', x === b ? 'true' : 'false'));
+  for (const f of FAMS) { const c = f.codes.find(x => x[0] === b.dataset.code); if (c) CS.say($('#famNote'), `<strong>${c[0]} ${esc(c[1])}.</strong> ${esc(c[2])}`, 'info'); }
+});
+
+/* ================= Part 3: terminal ================= */
+const NOTE_ROWS = [['reach', 'Server reachable?'], ['addr', 'Address (DNS)'], ['home', 'Home page'], ['cakes', '/cakes'], ['celeb', '/celebrations']];
+const notes = {};
+function renderNotes(flash) {
+  $('#notes').innerHTML = NOTE_ROWS.map(([k, label]) => { const n = notes[k]; return `<div class="nrow ${n ? n[1] : ''}${k === flash ? ' flash' : ''}"><i></i><b>${label}</b><span>${n ? esc(n[0]) : 'not checked'}</span></div>`; }).join('');
+}
+function note(k, text, tone) { notes[k] = [text, tone]; renderNotes(k); }
+renderNotes();
+const FIX = { redirect: false };
+const HOME_HTML = `<span class="dim">&lt;!doctype html&gt;</span>
+<span class="dim">&lt;html&gt;</span>
+<span class="dim">&lt;head&gt;</span>
+  <span class="dim">&lt;title&gt;</span>Bea's Bakery<span class="dim">&lt;/title&gt;</span>
+  <span class="dim">&lt;link rel="stylesheet" href="/style.css"&gt;</span>
+<span class="dim">&lt;/head&gt;</span>
+<span class="dim">&lt;body&gt;</span>
+  <span class="dim">&lt;h1&gt;</span>Bea's Bakery<span class="dim">&lt;/h1&gt;</span>
+  <span class="dim">&lt;nav&gt;</span>
+    <span class="dim">&lt;a href="/menu"&gt;</span>Menu<span class="dim">&lt;/a&gt;</span>
+    <span class="y">&lt;a href="/cakes"&gt;</span>Cakes<span class="y">&lt;/a&gt;</span>
+  <span class="dim">&lt;/nav&gt;</span>
+  <span class="dim">&lt;p&gt;</span>Fresh from the oven every morning.<span class="dim">&lt;/p&gt;</span>
+  <span class="dim">&lt;script src="/app.js"&gt;&lt;/script&gt;</span>
+<span class="dim">&lt;/body&gt;</span>
+<span class="dim">&lt;/html&gt;</span>`;
+const BODIES = {
+  '/': HOME_HTML,
+  '/menu': `<span class="dim">&lt;!doctype html&gt;</span>\n<span class="dim">&lt;h1&gt;</span>Our menu<span class="dim">&lt;/h1&gt;</span>\n<span class="dim">&lt;ul&gt;</span> Butter croissant $3 · Sourdough loaf $6 · Cinnamon bun $4 <span class="dim">&lt;/ul&gt;</span>`,
+  '/celebrations': `<span class="dim">&lt;!doctype html&gt;</span>\n<span class="dim">&lt;h1&gt;</span>Celebration cakes<span class="dim">&lt;/h1&gt;</span>\n<span class="dim">&lt;p&gt;</span>Birthday, wedding and just-because cakes. Order 3 days ahead.<span class="dim">&lt;/p&gt;</span>`,
+  404: `<span class="dim">&lt;!doctype html&gt;</span>\n<span class="dim">&lt;h1&gt;</span>404: We couldn't find that page.<span class="dim">&lt;/h1&gt;</span>`,
+  301: `<span class="dim">&lt;html&gt;&lt;head&gt;&lt;title&gt;</span>301 Moved Permanently<span class="dim">&lt;/title&gt;&lt;/head&gt;&lt;/html&gt;</span>`
+};
+function site(scheme, path) {
+  if (scheme === 'http') return { status: 301, location: `https://beasbakery.com${path}` };
+  if (path === '/' || path === '/index.html') return { status: 200, type: 'text/html; charset=utf-8', len: 1432, body: BODIES['/'] };
+  if (path === '/menu') return { status: 200, type: 'text/html; charset=utf-8', len: 988, body: BODIES['/menu'] };
+  if (path === '/celebrations') return { status: 200, type: 'text/html; charset=utf-8', len: 1104, body: BODIES['/celebrations'] };
+  if (path === '/style.css') return { status: 200, type: 'text/css', len: 2311, body: '<span class="dim">body { font-family: Georgia, serif; background: #fff8ef; } …</span>' };
+  if (path === '/app.js') return { status: 200, type: 'text/javascript', len: 640, body: '<span class="dim">document.querySelector(".add").addEventListener("click", …)</span>' };
+  if (path === '/cakes' && FIX.redirect) return { status: 301, location: '/celebrations' };
+  return { status: 404, type: 'text/html; charset=utf-8', len: 512, body: BODIES[404] };
+}
+const REASON = { 200: 'OK', 301: 'Moved Permanently', 404: 'Not Found' };
+const statusCls = n => n < 300 ? 'g' : n < 400 ? 'b' : n < 500 ? 'y' : 'r';
+function headers(r, scheme) {
+  const lines = [`<span class="${statusCls(r.status)}">${scheme === 'http' ? 'HTTP/1.1' : 'HTTP/2'} ${r.status}${scheme === 'http' ? ' ' + REASON[r.status] : ''}</span>`];
+  if (r.location) lines.push(`<span class="b">location: ${esc(r.location)}</span>`);
+  lines.push(`content-type: ${r.type || 'text/html'}`);
+  lines.push(`content-length: ${r.len || 162}`);
+  if (r.status === 200) lines.push('cache-control: max-age=300');
+  lines.push(`date: ${new Date().toUTCString()}`);
+  lines.push('server: nginx');
+  return lines.join('\n');
+}
+const HOSTS = ['beasbakery.com'];
+function parseTarget(raw) {
+  let s = (raw || '').trim(); let scheme = 'http';
+  const m = s.match(/^(https?):\/\//i); if (m) { scheme = m[1].toLowerCase(); s = s.slice(m[0].length); }
+  let i = s.indexOf('/'); let host = (i < 0 ? s : s.slice(0, i)).toLowerCase().replace(/:\d+$/, '').replace(/\.$/, '');
+  let path = i < 0 ? '/' : s.slice(i).split('?')[0]; if (path.length > 1) path = path.replace(/\/+$/, '');
+  const port = (s.match(/^[^/]*:(\d+)/) || [])[1];
+  host = host.replace(/^www\./, '');
+  return { scheme, host, path, port };
+}
+function typoTip(host, io) {
+  if (host && CS.lev(host, 'beasbakery.com') <= 3) io.tutor(`Close! Check the spelling: it's <b>beasbakery.com</b>. A typo like this is exactly what makes DNS say "not found".`);
+}
+function run(a, line, io) {
+  const { print, tutor } = io;
+  const cmd = a[0].toLowerCase();
+  if (cmd === 'help') { print(`Commands you can use here:\n  <span class="y">ping beasbakery.com</span>             is the server reachable?\n  <span class="y">nslookup beasbakery.com</span>         what address is behind the name?\n  <span class="y">curl https://beasbakery.com</span>     fetch a page (the whole thing)\n  <span class="y">curl -I https://beasbakery.com</span>  fetch only the status and headers\n  <span class="y">curl -IL &lt;url&gt;</span>                  same, and follow redirects\n  <span class="y">traceroute beasbakery.com</span>       show the routers along the way\n  <span class="y">clear</span>  <span class="y">hint</span>`); return null; }
+  if (cmd === 'ls' || cmd === 'cd' || cmd === 'pwd') { print('This terminal is for checking the website. Type <span class="y">help</span> to see the commands.', 'dim'); return null; }
+  if (cmd === 'ping') {
+    const t = parseTarget(a.slice(1).find(x => !x.startsWith('-') && !/^\d+$/.test(x)));
+    if (!t.host) { print('usage: ping &lt;host&gt;', 'r'); tutor('Add the site name after ping, like <b>ping beasbakery.com</b>.'); return null; }
+    if (/\//.test(a.slice(1).join(' ').replace(/^https?:\/\//, '')) || /^https?:/.test(a[1] || '')) { /* ping takes a name, not a URL */ }
+    if (t.host === 'localhost' || t.host === '127.0.0.1') { print('PING localhost (127.0.0.1): 56 data bytes\n64 bytes from 127.0.0.1: icmp_seq=0 ttl=64 time=0.05 ms\n64 bytes from 127.0.0.1: icmp_seq=1 ttl=64 time=0.07 ms'); tutor("That's your own computer answering. localhost always means \"this machine\"."); return null; }
+    if (!HOSTS.includes(t.host)) { print(`ping: cannot resolve ${esc(t.host)}: Unknown host`, 'r'); typoTip(t.host, io); return { k: 'ping', ok: false }; }
+    const ms = [23.1, 22.7, 24.4, 22.9];
+    print(`PING beasbakery.com (${IP}): 56 data bytes\n${ms.map((m, i) => `64 bytes from ${IP}: icmp_seq=${i} ttl=54 time=${m} ms`).join('\n')}\n\n--- beasbakery.com ping statistics ---\n4 packets transmitted, 4 packets received, <span class="g">0.0% packet loss</span>\nround-trip min/avg/max = 22.7/23.3/24.4 ms`);
+    tutor('Every reply came back in about 23 milliseconds. The server is switched on and reachable. Notice ping also shows the IP address it found.');
+    note('reach', 'yes, 23 ms', 'ok');
+    return { k: 'ping', ok: true };
+  }
+  if (cmd === 'nslookup' || cmd === 'dig' || cmd === 'host') {
+    const t = parseTarget(a.slice(1).find(x => !x.startsWith('-') && !x.startsWith('+')));
+    if (!t.host) { print(`usage: ${cmd} &lt;name&gt;`, 'r'); return null; }
+    if (!HOSTS.includes(t.host)) { print(`Server:\t\t192.168.1.1\nAddress:\t192.168.1.1#53\n\n<span class="r">** server can't find ${esc(t.host)}: NXDOMAIN</span>`); tutor('NXDOMAIN means "no such domain". DNS has no address for that name.'); typoTip(t.host, io); return { k: 'dns', ok: false }; }
+    print(`Server:\t\t192.168.1.1\nAddress:\t192.168.1.1#53\n\nNon-authoritative answer:\nName:\tbeasbakery.com\n<span class="g">Address: ${IP}</span>`);
+    tutor(`DNS says beasbakery.com lives at <b>${IP}</b>. The first two lines are the DNS server your computer asked, usually your home router. "Non-authoritative" just means the answer came from a cache.`);
+    note('addr', IP, 'ok');
+    return { k: 'dns', ok: true };
+  }
+  if (cmd === 'traceroute' || cmd === 'tracert') {
+    const t = parseTarget(a[1]);
+    if (!HOSTS.includes(t.host)) { print(`traceroute: unknown host ${esc(t.host || '')}`, 'r'); typoTip(t.host, io); return null; }
+    print(`traceroute to beasbakery.com (${IP}), 64 hops max\n 1  192.168.1.1 (your router)          1.9 ms\n 2  10.24.0.1 (your internet provider)   8.4 ms\n 3  core1.city.example.net              11.2 ms\n 4  core4.region.example.net            15.8 ms\n 5  edge2.hosting.example.net           21.7 ms\n 6  ${IP} (beasbakery.com)          23.0 ms`);
+    tutor('Each line is one router passing your packets along. Six hops from your laptop to Bea\'s server.');
+    return null;
+  }
+  if (cmd === 'curl' || cmd === 'wget') {
+    const flags = a.slice(1).filter(x => x.startsWith('-'));
+    const letters = flags.filter(f => !f.startsWith('--')).join('');
+    const head = /I/.test(letters) || flags.includes('--head');
+    const include = /i/.test(letters) || head;
+    const follow = /L/.test(letters) || flags.includes('--location');
+    const target = a.slice(1).find(x => !x.startsWith('-'));
+    if (!target) { print('curl: try \'curl --help\' for more information', 'r'); tutor('Add an address, like <b>curl https://beasbakery.com</b>.'); return null; }
+    const t = parseTarget(target);
+    if (t.host === 'localhost' || t.host === '127.0.0.1') { print(`curl: (7) Failed to connect to localhost port ${t.port || 80} after 0 ms: Couldn't connect to server`, 'r'); tutor("localhost means <b>this</b> computer, and nothing is running on it here. That's why \"it works on localhost\" doesn't mean anyone else can see it."); return null; }
+    if (!HOSTS.includes(t.host)) { print(`curl: (6) Could not resolve host: ${esc(t.host)}`, 'r'); tutor('"Could not resolve host" means DNS found no address for that name.'); typoTip(t.host, io); return null; }
+    let scheme = t.scheme, path = t.path; const statuses = []; let r; let out = []; let hops = 0;
+    for (;;) {
+      r = site(scheme, path); statuses.push(r.status);
+      if (include) out.push(headers(r, scheme));
+      if (r.status === 301 && follow && hops < 5) {
+        hops++;
+        if (/^https?:/.test(r.location)) { const n = parseTarget(r.location); scheme = n.scheme; path = n.path; } else path = r.location;
+        continue;
+      }
+      break;
+    }
+    if (!head) out.push(r.status === 301 ? BODIES[301] : r.body);
+    print(out.join('\n\n'));
+    const final = r.status;
+    // tutor + notes
+    if (t.scheme === 'http' && statuses[0] === 301 && !follow) tutor('Without <b>https://</b>, curl used plain http, and the site answered 301: "use the secure address instead". Add <b>https://</b> to the address, or add <b>-L</b> to follow redirects.');
+    else if (path === '/' && final === 200) {
+      tutor(head ? '<b>HTTP/2 200</b>: the home page works. The lines below it are headers, facts about the reply. No body this time, because -I asks for headers only.' : 'This is the raw HTML your browser turns into the page. Look at the nav: the Cakes link points to <b>/cakes</b>. Remember that.');
+      note('home', '200 OK', 'ok');
+    } else if (t.path === '/cakes' && statuses[0] === 404) {
+      tutor(head ? 'There it is: <b>404</b>. The server answered, so it is running fine. It simply has no page at /cakes. The problem is the link, not the server.' : 'That\'s a 404 page. Add <b>-I</b> to see the status code on its own: <b>curl -I https://beasbakery.com/cakes</b>');
+      note('cakes', '404 Not Found', 'warn');
+    } else if (t.path === '/cakes' && statuses[0] === 301) {
+      tutor(final === 200 ? 'Two responses: first <b>301</b> pointing to /celebrations, then <b>200</b> from the new page. The old link works again.' : '<b>301 Moved Permanently</b>, with <b>location: /celebrations</b>. Browsers will follow it automatically. Now check where it leads.');
+      note('cakes', final === 200 ? '301 → 200' : '301 → /celebrations', 'info');
+      if (final === 200) note('celeb', '200 OK', 'ok');
+    } else if (path === '/celebrations' && final === 200) { tutor('The cakes page is alive and well at its new address.'); note('celeb', '200 OK', 'ok'); }
+    else if (final === 404) tutor(`No page at <b>${esc(path)}</b>. The server is fine; this address just doesn't exist.`);
+    return { k: 'curl', head, path: t.path, first: statuses[0], final, finalPath: path, scheme: t.scheme };
+  }
+  if (cmd === 'open' || cmd === 'start') { tutor('Here you check the site from the terminal. Try <b>curl https://beasbakery.com</b>.'); return null; }
+  return undefined;
+}
+const isHome = p => p === '/' || p === '/index.html';
+CS.terminal($('#term'), {
+  part: 'p3',
+  mission: $('#mission'),
+  prompt: () => '~ $',
+  intro: 'Type a command below and press Enter.\nStuck? Press "Show a hint", or type <span class="y">help</span>.',
+  steps: [
+    { t: 'Is the server reachable?', how: 'Send it a quick "are you there?" with ping.', cmd: 'ping beasbakery.com', done: a => a.k === 'ping' && a.ok },
+    { t: 'Look up its address', how: 'Ask DNS which IP address is behind the name.', cmd: 'nslookup beasbakery.com', done: a => a.k === 'dns' && a.ok },
+    { t: 'Fetch the home page', how: 'Download the page with curl, the way a browser would.', cmd: 'curl https://beasbakery.com', done: a => a.k === 'curl' && !a.head && a.final === 200 && isHome(a.finalPath) },
+    { t: 'Read just the status', how: 'Add -I to see only the status code and headers.', cmd: 'curl -I https://beasbakery.com', done: a => a.k === 'curl' && a.head && a.final === 200 && isHome(a.finalPath) },
+    { t: 'Check the broken link', how: 'The Cakes link points to /cakes. What status does it get?', cmd: 'curl -I https://beasbakery.com/cakes', done: a => a.k === 'curl' && a.path === '/cakes' && a.first === 404 },
+    { t: 'Check the fix', how: 'The AI added a redirect. Ask for /cakes again.', cmd: 'curl -I https://beasbakery.com/cakes', done: a => a.k === 'curl' && a.path === '/cakes' && a.first === 301 },
+    { t: 'Follow the redirect', how: 'Add -L so curl follows it to the new page.', cmd: 'curl -IL https://beasbakery.com/cakes', done: a => a.k === 'curl' && a.final === 200 && a.finalPath === '/celebrations' }
+  ],
+  run,
+  onStep(i, action, api) {
+    if (i !== 4) return;
+    FIX.redirect = true;
+    setTimeout(() => api.io.ai('Found it. Yesterday I renamed the cakes page to <b>/celebrations</b> and forgot the old link. I\'ve added a <b>301 redirect</b> from /cakes to /celebrations. Want to check it?'), 500);
+  },
+  doneHTML: '<b>Mission complete.</b> Try <code>traceroute beasbakery.com</code> or <code>curl -I http://beasbakery.com</code> if you want to explore.',
+  doneTutor: '<b>Case closed!</b> The server was never down. A link pointed to a page that had moved. You proved it with three commands, and confirmed the fix yourself instead of taking the AI\'s word for it.'
+});
+
+/* ================= Part 4: steer the AI ================= */
+CS.steer($('#steer'), [
+  { ai: "Your bakery site is up and running at http://localhost:3000! You can send that link to your customers.",
+    opts: [["Great, I'll send it to everyone now.", 0, "localhost means \"this computer\". The link only works on your own machine, so every customer would see an error."],
+           ["localhost only works on my computer. Let's deploy it to a host and get a public address first.", 1, "Right. localhost is great for testing, but nobody else can reach it. The site needs to run on a server with a real domain."],
+           ["Can you make localhost load faster before I share it?", 0, "Speed isn't the problem. Nobody but you can open a localhost address at all."]] },
+  { ai: "Visitors see \"This site can't be reached\". The backend must be broken, so I'll rewrite the server in a faster framework.",
+    opts: [["Go for it, a rewrite sounds overdue.", 0, "A rewrite takes days and wouldn't help if the problem is DNS. \"Can't be reached\" usually happens before the server is even contacted."],
+           ["Before changing any code, check whether the domain resolves with nslookup, and whether the server answers at all.", 1, "Yes. That message often means DNS or connection trouble, not code. Find the step that failed before you fix anything."],
+           ["Let's move to a bigger, more expensive server.", 0, "More power won't help if browsers can't find the server in the first place. Diagnose first."]] },
+  { ai: "The /cakes page returns a 404, so the server must be down. I'll restart it.",
+    opts: [["A 404 means the server answered. Let's find out why that page doesn't exist. Did a route get renamed?", 1, "Exactly. A 404 comes from a working server. The fix is a link, a route, or a redirect, not a restart."],
+           ["Sure, restart it.", 0, "A restart won't create a missing page. The server was answering fine the whole time."],
+           ["Tell customers to clear their browser cache.", 0, "The server itself said \"not found\". Clearing caches won't make a page appear that doesn't exist."]] },
+  { ai: "Some users get a 500 error on checkout. It's probably their old browsers, so I'll add a message telling them to update.",
+    opts: [["Good idea, most people should update anyway.", 0, "A 5xx code means the server failed, not the browser. The message would blame users for your bug."],
+           ["Maybe it's their Wi-Fi. Let's wait and see.", 0, "Wi-Fi problems don't produce a 500. The server received the request and its code crashed."],
+           ["A 500 is a server error. Show me the server logs for those requests and find what crashed.", 1, "Right. 5xx means the problem is on our side. The logs will show the actual error and which code caused it."]] }
+], { part: 'p4', counter: $('#steerCount') });
+
+/* ================= Part 5: quiz ================= */
+CS.quiz($('#quiz'), [
+  { q: 'What does DNS do?', a: [['Stores the files of a website', 0], ['Turns a name like beasbakery.com into the server\'s numeric address', 1], ['Makes pages load faster by compressing them', 0]], why: 'DNS is the internet\'s address book. Without it, your browser knows the name but not where to send the request.' },
+  { q: 'A page shows "404 Not Found". What does that tell you?', a: [['The server is down', 0], ['The server answered, but it has nothing at that address', 1], ['Your internet connection is broken', 0]], why: 'A 404 is an answer from a working server. Check the link or the address, not the server.' },
+  { q: 'Which status code family means the server itself failed?', a: [['2xx', 0], ['4xx', 0], ['5xx', 1]], why: '5xx codes (500, 502, 503) mean the problem is on the server\'s side. 4xx codes mean the request asked for something wrong.' },
+  { q: 'The AI says "It works on localhost". What does that mean for your customers?', a: [['They can use it now', 0], ['Nothing yet: it only runs on the AI\'s or your own computer', 1], ['It works, but slowly', 0]], why: 'localhost always means "this computer". To be reachable by others, the app has to be deployed to a server with a public address.' },
+  { q: 'The page loads, but it\'s plain black text on white with no colors or layout. What most likely failed?', a: [['DNS', 0], ['The CSS file didn\'t load', 1], ['The server returned a 500', 0]], why: 'The HTML arrived, so DNS and the server worked. The looks come from CSS, a separate file the browser fetches in step 4.' }
+], { part: 'p5', doneCard: $('#doneCard'), doneTitle: 'You can follow a click now.', doneText: 'You know the four steps behind every web page, what status codes mean, and how to find which step failed before anyone starts fixing the wrong thing.' });
+})();
+</script>
+</body>
+</html>

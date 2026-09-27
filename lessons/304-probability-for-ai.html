@@ -1,0 +1,1027 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Probability &amp; statistics for AI · CS School</title>
+<meta name="description" content="Course 304: chance, uncertainty and sampling, the math of an AI picking its next word and of testing whether an AI feature really works.">
+<link rel="icon" href="../assets/favicon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="../assets/cs-school.css">
+<style>
+/* lesson-specific styles: next-word sampler, test runner, dot histogram, base-rate grid, lab chart */
+:root{--well:color-mix(in srgb, var(--ink) 6%, transparent)}
+.cl-lines{font-size:16px}
+.pg-tight{gap:22px}
+@media (max-width:900px){ .pg{align-items:stretch} }
+svg.fit{display:block; width:100%; height:auto; overflow:visible}
+.svg-t{font-family:var(--f-body); font-size:14px; fill:var(--ink-2)}
+.svg-b{font-family:var(--f-display); font-weight:800; fill:var(--ink)}
+.svg-m{font-family:var(--f-mono); font-size:13px; fill:var(--ink-2)}
+
+/* hero */
+.hero-visual .legend i{flex:none}
+
+/* sampler */
+.sentence{font-family:var(--f-display); font-weight:800; font-size:1.3rem; line-height:1.45; background:var(--well); border-radius:14px; padding:12px 16px; min-height:3.3em}
+.sentence .w{display:inline-block; color:var(--l2); animation:pop .35s cubic-bezier(.3,1.7,.5,1)}
+.sentence .blank{display:inline-block; min-width:3.2em; border-radius:8px; background:color-mix(in srgb, var(--l2) 15%, transparent); color:var(--l2); text-align:center; padding:0 .35em; animation:blink 1.2s ease-in-out infinite}
+@keyframes blink{50%{opacity:.45}}
+.sentence .fin{display:block; font-family:var(--f-body); font-weight:400; font-size:.95rem; color:var(--ink-2); margin-top:2px}
+.bars{display:flex; flex-direction:column; gap:4px; margin-top:14px}
+.bar{--c:var(--l2); display:grid; grid-template-columns:7.4em minmax(0,1fr) 3.2em; align-items:center; gap:10px; border-radius:10px; padding:3px 8px; transition:background .3s}
+.bar .wd{font-family:var(--f-mono); font-size:.95rem; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; display:flex; align-items:center; gap:8px}
+.bar .wd i{flex:none; width:10px; height:10px; border-radius:50%; background:var(--c)}
+.bar .tr{position:relative; height:26px}
+.bar .tr::before{content:""; position:absolute; left:0; right:0; top:3px; height:14px; border-radius:7px; background:var(--well)}
+.bar .p{position:absolute; left:0; top:3px; height:14px; border-radius:7px; background:var(--c); transition:width .5s cubic-bezier(.3,1,.4,1)}
+.bar .o{position:absolute; left:0; bottom:1px; height:5px; border-radius:3px; background:var(--ink); opacity:.5; transition:width .25s}
+.bar .pc{font-family:var(--f-display); font-weight:700; font-size:.95rem; text-align:right; font-variant-numeric:tabular-nums}
+.bar.hit{background:color-mix(in srgb, var(--c) 20%, transparent)}
+.bar.zero .wd{opacity:.5}
+.key{display:flex; flex-wrap:wrap; gap:4px 16px; font-size:.95rem; color:var(--ink-2); margin-top:8px}
+.key span{display:flex; align-items:center; gap:8px}
+.key b{display:inline-block; width:22px; border-radius:4px; background:var(--ink-2)}
+.strip-wrap{position:relative; margin-top:16px; padding-top:30px}
+.strip-cap{font-size:.95rem; color:var(--ink-2); margin-top:8px}
+.strip{display:flex; height:30px; border-radius:10px; overflow:hidden; background:color-mix(in srgb, var(--ink) 8%, transparent)}
+.strip span{background:var(--c); transition:flex-grow .5s cubic-bezier(.3,1,.4,1); min-width:0}
+.strip span + span{box-shadow:-2px 0 0 var(--paper)}
+.marker{position:absolute; top:0; left:0; transform:translateX(-50%); display:flex; flex-direction:column; align-items:center; pointer-events:none; transition:left .9s cubic-bezier(.2,.9,.25,1), opacity .3s}
+.marker span{font-family:var(--f-mono); font-size:.85rem; font-weight:600; background:var(--ink); color:var(--paper); border-radius:6px; padding:0 6px; line-height:1.5}
+.marker i{width:12px; height:7px; background:var(--ink); clip-path:polygon(0 0,100% 0,50% 100%)}
+.drop{position:absolute; width:7px; height:7px; margin-left:-3.5px; border-radius:50%; background:var(--ink); box-shadow:0 0 0 1.5px var(--paper); animation:dropin .35s cubic-bezier(.3,1.6,.5,1), fade 1.6s .9s forwards; pointer-events:none}
+@keyframes dropin{from{transform:translateY(-22px); opacity:0}}
+@keyframes fade{to{opacity:0}}
+.temp-read{display:flex; align-items:baseline; gap:12px; flex-wrap:wrap; margin-bottom:6px}
+.temp-read b{font-family:var(--f-display); font-weight:900; font-size:2.2rem; line-height:1; font-variant-numeric:tabular-nums}
+.temp-read span{color:var(--ink-2); font-size:1rem}
+.ticks{display:flex; justify-content:space-between; gap:8px; font-size:.9rem; color:var(--ink-2); margin-top:4px}
+.ticks span:nth-child(2){text-align:center} .ticks span:last-child{text-align:right}
+.lines{list-style:none; margin:14px 0 0; padding:0; display:flex; flex-direction:column; gap:8px}
+.lines li{display:flex; justify-content:space-between; align-items:flex-start; gap:10px; background:var(--well); border-radius:12px; padding:8px 12px; font-size:1rem; animation:rise .35s}
+.lines li .chip{flex:none; margin-top:2px}
+.lines .empty{background:none; padding:0; color:var(--ink-2); animation:none}
+.explain{margin-top:48px}
+.explain > p{max-width:70ch}
+
+/* test runner */
+.sizes{display:flex; flex-wrap:wrap; gap:10px; align-items:center; margin-bottom:12px}
+.sizes .label{font-size:1rem}
+.msgs{display:flex; flex-wrap:wrap; gap:5px; background:var(--well); border-radius:12px; padding:12px; min-height:56px; align-content:flex-start}
+.msgs i{width:14px; height:14px; border-radius:50%; background:var(--l3); animation:pop .3s cubic-bezier(.3,1.6,.5,1) backwards}
+.msgs i.x{background:none; box-shadow:inset 0 0 0 2.5px var(--l1)}
+.msgs.small i{width:8px; height:8px}
+.msgs.small i.x{box-shadow:inset 0 0 0 2px var(--l1)}
+.msgs .empty{color:var(--ink-2); font-size:1rem; align-self:center}
+.score-line{display:flex; align-items:baseline; gap:12px; flex-wrap:wrap; margin-top:12px}
+.score-line b{font-family:var(--f-display); font-weight:900; font-size:2rem; line-height:1; font-variant-numeric:tabular-nums}
+.score-line span{color:var(--ink-2); font-size:1rem}
+.stats{font-size:1rem; color:var(--ink-2); margin-top:8px; min-height:1.6em}
+.stats b{color:var(--ink); font-family:var(--f-display)}
+.table-wrap.slim table{min-width:0}
+
+/* base rates */
+.predict .opts{flex-direction:row; flex-wrap:wrap}
+.predict .opt{flex:1 1 150px; text-align:center; font-family:var(--f-display); font-weight:700}
+.rates{display:grid; grid-template-columns:minmax(0,1fr) minmax(0,1.35fr); gap:28px; align-items:start; margin-top:24px}
+.rates .ctl .seg-control{margin-bottom:14px; flex-wrap:wrap}
+.rates.locked .ctl .seg-control{opacity:.45; pointer-events:none}
+.big-read{font-family:var(--f-display); font-weight:900; font-size:3rem; line-height:1; font-variant-numeric:tabular-nums}
+.grid-box{border-radius:20px; padding:16px}
+.grid-box svg circle{transition:fill .5s, opacity .5s}
+.gkey{display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:6px 16px; margin-top:12px; font-size:.95rem; color:var(--ink-2)}
+.gkey span{display:flex; align-items:center; gap:8px}
+.gkey svg{flex:none}
+.gkey b{color:var(--ink); font-family:var(--f-display); font-variant-numeric:tabular-nums}
+
+/* lab side chart */
+.lab-chart .row-l{font-family:var(--f-display); font-weight:700; font-size:.95rem; fill:var(--ink)}
+.lucky{margin-top:12px; font-size:1rem}
+.lucky .meter{margin-top:6px}
+
+@media (max-width:900px){
+  .rates{grid-template-columns:minmax(0,1fr)}
+}
+@media (max-width:640px){
+  .bar{grid-template-columns:6.4em minmax(0,1fr) 2.9em; gap:8px; padding:3px 4px}
+  .bar .wd{font-size:.9rem; gap:6px}
+  .sentence{font-size:1.15rem}
+  .gkey{grid-template-columns:minmax(0,1fr)}
+  .big-read{font-size:2.5rem}
+}
+@media (prefers-reduced-motion: reduce){ .sentence .blank{animation:none} }
+</style>
+</head>
+<body>
+<main id="top">
+  <section class="wrap hero">
+    <div>
+      <div class="kicker">Theory elective · Course 304 · Probability &amp; statistics for AI</div>
+      <h1>Every word an AI writes is a roll of weighted dice.</h1>
+      <p class="lede">A language model doesn't look up one right answer. It gives every possible next word a chance, then picks one at random. You'll learn to read those chances, turn the randomness up and down, and tell a real result from a lucky one.</p>
+      <ul class="facts">
+        <li>About 15 minutes</li>
+        <li>5 parts</li>
+        <li>Code lab</li>
+        <li>No math background needed</li>
+      </ul>
+      <div class="row hero-cta"><a class="btn primary" href="#p1">Start the lesson</a></div>
+    </div>
+    <figure style="margin:0">
+      <div class="hero-visual glass">
+        <svg id="heroArt" class="fit" role="img" aria-label="An animated diagram of an AI writing a sentence. For each next word, bars show the chance of every candidate word, and a random number lands on a strip divided by those chances to pick one."></svg>
+        <div class="legend"><span><i style="background:var(--l2)"></i>Each bar: one word's chance</span><span><i style="background:var(--ink)"></i>Random number that picks the word</span></div>
+      </div>
+      <div class="hero-caption glass" aria-hidden="true"><span>temperature 0.8</span><span id="heroCap">rolling for the next word…</span></div>
+    </figure>
+  </section>
+
+  <div class="wrap">
+  <!-- PART 1 -->
+  <section class="part" id="p1">
+    <span class="bullet glass" data-p="p1">1</span>
+    <div class="part-head">
+      <div class="kicker">Part 1 of 5</div>
+      <h2>Weighted dice for words</h2>
+      <p>A <b>probability</b> is a number from 0% (never) to 100% (always) for how likely something is. Before an AI writes each word, it gives every word it could use a probability. Then it picks one.</p>
+    </div>
+
+    <div class="chat" aria-label="Example conversation">
+      <div class="msg me"><span class="who">You</span>Write a one-line menu description for our lemon cake.</div>
+      <div class="msg ai"><span class="who">AI assistant</span>Our lemon cake is moist and fluffy.</div>
+      <div class="msg me"><span class="who">You</span>I asked again in a new chat and got "Our lemon cake is tangy but sweet." Is something broken?</div>
+      <div class="msg ai"><span class="who">AI assistant</span>Nothing is broken. I choose each word by chance, weighted by how likely it is, so the same request can come out differently each time.</div>
+    </div>
+
+    <div class="task glass" data-part="p1">
+      <h3>Your task</h3>
+      <ol>
+        <li data-t="once"><span>Press <b>Pick the next word</b> three times. Watch the random number choose.</span></li>
+        <li data-t="many"><span>Press <b>Ask 100 times</b> and compare the picks with the bars.</span></li>
+        <li data-t="cold"><span>Set the temperature to 0, then write two whole lines.</span></li>
+        <li data-t="hot"><span>Turn the temperature up to 1.5 or more, then write two more lines.</span></li>
+      </ol>
+    </div>
+
+    <div class="pg">
+      <div class="pg-col">
+        <div class="o1 ctl glass">
+          <h3 class="ctl-title">What the AI might say next</h3>
+          <div class="sentence" id="sentence" aria-live="polite"></div>
+          <div class="bars" id="bars"></div>
+          <div class="key"><span><b style="height:12px;background:var(--l2)"></b>chance of each word</span><span><b style="height:5px;opacity:.5;background:var(--ink)"></b>share of your picks so far</span></div>
+          <div class="strip-wrap" id="stripWrap">
+            <div class="marker" id="marker" style="opacity:0"><span id="markerVal">0.00</span><i></i></div>
+            <div class="strip" id="strip"></div>
+          </div>
+          <p class="strip-cap">To pick, the computer draws a random number from 0 to 1. Wider slices catch more of the numbers.</p>
+          <div class="row" style="margin-top:14px">
+            <button class="btn primary" id="pickBtn">Pick the next word</button>
+            <button class="btn" id="askBtn">Ask 100 times</button>
+          </div>
+        </div>
+      </div>
+      <div class="pg-col">
+        <div class="o3 ctl glass">
+          <h3 class="ctl-title">Temperature</h3>
+          <div class="temp-read"><b id="tVal">1.0</b><span id="tWord">the model's own chances</span></div>
+          <label class="vh" for="temp">Temperature</label>
+          <input type="range" class="range" id="temp" min="0" max="2" step="0.1" value="1">
+          <div class="ticks"><span>0: top word only</span><span>1: as trained</span><span>2: wild</span></div>
+        </div>
+        <div class="o4 ctl glass">
+          <h3 class="ctl-title">Lines written</h3>
+          <p class="ctl-sub">The same request every time: "Describe our lemon cake in one line."</p>
+          <button class="btn primary" id="lineBtn">Write a whole line</button>
+          <ol class="lines" id="lines"><li class="empty">No lines yet.</li></ol>
+        </div>
+        <div class="o2 note" id="n1" aria-live="polite">Press <b>Pick the next word</b>. The AI is about to finish the sentence.</div>
+        <details class="deeper glass o5">
+          <summary>Under the hood: where the chances come from <small>optional</small></summary>
+          <div>
+            <p>The model gives every token in its vocabulary a raw score (tens of thousands of tokens or more, see <a href="103-how-ai-coding-tools-work.html">course 103</a>). A formula called <b>softmax</b> turns the scores into probabilities that add up to 100%:</p>
+            <div class="code">chance of a word = e<sup>score ÷ T</sup> ÷ (sum of e<sup>score ÷ T</sup> for every word)</div>
+            <p><b>T</b> is the temperature. Dividing by a small T stretches the gaps between scores, so the favorite wins more. A big T shrinks the gaps, so the bars even out. Many tools also offer <b>top-p</b> or <b>top-k</b>, which throw away the unlikely tail before the pick.</p>
+            <p>This toy uses whole words to stay readable. Real models pick tokens, which are often pieces of words.</p>
+          </div>
+        </details>
+      </div>
+    </div>
+
+    <div class="stack explain">
+      <h3>What just happened</h3>
+      <p>The bars are a <b>probability distribution</b>: every possible next word with its chance. The chances always add up to 100%. Picking one at random, following those chances, is called <b>sampling</b>. Likely words win most of the time, but unlikely ones still win sometimes. That's why the same prompt can give different answers.</p>
+      <p>When you asked 100 times, the share of picks landed close to the bars, but not exactly on them. Chance is lumpy in small numbers and smooth in large ones. Hold on to that idea: it's the whole of part 2.</p>
+      <p><b>Temperature</b> reshapes the chances before the pick. Low temperature makes the favorite even more likely. At 0 the AI always takes the top word. High temperature flattens the bars, so odd words like "purple" get a real shot.</p>
+      <div class="table-wrap glass slim">
+        <table>
+          <thead><tr><th>Temperature</th><th>What you get</th><th>Good for</th></tr></thead>
+          <tbody>
+            <tr><td>0 to 0.3</td><td>Nearly the same answer every time</td><td>Pulling data out of text, sorting into categories, code</td></tr>
+            <tr><td>0.5 to 1</td><td>Varied but sensible</td><td>Writing, brainstorming, chat</td></tr>
+            <tr><td>Above 1.2</td><td>Surprising, often nonsense</td><td>Rarely useful</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p class="note"><strong>When you build with AI:</strong> most AI APIs have a temperature setting. The allowed range depends on the provider, often 0 to 1 or 0 to 2, and some newer models fix it for you. Even at 0, answers can occasionally differ slightly, so don't build a feature that breaks if the wording changes.</p>
+    </div>
+  </section>
+
+  <!-- PART 2 -->
+  <section class="part" id="p2">
+    <span class="bullet glass" data-p="p2">2</span>
+    <div class="part-head">
+      <div class="kicker">Part 2 of 5</div>
+      <h2>One test proves little</h2>
+      <p>Pip's Bakery built an AI that reads messages like "2 lemon cakes for Saturday, no nuts please" and fills in the order form. How often does it get them right? Its true accuracy is hidden. You'll find it the way real teams do: by testing.</p>
+    </div>
+
+    <div class="task glass" data-part="p2">
+      <h3>Your task</h3>
+      <ol>
+        <li data-t="one"><span>Run one test of 20 messages. Note the score.</span></li>
+        <li data-t="hundred"><span>Run 100 tests of 20 messages. See how much the scores spread out.</span></li>
+        <li data-t="big"><span>Switch to 200 messages per test and run 100 tests.</span></li>
+      </ol>
+    </div>
+
+    <div class="pg">
+      <div class="pg-col">
+        <div class="o1 ctl glass">
+          <h3 class="ctl-title">Test the order reader</h3>
+          <div class="sizes"><span class="label">Messages per test</span>
+            <div class="seg-control" id="sizeSeg" role="group" aria-label="Messages per test">
+              <button type="button" data-n="5" aria-pressed="false">5</button><button type="button" data-n="20" aria-pressed="true">20</button><button type="button" data-n="200" aria-pressed="false">200</button>
+            </div>
+          </div>
+          <div class="row">
+            <button class="btn primary" id="run1">Run 1 test</button>
+            <button class="btn" id="run100">Run 100 tests</button>
+            <button class="btn" id="runClear">Clear</button>
+          </div>
+        </div>
+        <div class="o3 ctl glass">
+          <h3 class="ctl-title">Last test</h3>
+          <div class="msgs" id="msgs"><span class="empty">No test yet.</span></div>
+          <div class="key"><span><i style="width:12px;height:12px;border-radius:50%;background:var(--l3);display:inline-block"></i>read correctly</span><span><i style="width:12px;height:12px;border-radius:50%;box-shadow:inset 0 0 0 2.5px var(--l1);display:inline-block"></i>got it wrong</span></div>
+          <div class="score-line"><b id="lastScore">–</b><span id="lastWords">Run a test to see a score.</span></div>
+        </div>
+        <div class="o4 note" id="n2" aria-live="polite">Start with one test of 20 messages.</div>
+      </div>
+      <div class="pg-col">
+        <div class="o2 ctl glass">
+          <h3 class="ctl-title">Every test score so far</h3>
+          <p class="ctl-sub" id="histSub">Each dot is one test of 20 messages, placed at its score.</p>
+          <svg id="hist" class="fit" role="img" aria-label="Dot chart of test scores"></svg>
+          <p class="stats" id="histStats" aria-live="polite"></p>
+        </div>
+        <div class="o5 ctl glass">
+          <h3 class="ctl-title">Average vs spread</h3>
+          <p class="ctl-sub">For each test size: the dot is the average score, the thick bar holds the middle 90% of tests, the thin line runs from lowest to highest.</p>
+          <svg id="range" class="fit" role="img" aria-label="Average and spread of scores for each test size"></svg>
+        </div>
+      </div>
+    </div>
+
+    <div class="stack explain">
+      <h3>Why small tests fool you</h3>
+      <p>Every test is a sample, and samples wobble. A 20-message test of an AI that's truly 85% accurate can easily score 70% or 100%. The <b>average</b> of many tests sits near the truth, but the <b>spread</b> tells you how far any single test can wander.</p>
+      <p>Bigger samples wobble less. As tests grow, their scores crowd in around the true value. Mathematicians call this the <b>law of large numbers</b>. It's why a single impressive demo proves very little.</p>
+      <div class="table-wrap glass slim">
+        <table>
+          <thead><tr><th>Messages in the test</th><th>Where 95% of scores land (AI truly 85% accurate)</th></tr></thead>
+          <tbody>
+            <tr><td>20</td><td>about 70% to 100%</td></tr>
+            <tr><td>200</td><td>about 80% to 90%</td></tr>
+            <tr><td>1,000</td><td>about 83% to 87%</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <details class="deeper glass">
+        <summary>Under the hood: the square-root rule <small>optional</small></summary>
+        <div>
+          <p>For a yes/no score, the typical wobble (the <b>standard error</b>) is about √(p × (1 − p) ÷ n), where p is the true rate and n is the number of examples. About 95% of tests land within two of those wobbles of the truth.</p>
+          <p>Because of the square root, halving the wobble takes four times as many examples. Going from 20 to 80 messages helps a lot. Going from 2,000 to 8,000 helps much less.</p>
+          <p>This assumes each example is independent and like the ones you'll see for real. If all 20 test messages are neat and polite, a bigger test of neat messages still won't tell you how the AI copes with messy ones.</p>
+        </div>
+      </details>
+    </div>
+
+    <div class="stack" style="margin-top:56px">
+      <h3>The "99% accurate" trap</h3>
+      <p class="muted">Pip's Bakery adds an AI fraud checker. It's 99% accurate: it flags 99% of fraud orders, and wrongly flags only 1% of honest ones. About 1 order in 100 is fraud.</p>
+      <div class="task glass" data-part="p2" style="margin-bottom:0">
+        <h3>Your task</h3>
+        <ol>
+          <li data-t="predict"><span>Predict: the checker flags an order. How likely is it really fraud?</span></li>
+          <li data-t="rare"><span>Make fraud rarer, 1 in 1,000, and watch what happens to the flags.</span></li>
+        </ol>
+      </div>
+      <div class="qcard glass predict" id="predict">
+        <h3>The checker flags an order. What's the chance it's really fraud?</h3>
+        <div class="opts">
+          <button class="opt" data-g="99">About 99%</button>
+          <button class="opt" data-g="50">About 50%</button>
+          <button class="opt" data-g="1">About 1%</button>
+        </div>
+        <div class="note" id="predictNote" hidden aria-live="polite"></div>
+      </div>
+      <div class="rates locked" id="rates">
+        <div class="stack" style="gap:18px">
+          <div class="ctl glass">
+            <h3 class="ctl-title">Change the numbers</h3>
+            <div class="label" style="font-size:1rem;margin-bottom:6px">How common is fraud?</div>
+            <div class="seg-control" id="rateSeg" role="group" aria-label="How common is fraud">
+              <button type="button" data-v="10" aria-pressed="false">1 in 10</button><button type="button" data-v="100" aria-pressed="true">1 in 100</button><button type="button" data-v="1000" aria-pressed="false">1 in 1,000</button>
+            </div>
+            <div class="label" style="font-size:1rem;margin-bottom:6px">How accurate is the checker?</div>
+            <div class="seg-control" id="accSeg" role="group" aria-label="How accurate is the checker">
+              <button type="button" data-v="90" aria-pressed="false">90%</button><button type="button" data-v="99" aria-pressed="true">99%</button><button type="button" data-v="99.9" aria-pressed="false">99.9%</button>
+            </div>
+          </div>
+          <div class="ctl glass" aria-live="polite">
+            <h3 class="ctl-title">Flagged orders that are really fraud</h3>
+            <div class="big-read" id="ppv">?</div>
+            <p class="muted" id="ppvWords" style="margin-top:8px">Make your prediction above to reveal the flags.</p>
+          </div>
+        </div>
+        <div class="grid-box glass">
+          <svg id="dotGrid" class="fit" viewBox="0 0 400 250" role="img" aria-label="A grid of 1,000 orders, colored by whether they are fraud and whether the checker flagged them"></svg>
+          <div class="gkey" id="gkey"></div>
+        </div>
+      </div>
+      <div class="note" id="n3" hidden aria-live="polite"></div>
+      <p>This is the <b>base rate</b> problem. The base rate is how common something is before you test for it. When the thing you're hunting is rarer than the checker's mistakes, the honest cases are so numerous that their few errors outnumber the real finds. Spam filters, fraud checks, "written by AI" detectors and security scanners all live with this.</p>
+      <details class="deeper glass">
+        <summary>Under the hood: Bayes' rule <small>optional</small></summary>
+        <div>
+          <p>The grid is a picture of <b>Bayes' rule</b>. The chance that a flagged order is fraud = (fraud orders that get flagged) ÷ (all orders that get flagged).</p>
+          <p>With 1 in 100 fraud and a 99% accurate checker: out of 1,000 orders, 10 are fraud and about 10 of those are flagged. Of the 990 honest orders, 1% (about 10) are flagged by mistake. So 10 ÷ 20 = 50%.</p>
+          <p>Counting in real numbers of cases like this ("10 out of 1,000") is the most reliable way to avoid the trap. Percentages of percentages confuse almost everyone, including doctors in studies.</p>
+        </div>
+      </details>
+    </div>
+  </section>
+
+  <!-- PART 3 -->
+  <section class="part" id="p3">
+    <span class="bullet glass" data-p="p3">3</span>
+    <div class="part-head">
+      <div class="kicker">Part 3 of 5</div>
+      <h2>Try it: test an AI with a simulation</h2>
+      <p>You don't need a real AI to learn how testing behaves. A few lines of JavaScript can pretend to be one, using <code>Math.random()</code> to decide when it's right. Then you can run thousands of tests in a blink.</p>
+    </div>
+
+    <div class="lab">
+      <div class="a-mission ctl glass">
+        <h3 class="ctl-title">Your mission</h3>
+        <p class="ctl-sub" style="margin-top:0">This code pretends to be Pip's order reader, which is right 85% of the time. Find out how often a small test makes it look better than it is.</p>
+        <ol class="mission" id="mission"></ol>
+      </div>
+      <div class="a-work" id="lab"></div>
+      <div class="a-side">
+        <div class="ctl glass">
+          <h3 class="ctl-title">Your test scores</h3>
+          <p class="ctl-sub">Each dot is one run of your code. The dashed line is the true 85%.</p>
+          <svg id="labChart" class="fit lab-chart" role="img" aria-label="Scores from each run of your code, grouped by how many messages were tested"></svg>
+          <div class="lucky" id="lucky" hidden></div>
+        </div>
+      </div>
+      <div class="a-extra">
+        <details class="deeper glass">
+          <summary>Under the hood: how computers make "random" numbers <small>optional</small></summary>
+          <div>
+            <p><code>Math.random()</code> isn't truly random. It runs a formula that produces numbers that look random and are spread evenly between 0 and 1. That's called a <b>pseudo-random</b> number generator, and it's perfect for simulations.</p>
+            <p>It's not safe for passwords or secret keys, because a clever attacker could predict it. For those, code uses the browser's <code>crypto.getRandomValues()</code>.</p>
+            <p>Simulations like this one are called <b>Monte Carlo</b> methods, after the casino. When a probability question is hard to solve on paper, you can simply try it thousands of times and count.</p>
+          </div>
+        </details>
+      </div>
+    </div>
+  </section>
+
+  <!-- PART 4 -->
+  <section class="part" id="p4">
+    <span class="bullet glass" data-p="p4">4</span>
+    <div class="part-head">
+      <div class="kicker">Part 4 of 5</div>
+      <h2>Steer the AI</h2>
+      <p>AI tools are good at building features and less careful about proving they work. Here are four things one might say. Pick the reply you'd send.</p>
+    </div>
+    <p class="counter" id="steerCount"></p>
+    <div id="steer"></div>
+  </section>
+
+  <!-- PART 5 -->
+  <section class="part" id="p5">
+    <span class="bullet glass" data-p="p5">5</span>
+    <div class="part-head">
+      <div class="kicker">Part 5 of 5</div>
+      <h2>Check your understanding</h2>
+      <p>Five quick questions. Each answer explains itself.</p>
+    </div>
+    <div id="quiz"></div>
+    <div id="doneCard" aria-live="polite"></div>
+  </section>
+  </div>
+
+  <section class="after" id="terms">
+    <div class="wrap stack">
+      <h2>Key terms</h2>
+      <p class="muted">The words you'll meet when people talk about AI, chance and testing.</p>
+      <dl class="terms">
+        <div class="glass"><dt>Probability</dt><dd>How likely something is, from 0% (never) to 100% (always).</dd></div>
+        <div class="glass"><dt>Distribution</dt><dd>Every possible outcome with its chance, like the bars for the next word. The chances add up to 100%.</dd></div>
+        <div class="glass"><dt>Sampling</dt><dd>Picking an outcome at random, following the chances. It's how an AI chooses each token.</dd></div>
+        <div class="glass"><dt>Temperature</dt><dd>A setting that sharpens (low) or flattens (high) the chances before sampling. Use low values for extraction and code.</dd></div>
+        <div class="glass"><dt>Law of large numbers</dt><dd>The more samples you take, the closer their average gets to the true value.</dd></div>
+        <div class="glass"><dt>Average and spread</dt><dd>The average is the typical result. The spread is how far single results wander from it. You need both.</dd></div>
+        <div class="glass"><dt>Evaluation (eval)</dt><dd>Testing an AI feature on many realistic examples and counting how often it's right. Small evals wobble a lot.</dd></div>
+        <div class="glass"><dt>Base rate</dt><dd>How common something is before you test. When it's rare, even accurate checkers raise mostly false alarms.</dd></div>
+        <div class="glass"><dt>False positive</dt><dd>A flag or "yes" that turns out to be wrong, like an honest order marked as fraud.</dd></div>
+        <div class="glass"><dt>Simulation</dt><dd>Using random numbers to try something thousands of times and count what happens.</dd></div>
+      </dl>
+    </div>
+  </section>
+</main>
+<script src="../assets/cs-school.js"></script>
+<script>
+(() => {
+const { $, $$, esc, reduce } = CS;
+
+CS.lesson({
+  id: '304',
+  parts: [
+    { id: 'p1', title: 'Weighted dice for words' },
+    { id: 'p2', title: 'One test proves little' },
+    { id: 'p3', title: 'Try it' },
+    { id: 'p4', title: 'Steer the AI' },
+    { id: 'p5', title: 'Check' }
+  ]
+});
+
+/* ---------------- helpers ---------------- */
+const COLORS = ['var(--l2)', 'var(--l3)', 'var(--l4)', 'var(--l5)', 'var(--l1)',
+  'color-mix(in srgb, var(--l2) 55%, var(--paper))', 'color-mix(in srgb, var(--l3) 55%, var(--paper))', 'color-mix(in srgb, var(--l5) 55%, var(--paper))'];
+const pctTxt = p => p >= 0.995 ? '100%' : p > 0 && p < 0.005 ? '<1%' : Math.round(p * 100) + '%';
+function fitSvg(svg, h) {
+  const w = Math.max(240, Math.round(svg.parentElement.getBoundingClientRect().width - parseFloat(getComputedStyle(svg.parentElement).paddingLeft) - parseFloat(getComputedStyle(svg.parentElement).paddingRight)));
+  svg.setAttribute('viewBox', `0 0 ${w} ${h}`);
+  return w;
+}
+function onResize(el, fn) {
+  let last = 0;
+  new ResizeObserver(() => { const w = Math.round(el.getBoundingClientRect().width); if (w !== last) { last = w; fn(); } }).observe(el);
+}
+const ease = k => 1 - Math.pow(1 - k, 3);
+function tween(ms, fn, done) {
+  if (reduce) { fn(1); if (done) done(); return; }
+  const t0 = performance.now();
+  (function f(t) { const k = Math.min(1, (t - t0) / ms); fn(k); if (k < 1) requestAnimationFrame(f); else if (done) done(); })(t0);
+}
+const wait = ms => new Promise(r => setTimeout(r, reduce ? 0 : ms));
+
+/* ---------------- a tiny language model ---------------- */
+const START = 'Our lemon cake is';
+const DIST = {
+  start: [['moist', .30], ['tangy', .22], ['light', .15], ['golden', .11], ['zesty', .09], ['legendary', .07], ['enormous', .04], ['purple', .02]],
+  join: [['and', .55], ['but', .25], ['.', .20]],
+  and: [['fluffy', .30], ['sweet', .22], ['bright', .18], ['zesty', .14], ['crumbly', .10], ['haunted', .06]],
+  but: [['sweet', .50], ['gentle', .22], ['light', .18], ['dramatic', .10]]
+};
+const slotOf = ws => ws.length === 0 ? 'start' : ws.length === 1 ? 'join' : (ws.length === 2 && ws[1] !== '.') ? ws[1] : null;
+function baseOpts(ws) {
+  const s = slotOf(ws); if (!s) return null;
+  let o = DIST[s];
+  if (s === 'and' || s === 'but') o = o.filter(([w]) => w !== ws[0]);   // context: don't repeat the first word
+  const tot = o.reduce((a, x) => a + x[1], 0);
+  return o.map(([w, p]) => [w, p / tot]);
+}
+function temper(opts, T) {
+  if (T < 0.05) { let won = false; const m = Math.max(...opts.map(o => o[1])); return opts.map(([w, p]) => { const v = !won && p === m ? 1 : 0; if (v) won = true; return [w, v]; }); }
+  const q = opts.map(([w, p]) => [w, Math.pow(p, 1 / T)]);
+  const s = q.reduce((a, x) => a + x[1], 0);
+  return q.map(([w, v]) => [w, v / s]);
+}
+function sampleFrom(probs, r = Math.random()) {
+  let c = 0;
+  for (let i = 0; i < probs.length; i++) { c += probs[i][1]; if (r < c) return i; }
+  let i = probs.length - 1; while (i > 0 && probs[i][1] === 0) i--; return i;
+}
+const lineText = ws => `${START} ${ws.filter(w => w !== '.').join(' ')}.`;
+const shown = w => w === '.' ? '. (end)' : w;
+
+/* ---------------- hero: the sampler, animated ---------------- */
+(function hero() {
+  const svg = $('#heroArt'), cap = $('#heroCap');
+  const T = 0.8, H = 356;
+  let st = { ws: [], probs: temper(baseOpts([]), T), grow: 1, marker: null, hit: -1 };
+  function draw() {
+    const W = fitSvg(svg, H);
+    const small = W < 420;
+    const labW = small ? 92 : 112, pcW = 44, bx = labW + 8, bw = W - bx - pcW - 6;
+    const rows = st.probs || [];
+    const rowH = 27, blockH = Math.max(rows.length, 3) * rowH + 30 + 18 + 22;
+    const y0 = 70 + Math.max(0, (H - 70 - blockH) / 2);
+    let s = '';
+    // sentence
+    const words = st.ws.filter(w => w !== '.');
+    s += `<text x="0" y="28" class="svg-b" style="font-size:${small ? 17 : 20}px">${esc(START)}${words.map(w => ` <tspan style="fill:var(--l2)">${esc(w)}</tspan>`).join('')}${slotOf(st.ws) ? '' : '.'}</text>`;
+    s += `<text x="0" y="52" class="svg-t" style="font-size:13px">${slotOf(st.ws) ? 'chance of each possible next word' : 'line finished'}</text>`;
+    rows.forEach(([w, p], i) => {
+      const y = y0 + i * rowH;
+      if (i === st.hit) s += `<rect x="-6" y="${y - 3}" width="${W + 12}" height="${rowH - 2}" rx="9" style="fill:${COLORS[i % 8]}" opacity=".22"/>`;
+      s += `<circle cx="5" cy="${y + 10}" r="5" style="fill:${COLORS[i % 8]}"/>`;
+      s += `<text x="16" y="${y + 15}" class="svg-m" style="font-size:${small ? 12.5 : 14}px;fill:var(--ink)">${esc(shown(w))}</text>`;
+      s += `<rect x="${bx}" y="${y + 4}" width="${bw}" height="12" rx="6" style="fill:var(--ink)" opacity=".06"/>`;
+      s += `<rect x="${bx}" y="${y + 4}" width="${Math.max(3, bw * p * st.grow)}" height="12" rx="6" style="fill:${COLORS[i % 8]}"/>`;
+      s += `<text x="${W}" y="${y + 15}" text-anchor="end" class="svg-b" style="font-size:13.5px">${pctTxt(p)}</text>`;
+    });
+    // strip
+    const sy = y0 + Math.max(rows.length, 3) * rowH + 30;
+    if (rows.length) {
+      let x = 0;
+      rows.forEach(([w, p], i) => { const ww = W * p * st.grow + (st.grow < 1 ? (W * (1 - st.grow)) / rows.length : 0); if (ww > 0.5) s += `<rect x="${x}" y="${sy}" width="${Math.max(0, ww - 2)}" height="18" rx="4" style="fill:${COLORS[i % 8]}"/>`; x += ww; });
+      if (st.marker !== null) {
+        const mx = Math.max(0, Math.min(W, st.marker * W));
+        s += `<g transform="translate(${mx} ${sy - 6})"><path d="M-6 -8 L6 -8 L0 0 Z" style="fill:var(--ink)"/><rect x="-22" y="-30" width="44" height="20" rx="6" style="fill:var(--ink)"/><text y="-15.5" text-anchor="middle" class="svg-m" style="fill:var(--paper);font-size:12.5px;font-weight:600">${st.marker.toFixed(2)}</text></g>`;
+      }
+      s += `<text x="0" y="${sy + 38}" class="svg-t" style="font-size:13px">0</text><text x="${W}" y="${sy + 38}" text-anchor="end" class="svg-t" style="font-size:13px">1</text>`;
+    }
+    svg.innerHTML = s;
+  }
+  onResize(svg.parentElement, draw);
+  if (reduce) {
+    st.ws = []; st.probs = temper(baseOpts(st.ws), T); st.marker = 0.41; st.hit = sampleFrom(st.probs, 0.41);
+    cap.textContent = `random 0.41 lands on "${shown(st.probs[st.hit][0])}"`; draw(); return;
+  }
+  async function loop() {
+    st = { ws: [], probs: null, grow: 0, marker: null, hit: -1 };
+    while (slotOf(st.ws)) {
+      st.probs = temper(baseOpts(st.ws), T); st.hit = -1; st.marker = null;
+      cap.textContent = 'rolling for the next word…';
+      await new Promise(r => tween(500, k => { st.grow = ease(k); draw(); }, r));
+      await wait(450);
+      const r = Math.random(), i = sampleFrom(st.probs, r);
+      await new Promise(res => tween(1100, k => { st.marker = r * ease(k) + Math.sin(k * Math.PI) * 0.06 * (1 - k); draw(); }, res));
+      st.marker = r; st.hit = i; draw();
+      cap.textContent = `random ${r.toFixed(2)} lands on "${shown(st.probs[i][0])}", a ${pctTxt(st.probs[i][1])} chance`;
+      await wait(1300);
+      st.ws.push(st.probs[i][0]);
+    }
+    st.probs = []; st.marker = null; st.hit = -1; draw();
+    cap.textContent = `"${lineText(st.ws)}"`;
+    await wait(2600);
+    loop();
+  }
+  draw();
+  setTimeout(loop, 700);
+})();
+
+/* ---------------- Part 1: the next-word sampler ---------------- */
+let T = 1;
+let ws = [];            // words of the line being written
+let tally = [];         // picks per option for the current slot
+let busy = false;
+let singlePicks = 0, coldLines = 0, hotLines = 0, freshT = 0;
+const lines = [];
+const curProbs = () => { const b = baseOpts(ws); return b ? temper(b, T) : null; };
+function n1(html, kind = '') { CS.say($('#n1'), html, kind); }
+function renderSentence() {
+  const el = $('#sentence');
+  const words = ws.filter(w => w !== '.');
+  const done = !slotOf(ws);
+  el.innerHTML = `${esc(START)} ${words.map(w => `<span class="w">${esc(w)}</span>`).join(' ')}${done ? '.<span class="fin">Line finished. A fresh line starts in a moment.</span>' : ` <span class="blank" aria-label="next word">?</span>`}`;
+}
+function renderBars(hit = -1) {
+  const probs = curProbs();
+  const total = tally.reduce((a, b) => a + b, 0);
+  const bars = $('#bars'), strip = $('#strip');
+  if (!probs) { bars.innerHTML = ''; strip.innerHTML = ''; return; }
+  if (bars.children.length !== probs.length || bars.dataset.slot !== slotOf(ws)) {
+    bars.dataset.slot = slotOf(ws);
+    bars.innerHTML = probs.map(([w], i) => `<div class="bar" style="--c:${COLORS[i % 8]}"><span class="wd"><i></i>${esc(shown(w))}</span><span class="tr"><span class="p" style="width:0"></span><span class="o" style="width:0"></span></span><span class="pc"></span></div>`).join('');
+    strip.innerHTML = probs.map((_, i) => `<span style="--c:${COLORS[i % 8]}; flex-grow:0"></span>`).join('');
+    bars.offsetWidth; // let the bars grow in
+  }
+  $$('.bar', bars).forEach((b, i) => {
+    const p = probs[i][1];
+    b.querySelector('.p').style.width = (p * 100) + '%';
+    b.querySelector('.o').style.width = total ? (tally[i] / total * 100) + '%' : '0';
+    b.querySelector('.pc').textContent = pctTxt(p);
+    b.classList.toggle('hit', i === hit);
+    b.classList.toggle('zero', p === 0);
+    b.setAttribute('aria-label', `${shown(probs[i][0])}: ${pctTxt(p)} chance${total ? `, picked ${tally[i]} of ${total}` : ''}`);
+  });
+  $$('span', strip).forEach((s, i) => { s.style.flexGrow = probs[i][1]; });
+}
+function resetTally() { const p = curProbs(); tally = p ? p.map(() => 0) : []; }
+function finishLine() {
+  const t = T;
+  lines.unshift({ text: lineText(ws), t });
+  if (lines.length > 6) lines.pop();
+  if (t < 0.05) coldLines++; else coldLines = 0;
+  if (t >= 1.5) hotLines++; else hotLines = 0;
+  $('#lines').innerHTML = lines.map(l => `<li><span>${esc(l.text)}</span><span class="chip" style="--c:${l.t < 0.05 ? 'var(--l2)' : l.t >= 1.5 ? 'var(--l1)' : 'var(--l3)'}"><i></i>T ${l.t.toFixed(1)}</span></li>`).join('');
+  clearTimeout(freshT);
+  freshT = setTimeout(() => { if (!slotOf(ws) && !busy) { ws = []; resetTally(); renderSentence(); renderBars(); } }, reduce ? 600 : 1800);
+  if (coldLines >= 2) CS.tick('p1', 'cold');
+  if (hotLines >= 2) CS.tick('p1', 'hot');
+  const same = lines.length >= 2 && lines[0].t < 0.05 && lines[1].t < 0.05;
+  if (t < 0.05) n1(same ? `<strong>Identical lines.</strong> At temperature 0 the AI always takes the top word, so it writes "${esc(lines[0].text)}" every single time. Handy when you need the same answer twice.` : `<strong>Temperature 0.</strong> The AI took the top word at every step. Write another line and compare.`, same ? 'good' : '');
+  else if (t >= 1.5) n1(`<strong>Wild.</strong> High temperature flattened the bars, so unlikely words got a real chance. That's how you get lines like "${esc(lines[0].text)}"`, hotLines >= 2 ? 'good' : '');
+  else n1(`<strong>Line written.</strong> "${esc(lines[0].text)}" Write another one and it may come out differently, even though the request is identical.`);
+}
+async function pickOne(fast = false) {
+  if (!slotOf(ws)) { ws = []; resetTally(); renderSentence(); renderBars(); if (!fast) await wait(350); }
+  const probs = curProbs();
+  const r = Math.random(), i = sampleFrom(probs, r);
+  const mk = $('#marker');
+  mk.style.transition = 'none'; mk.style.left = '0%'; mk.style.opacity = 1; $('#markerVal').textContent = '0.00';
+  mk.offsetWidth;
+  mk.style.transition = '';
+  mk.style.left = (r * 100) + '%';
+  if (!reduce) {
+    const t0 = performance.now(), dur = fast ? 450 : 900;
+    await new Promise(res => { (function f(t) { const k = Math.min(1, (t - t0) / dur); $('#markerVal').textContent = (r * ease(k)).toFixed(2); if (k < 1) requestAnimationFrame(f); else res(); })(t0); });
+  }
+  $('#markerVal').textContent = r.toFixed(2);
+  tally[i]++;
+  renderBars(i);
+  await wait(fast ? 250 : 550);
+  const w = probs[i][0];
+  ws.push(w);
+  mk.style.opacity = 0;
+  const word = shown(w);
+  resetTally(); renderSentence(); renderBars();
+  return { w: word, p: probs[i][1], r };
+}
+$('#pickBtn').addEventListener('click', async () => {
+  if (busy) return; busy = true;
+  const res = await pickOne();
+  singlePicks++;
+  if (singlePicks >= 3) CS.tick('p1', 'once');
+  if (!slotOf(ws)) finishLine();
+  else n1(`<strong>The random number was ${res.r.toFixed(2)}.</strong> It landed in the slice for "${esc(res.w)}", which had a ${pctTxt(res.p)} chance. Now the AI rolls again for the next word, with new chances.`);
+  busy = false;
+});
+$('#askBtn').addEventListener('click', async () => {
+  if (busy) return; busy = true;
+  if (!slotOf(ws)) { ws = []; renderSentence(); }
+  const probs = curProbs();
+  resetTally(); renderBars();
+  const wrap = $('#stripWrap');
+  $$('.drop', wrap).forEach(d => d.remove());
+  const draws = Array.from({ length: 100 }, () => Math.random());
+  for (let k = 0; k < 100; k += 5) {
+    for (const r of draws.slice(k, k + 5)) {
+      tally[sampleFrom(probs, r)]++;
+      if (!reduce) { const d = document.createElement('span'); d.className = 'drop'; d.style.left = (r * 100) + '%'; d.style.top = (34 + Math.random() * 20) + 'px'; wrap.appendChild(d); setTimeout(() => d.remove(), 2700); }
+    }
+    renderBars();
+    if (!reduce) await wait(45);
+  }
+  const top = tally.indexOf(Math.max(...tally));
+  const rare = probs.findIndex(([, p]) => p > 0 && p < 0.08);
+  CS.tick('p1', 'many');
+  n1(`<strong>100 picks.</strong> "${esc(shown(probs[top][0]))}" won ${tally[top]} times against a ${pctTxt(probs[top][1])} bar: close, not exact.${rare >= 0 ? ` Even "${esc(shown(probs[rare][0]))}", at ${pctTxt(probs[rare][1])}, came up ${tally[rare]} time${tally[rare] === 1 ? '' : 's'}.` : ''} Ask again and the counts shift a little.`, 'good');
+  busy = false;
+});
+$('#lineBtn').addEventListener('click', async () => {
+  if (busy) return; busy = true;
+  if (!slotOf(ws)) { ws = []; resetTally(); renderSentence(); renderBars(); }
+  while (slotOf(ws)) await pickOne(true);
+  finishLine();
+  busy = false;
+});
+const T_WORDS = [[0.05, 'always the top word'], [0.6, 'plays it safe'], [0.95, 'a little adventurous'], [1.05, "the model's own chances"], [1.5, 'more surprising'], [2.01, 'chaotic']];
+$('#temp').addEventListener('input', e => {
+  T = +e.target.value;
+  $('#tVal').textContent = T.toFixed(1);
+  $('#tWord').textContent = T_WORDS.find(([m]) => T < m)[1];
+  coldLines = 0; hotLines = 0;
+  resetTally(); renderBars();
+});
+resetTally(); renderSentence(); renderBars();
+
+/* ---------------- Part 2: testing the order reader ---------------- */
+const TRUE_RATE = 0.85;
+let size = 20;
+const tests = { 5: [], 20: [], 200: [] };
+let lastIdx = -1, revealed = false, running = false;
+const lastOut = {};
+function runTest(n) { const out = []; for (let i = 0; i < n; i++) out.push(Math.random() < TRUE_RATE); return out; }
+function n2(html, kind = '') { CS.say($('#n2'), html, kind); }
+function showLast(out) {
+  const el = $('#msgs');
+  el.classList.toggle('small', out.length > 20);
+  el.innerHTML = out.map((ok, i) => `<i class="${ok ? '' : 'x'}" style="animation-delay:${reduce || out.length > 20 ? 0 : i * 25}ms"></i>`).join('');
+  const right = out.filter(Boolean).length;
+  $('#lastScore').textContent = Math.round(right / out.length * 1000) / 10 + '%';
+  $('#lastWords').textContent = `${right} of ${out.length} messages read correctly`;
+}
+function clearLast() { $('#msgs').classList.remove('small'); $('#msgs').innerHTML = '<span class="empty">No test of this size yet.</span>'; $('#lastScore').textContent = '–'; $('#lastWords').textContent = 'Run a test to see a score.'; }
+const quant = (arr, q) => { const s = [...arr].sort((a, b) => a - b); const i = (s.length - 1) * q; const lo = Math.floor(i), hi = Math.ceil(i); return s[lo] + (s[hi] - s[lo]) * (i - lo); };
+const f1 = v => (Math.round(v * 1000) / 10) + '%';
+const tickLabels = W => W < 420 ? [0, .25, .5, .75, 1] : [0, .2, .4, .6, .8, 1];
+function drawHist() {
+  const svg = $('#hist'), H = 230, W = fitSvg(svg, H);
+  const L = 10, R = 10, Tp = 14, B = 30, pw = W - L - R, ph = H - Tp - B;
+  const X = v => L + v * pw;
+  const data = tests[size];
+  let s = '';
+  const gs = W < 420 ? [0, .25, .5, .75, 1] : [0, .1, .2, .3, .4, .5, .6, .7, .8, .9, 1];
+  gs.forEach(t => { s += `<line x1="${X(t)}" x2="${X(t)}" y1="${Tp}" y2="${Tp + ph}" style="stroke:var(--hair)" stroke-width="1"/>`; });
+  tickLabels(W).forEach(t => { s += `<text x="${X(t)}" y="${H - 8}" text-anchor="${t === 0 ? 'start' : t === 1 ? 'end' : 'middle'}" class="svg-t">${Math.round(t * 100)}%</text>`; });
+  const bins = {};
+  data.forEach((v, i) => { const k = Math.round(v * 40); (bins[k] = bins[k] || []).push(i); });
+  const maxC = Math.max(1, ...Object.values(bins).map(a => a.length));
+  const r = Math.max(1.6, Math.min(6, pw / 41 / 2 - 0.6, ph / (2 * maxC) - 0.2));
+  Object.entries(bins).forEach(([k, idxs]) => {
+    idxs.forEach((ti, j) => {
+      const cx = X(k / 40), cy = Tp + ph - r - j * 2 * r;
+      const last = ti === lastIdx;
+      s += `<circle cx="${cx}" cy="${cy}" r="${last ? r + 1.5 : r}" style="fill:${last ? 'var(--ink)' : 'var(--l2)'}"/>`;
+    });
+  });
+  if (revealed) {
+    s += `<line x1="${X(TRUE_RATE)}" x2="${X(TRUE_RATE)}" y1="${Tp + 16}" y2="${Tp + ph}" style="stroke:var(--l1)" stroke-width="2" stroke-dasharray="5 4"/>`;
+    s += `<text x="${X(TRUE_RATE) - 6}" y="${Tp + 8}" text-anchor="end" class="svg-b" style="font-size:13px;fill:var(--l1)">true accuracy 85%</text>`;
+  }
+  if (!data.length) s += `<text x="${W / 2}" y="${Tp + ph / 2}" text-anchor="middle" class="svg-t">No ${size}-message tests yet</text>`;
+  svg.innerHTML = s;
+  $('#histSub').textContent = `Each dot is one test of ${size} messages, placed at its score. The larger dot is your latest.`;
+  $('#histStats').innerHTML = data.length ? `<b>${data.length}</b> test${data.length > 1 ? 's' : ''}. Average <b>${f1(data.reduce((a, b) => a + b, 0) / data.length)}</b>. Lowest <b>${f1(Math.min(...data))}</b>, highest <b>${f1(Math.max(...data))}</b>.` : '';
+}
+function drawRange() {
+  const svg = $('#range');
+  const sizes = [5, 20, 200].filter(n => tests[n].length >= 2);
+  const rowH = 50, H = 30 + Math.max(1, sizes.length) * rowH + 6, W = fitSvg(svg, H);
+  const L = 10, R = 10, pw = W - L - R;
+  const X = v => L + v * pw;
+  let s = '';
+  tickLabels(W).forEach(t => { s += `<text x="${X(t)}" y="${H - 6}" text-anchor="${t === 0 ? 'start' : t === 1 ? 'end' : 'middle'}" class="svg-t">${Math.round(t * 100)}%</text>`; });
+  const col = { 5: 'var(--l5)', 20: 'var(--l2)', 200: 'var(--l3)' };
+  if (!sizes.length) s += `<text x="${W / 2}" y="30" text-anchor="middle" class="svg-t">Run a few tests to fill this in</text>`;
+  sizes.forEach((n, i) => {
+    const d = tests[n], y = 22 + i * rowH;
+    const avg = d.reduce((a, b) => a + b, 0) / d.length;
+    s += `<text x="${L}" y="${y}" class="svg-b" style="font-size:13.5px">${n} messages per test <tspan class="svg-t" style="font-family:var(--f-body);font-weight:400;font-size:13px">· ${d.length} tests</tspan></text>`;
+    const cy = y + 17;
+    s += `<line x1="${X(Math.min(...d))}" x2="${X(Math.max(...d))}" y1="${cy}" y2="${cy}" style="stroke:var(--ink)" opacity=".3" stroke-width="2" stroke-linecap="round"/>`;
+    s += `<line x1="${X(quant(d, .05))}" x2="${Math.max(X(quant(d, .05)) + .1, X(quant(d, .95)))}" y1="${cy}" y2="${cy}" style="stroke:${col[n]}" stroke-width="11" stroke-linecap="round"/>`;
+    s += `<circle cx="${X(avg)}" cy="${cy}" r="6.5" style="fill:var(--ink);stroke:var(--paper)" stroke-width="2.5"/>`;
+  });
+  if (revealed) s += `<line x1="${X(TRUE_RATE)}" x2="${X(TRUE_RATE)}" y1="8" y2="${H - 22}" style="stroke:var(--l1)" stroke-width="2" stroke-dasharray="5 4"/>`;
+  svg.innerHTML = s;
+}
+function afterTests(added) {
+  drawHist(); drawRange();
+  const d = tests[size];
+  if (size === 20 && d.length >= 1) CS.tick('p2', 'one');
+  if (size === 20 && d.length >= 100) CS.tick('p2', 'hundred');
+  if (size === 200 && d.length >= 100) CS.tick('p2', 'big');
+  const lo = Math.min(...d), hi = Math.max(...d);
+  if (!revealed && CS.ticked('p2', 'one') && CS.ticked('p2', 'hundred') && CS.ticked('p2', 'big')) {
+    revealed = true; drawHist(); drawRange();
+    n2(`<strong>Now the reveal: the true accuracy is 85%.</strong> Both test sizes average close to it. But 20-message tests scattered from ${f1(Math.min(...tests[20]))} to ${f1(Math.max(...tests[20]))}, while 200-message tests stayed between ${f1(Math.min(...tests[200]))} and ${f1(Math.max(...tests[200]))}. Bigger tests, smaller spread.`, 'good');
+    return;
+  }
+  if (added === 1 && d.length === 1) n2(`<strong>One test: ${f1(d[0])}.</strong> Is that the AI's real accuracy? Maybe. Run the same kind of test 100 more times and see if it holds.`);
+  else if (added === 1) n2(`<strong>This time: ${f1(d[d.length - 1])}.</strong> Same AI, same kind of test, different score. Each test is a roll of the dice.`);
+  else if (size === 20) n2(`<strong>${d.length} tests of 20 messages.</strong> Scores ran from ${f1(lo)} to ${f1(hi)}. A single test could have told you almost anything in that range. Now try 200 messages per test.`, CS.ticked('p2', 'big') ? '' : 'good');
+  else if (size === 200) n2(`<strong>${d.length} tests of 200 messages.</strong> Scores stayed between ${f1(lo)} and ${f1(hi)}. Bigger samples wobble less.`, 'good');
+  else n2(`<strong>${d.length} tests of 5 messages.</strong> Scores ran from ${f1(lo)} to ${f1(hi)}. Tiny tests are nearly useless.`);
+}
+$('#run1').addEventListener('click', () => {
+  if (running) return;
+  const out = runTest(size);
+  tests[size].push(out.filter(Boolean).length / size); lastIdx = tests[size].length - 1;
+  lastOut[size] = out; showLast(out); afterTests(1);
+});
+$('#run100').addEventListener('click', async () => {
+  if (running) return; running = true;
+  $('#run100').disabled = $('#run1').disabled = true;
+  let out;
+  for (let b = 0; b < 10; b++) {
+    for (let k = 0; k < 10; k++) { out = runTest(size); tests[size].push(out.filter(Boolean).length / size); if (tests[size].length > 600) tests[size].shift(); }
+    lastIdx = tests[size].length - 1; lastOut[size] = out; showLast(out); drawHist(); drawRange();
+    if (!reduce) await wait(70);
+  }
+  afterTests(100);
+  $('#run100').disabled = $('#run1').disabled = false; running = false;
+});
+$('#runClear').addEventListener('click', () => {
+  if (running) return;
+  tests[5] = []; tests[20] = []; tests[200] = []; lastIdx = -1;
+  Object.keys(lastOut).forEach(k => delete lastOut[k]); clearLast();
+  drawHist(); drawRange(); n2('Cleared. Start again with a single test.');
+});
+$('#sizeSeg').addEventListener('click', e => {
+  const b = e.target.closest('button'); if (!b || running) return;
+  size = +b.dataset.n; lastIdx = tests[size].length - 1;
+  if (lastOut[size]) showLast(lastOut[size]); else clearLast();
+  $$('#sizeSeg button').forEach(x => x.setAttribute('aria-pressed', x === b));
+  drawHist();
+  n2(size === 200 ? '<strong>200 messages per test.</strong> Each test now takes ten times the work. Run 100 of them and compare the spread.' : size === 5 ? '<strong>5 messages per test.</strong> Guess how wild these scores will be, then run 100.' : `<strong>20 messages per test.</strong> ${tests[20].length ? 'Your earlier 20-message tests are back on the chart.' : 'Run a test to start.'}`);
+});
+onResize($('#hist').parentElement, () => { drawHist(); drawRange(); });
+drawHist(); drawRange();
+
+/* ---------------- Part 2b: base rates ---------------- */
+let rate = 100, acc = 99, predicted = false;
+const rnd = (seed => () => { seed |= 0; seed = seed + 0x6D2B79F5 | 0; let t = Math.imul(seed ^ seed >>> 15, 1 | seed); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; })(304);
+const perm = Array.from({ length: 1000 }, (_, i) => i);
+for (let i = perm.length - 1; i > 0; i--) { const j = Math.floor(rnd() * (i + 1)); [perm[i], perm[j]] = [perm[j], perm[i]]; }
+const grid = $('#dotGrid');
+grid.innerHTML = '<g id="halos"></g>' + perm.map((_, k) => `<circle cx="${(k % 40) * 10 + 5}" cy="${Math.floor(k / 40) * 10 + 5}" r="3"/>`).join('');
+const dots = $$('circle', grid).slice(0);
+function counts() {
+  const fraud = Math.round(1000 / rate), a = acc / 100;
+  const caught = Math.round(fraud * a), missed = fraud - caught, fa = Math.round((1000 - fraud) * (1 - a));
+  return { fraud, caught, missed, fa, honest: 1000 - fraud - fa };
+}
+const DOT = {
+  tp: { fill: 'var(--l1)', r: 4.1, op: 1 }, fn: { fill: 'none', stroke: 'var(--l1)', r: 3, op: 1 },
+  fp: { fill: 'var(--l4)', r: 4.1, op: 1 }, tn: { fill: 'var(--ink)', r: 3, op: .16 }, fraud: { fill: 'var(--l1)', r: 3.6, op: 1 }
+};
+const keyDot = (k) => { const d = DOT[k]; return `<svg width="16" height="16" viewBox="-8 -8 16 16" aria-hidden="true">${k === 'tp' || k === 'fp' ? `<circle r="7.5" style="fill:${d.fill}" opacity=".3"/>` : ''}<circle r="${k === 'tn' ? 4 : 4.5}" style="fill:${d.fill};stroke:${d.stroke || 'none'}" stroke-width="2" opacity="${d.op}"/></svg>`; };
+function drawGrid() {
+  const c = counts();
+  let halos = '';
+  perm.forEach((cell, rank) => {
+    let k = rank < c.caught ? 'tp' : rank < c.fraud ? 'fn' : rank < c.fraud + c.fa ? 'fp' : 'tn';
+    if (!predicted && (k === 'tp' || k === 'fn')) k = 'fraud';
+    if (!predicted && k === 'fp') k = 'tn';
+    const d = DOT[k], el = dots[cell];
+    el.setAttribute('r', d.r); el.style.fill = d.fill; el.style.stroke = d.stroke || 'none'; el.style.strokeWidth = d.stroke ? 1.6 : 0; el.style.opacity = d.op;
+    if (k === 'tp' || k === 'fp') halos += `<circle cx="${el.getAttribute('cx')}" cy="${el.getAttribute('cy')}" r="7" style="fill:${d.fill}" opacity=".28"/>`;
+  });
+  $('#halos').innerHTML = halos;
+  const flagged = c.caught + c.fa;
+  if (predicted) {
+    $('#gkey').innerHTML = `<span>${keyDot('tp')}Fraud, flagged: <b>${c.caught}</b></span><span>${keyDot('fn')}Fraud, missed: <b>${c.missed}</b></span><span>${keyDot('fp')}Honest, flagged by mistake: <b>${c.fa}</b></span><span>${keyDot('tn')}Honest, not flagged: <b>${c.honest}</b></span>`;
+    const share = c.caught / flagged;
+    $('#ppv').textContent = pctTxt(share);
+    $('#ppvWords').innerHTML = `Out of 1,000 orders, the checker flags <b>${flagged}</b>. Only <b>${c.caught}</b> of them ${c.caught === 1 ? 'is' : 'are'} really fraud.`;
+    grid.setAttribute('aria-label', `1,000 orders. ${c.caught} fraud orders flagged, ${c.missed} fraud missed, ${c.fa} honest orders flagged by mistake, ${c.honest} honest orders not flagged.`);
+  } else {
+    $('#gkey').innerHTML = `<span>${keyDot('fraud')}Fraud: <b>${c.fraud}</b></span><span>${keyDot('tn')}Honest: <b>${1000 - c.fraud}</b></span>`;
+  }
+}
+$('#predict').addEventListener('click', e => {
+  const b = e.target.closest('.opt'); if (!b || predicted) return;
+  predicted = true;
+  $$('#predict .opt').forEach(x => { x.disabled = true; if (x.dataset.g === '50') x.classList.add('right'); });
+  const g = b.dataset.g;
+  if (g !== '50') b.classList.add('wrong');
+  const why = {
+    '99': "It feels like it should be 99%, and most people guess that. But look at the grid: the 10 fraud orders get flagged, and so do about 10 of the 990 honest ones, because 1% of a big number is still a lot.",
+    '50': "Most people guess 99%. The 10 fraud orders get flagged, but so do about 10 of the 990 honest ones, because 1% of a big number is still a lot. Half the flags are false alarms.",
+    '1': "That's the base rate before the check, and the flag does tell you something. Of the 20 flagged orders, 10 are really fraud: about half."
+  }[g];
+  CS.say($('#predictNote'), `<strong>${g === '50' ? 'Well reasoned.' : 'Not quite.'}</strong> ${why}`, g === '50' ? 'good' : 'bad');
+  $('#rates').classList.remove('locked');
+  CS.tick('p2', 'predict');
+  drawGrid();
+});
+function segPick(id, fn) {
+  $(id).addEventListener('click', e => {
+    const b = e.target.closest('button'); if (!b || !predicted) return;
+    $$(id + ' button').forEach(x => x.setAttribute('aria-pressed', x === b));
+    fn(b.dataset.v); drawGrid();
+    const c = counts(), share = c.caught / (c.caught + c.fa), n3 = $('#n3');
+    if (rate === 1000 && acc === 99) { CS.tick('p2', 'rare'); CS.say(n3, `<strong>Now only ${pctTxt(share)} of flags are real.</strong> Fraud became 10 times rarer, but the checker still makes the same 1% of mistakes on the honest orders. About 10 false alarms now surround 1 real case. If Pip's app cancelled flagged orders automatically, it would mostly punish honest customers.`, 'good'); }
+    else if (rate === 1000) { CS.tick('p2', 'rare'); CS.say(n3, `<strong>Fraud is 1 in 1,000 here.</strong> With a ${acc}% accurate checker, ${pctTxt(share)} of flagged orders are really fraud. The rarer the thing you hunt, the more accurate the checker must be to be trusted.`, 'good'); }
+    else CS.say(n3, `<strong>${pctTxt(share)} of flags are real.</strong> Fraud: 1 in ${rate}. Checker: ${acc}% accurate. Common targets and accurate checkers make flags trustworthy. Try 1 in 1,000.`, 'info');
+  });
+}
+segPick('#rateSeg', v => { rate = +v; });
+segPick('#accSeg', v => { acc = +v; });
+drawGrid();
+
+/* ---------------- Part 3: code lab ---------------- */
+const STARTER = `// Pip's Bakery: an AI reads each order message.
+// Here it's right 85% of the time, at random.
+function aiReadsOrder() {
+  // Math.random() gives a random number from 0 to 1
+  return Math.random() < 0.85;   // true means right
+}
+
+// One test: try some messages, return the score.
+function runTest(messages) {
+  let right = 0;
+  for (let i = 0; i < messages; i++) {
+    if (aiReadsOrder()) right = right + 1;
+  }
+  return right / messages;
+}
+
+let messages = 20;
+let score = runTest(messages);
+console.log("Tested on " + messages + " messages. " +
+  "Score: " + Math.round(score * 100) + "%");
+
+/* STEP 3 SWITCH: delete this line and the last one.
+let size = 20;
+let lucky = 0;
+for (let t = 0; t < 1000; t++) {
+  if (runTest(size) >= 0.95) lucky = lucky + 1;
+}
+console.log("Out of 1000 tests of " + size +
+  " messages, " + lucky + " scored 95% or more.");
+STEP 3 SWITCH: delete this line too. */`;
+function runLab(code) {
+  const logs = []; const fmt = v => typeof v === 'string' ? v : (() => { try { return JSON.stringify(v); } catch (e) { return String(v); } })();
+  const con = { log: (...a) => logs.push(a.map(fmt).join(' ')), error: (...a) => logs.push(a.map(fmt).join(' ')) };
+  let error = null;
+  const guarded = code.replace(/\b(for|while)\s*\(([^)]*)\)\s*\{/g, m => m + ' if (++__g > 3000000) throw new Error("Stopped: the loops ran more than 3 million times. Is one of them endless?");');
+  try { new Function('console', '"use strict"; let __g = 0;\n' + guarded)(con); } catch (e) { error = e.name + ': ' + e.message; }
+  const res = { code, logs, error };
+  const m = logs.map(l => l.match(/Tested on (\d+) messages\. Score: (\d+)%/)).find(Boolean);
+  if (m) { res.messages = +m[1]; res.score = +m[2]; }
+  const l = logs.map(x => x.match(/Out of (\d+) tests of (\d+) messages, (\d+) scored/)).find(Boolean);
+  if (l) { res.lucky = { tests: +l[1], size: +l[2], n: +l[3] }; }
+  if (!error && m) { labRuns.push({ n: res.messages, s: res.score / 100 }); scoreRuns20++; }
+  if (res.lucky) labLucky.push(res.lucky);
+  drawLab();
+  return res;
+}
+const labRuns = []; const labLucky = []; let scoreRuns20 = 0;
+function drawLab() {
+  const svg = $('#labChart');
+  const groups = [...new Set(labRuns.map(r => r.n))].slice(-4);
+  const rowH = 46, H = 34 + Math.max(1, groups.length) * rowH, W = fitSvg(svg, H);
+  const L = 8, R = 8, pw = W - L - R, lo = 0.5;
+  const X = v => L + (Math.max(lo, v) - lo) / (1 - lo) * pw;
+  let s = '';
+  (W < 420 ? [0.5, 0.75, 1] : [0.5, 0.6, 0.7, 0.8, 0.9, 1]).forEach(t => { s += `<text x="${X(t)}" y="${H - 6}" text-anchor="${t === 0.5 ? 'start' : t === 1 ? 'end' : 'middle'}" class="svg-t">${Math.round(t * 100)}%</text>`; });
+  s += `<line x1="${X(.85)}" x2="${X(.85)}" y1="6" y2="${H - 22}" style="stroke:var(--l1)" stroke-width="2" stroke-dasharray="5 4"/>`;
+  if (!groups.length) s += `<text x="${L}" y="30" class="svg-t">Press Run to add a dot</text>`;
+  groups.forEach((n, i) => {
+    const y = 18 + i * rowH;
+    s += `<text x="${L}" y="${y}" class="row-l">${n.toLocaleString()} messages</text>`;
+    const rs = labRuns.filter(r => r.n === n).slice(-40);
+    const seen = {};
+    rs.forEach((r, j) => { const k = Math.round(r.s * 100); seen[k] = (seen[k] || 0) + 1; const last = j === rs.length - 1 && r === labRuns[labRuns.length - 1]; s += `<circle cx="${X(r.s)}" cy="${y + 16 - (seen[k] - 1) * 3}" r="${last ? 6.5 : 5}" style="fill:${last ? 'var(--ink)' : n >= 100 ? 'var(--l3)' : 'var(--l2)'}" opacity="${last ? 1 : .75}"/>`; });
+  });
+  svg.innerHTML = s;
+  const box = $('#lucky'), bySize = {};
+  labLucky.forEach(l => { bySize[l.size] = l; });
+  const ls = Object.values(bySize).slice(-3);
+  if (ls.length) {
+    box.hidden = false;
+    box.innerHTML = `<div class="label" style="font-size:1rem">Lucky tests: 95% or more</div>` + ls.map(lk => `<div style="margin-top:8px">${lk.size} messages per test: <b>${lk.n}</b> of ${lk.tests}<div class="meter" aria-hidden="true"><i style="width:${Math.max(0.6, Math.min(100, lk.n / lk.tests * 100))}%; background:var(--l1)"></i></div></div>`).join('');
+  }
+}
+onResize($('#labChart').parentElement, drawLab);
+drawLab();
+CS.codeLab($('#lab'), {
+  part: 'p3', mission: $('#mission'), language: 'JavaScript', starter: STARTER,
+  run: runLab,
+  steps: [
+    { t: 'Run the test three times', how: 'Press Run three times. The AI stays the same, so watch the score.', hint: 'Just press <b>Run</b> three times and compare the scores in the output.',
+      check: () => scoreRuns20 >= 3, nudge: r => r.messages === 20 ? `Score: ${r.score}%. Press Run again and compare.` : '' },
+    { t: 'Test on 1,000 messages', how: 'Change <code>let messages = 20;</code> to <code>1000</code>, then Run a few times.', hint: 'Find the line <code>let messages = 20;</code> and change 20 to 1000. Then press Run.',
+      check: r => r.messages >= 500, nudge: r => r.messages ? `Still ${r.messages} messages, and the score keeps jumping around. Change the 20 to 1000.` : '' },
+    { t: 'Count the lucky tests', how: 'Delete the two lines that start with <code>STEP 3 SWITCH</code>, then Run.', hint: 'Delete the whole line that starts with <code>/* STEP 3 SWITCH</code> near the bottom, and the very last line that ends with <code>*/</code>. Then Run.',
+      check: r => !!r.lucky, nudge: () => 'The experiment is still switched off. Delete both lines that start with <b>STEP 3 SWITCH</b>.' },
+    { t: 'Make every test bigger', how: 'In the experiment, change <code>let size = 20;</code> to <code>200</code>. Run it. How many lucky tests now?', hint: 'Change the line <code>let size = 20;</code> to <code>let size = 200;</code>, then press Run.',
+      check: r => r.lucky && r.lucky.size >= 100, nudge: r => r.lucky ? `${r.lucky.n} of 1000 twenty-message tests made an 85% AI look 95% or better. Now make each test 200 messages.` : '' }
+  ],
+  explainError: err => /SyntaxError/.test(err) ? 'That looks like a typing slip. If you were switching on step 3, make sure you deleted both <b>STEP 3 SWITCH</b> lines completely, including the <code>/*</code> and <code>*/</code>. Or press Reset code and try again.' : /is not defined/.test(err) ? 'A name is misspelled. Check it matches the code above exactly, capitals included.' : '',
+  doneTutor: '<b>Mission complete!</b> With 20 messages, about 1 test in 6 made an 85% AI look 95% or better, just by luck. With 200 messages, almost none did. That is why serious evaluations use hundreds of examples.'
+});
+
+/* ---------------- Part 4: steer the AI ---------------- */
+CS.steer($('#steer'), [
+  { ai: 'I tested the new order reader on 20 customer messages and it got 19 right. That\'s 95% accuracy, so it\'s ready to launch.',
+    opts: [["Great, ship it.", 0, "19 of 20 is encouraging, but an AI that's really 85% accurate scores 95% or more on about 1 test in 6. Twenty messages can't tell those apart."],
+           ["Run the same 20 messages again to double-check.", 0, "The same 20 messages test the same narrow slice of cases. You need more, and more varied, examples."],
+           ["20 is too few to know. Test it on a few hundred real messages, including messy ones, and show me the ones it got wrong.", 1, "Yes. A few hundred realistic examples pin the accuracy down to a few points, and reading the failures tells you what to fix."]] },
+  { ai: "For pulling the order details out of messages into JSON, I've set temperature to 1.2 so the model is more flexible with different wording.",
+    opts: [["Use temperature 0, or close to it. For extraction we want the same message to give the same answer every time.", 1, "Right. Randomness adds variety, not understanding. Handling different wording comes from the model and the prompt, and low temperature keeps the output consistent."],
+           ["Turn it up to 2 so it copes with even more kinds of wording.", 0, "Higher temperature only makes unlikely tokens more likely. For extraction that means more random mistakes, not more flexibility."],
+           ["Temperature doesn't matter here, leave it.", 0, "It does matter. At 1.2, the same message can come back with different, sometimes wrong, fields."]] },
+  { ai: "I tried the new cake-description prompt once and the result was perfect. I'll replace the old prompt everywhere.",
+    opts: [["One perfect result is proof enough.", 0, "Outputs are sampled, so one run could be the lucky one. You haven't seen the typical result, or the worst."],
+           ["Run the old and new prompts on the same 30 cakes, a few times each, and compare side by side.", 1, "Exactly. Comparing many samples of both prompts shows the typical quality and the spread, not just one roll of the dice."],
+           ["Run it once more. If that's good too, switch.", 0, "Two samples is better than one, but still far too few to compare two prompts fairly."]] },
+  { ai: 'The fraud checker is 99% accurate, so when it flags an order we can cancel it automatically.',
+    opts: [["Good, automatic cancelling saves time.", 0, "If fraud is rare, most flags are honest customers. With 1 fraud in 1,000 orders, about 10 of every 11 flags would be false alarms."],
+           ["Let's make it 100% accurate first.", 0, "No real checker is perfect. The fix is to design around its mistakes, not to wait for perfection."],
+           ["Fraud is rare for us, so many flags will be false alarms. Measure what share of flagged orders were really fraud, and send flags to a person to review.", 1, "Right. What matters is how often a flag is correct, which depends on how rare fraud is. A human check keeps honest customers safe."]] }
+], { part: 'p4', counter: $('#steerCount') });
+
+/* ---------------- Part 5: quiz ---------------- */
+CS.quiz($('#quiz'), [
+  { q: 'You send the same prompt twice and get two different answers. Why?', a: [['The AI forgot your first message', 0], ['The AI samples each token from a set of probabilities, so different picks are possible', 1], ['The AI was updated between your two messages', 0]], why: 'Unless the temperature is near 0, each token is a weighted random pick. Different picks early on lead to different answers.' },
+  { q: 'Which temperature fits an AI that turns receipts into spreadsheet rows?', a: [['Low, near 0', 1], ['Around 1', 0], ['As high as possible', 0]], why: 'Extraction needs consistent, predictable output. Save higher temperatures for creative writing and brainstorming.' },
+  { q: 'An AI feature scored 18 out of 20 in a test. What is the most honest summary?', a: [['It is exactly 90% accurate', 0], ['It will get 90% of future cases right', 0], ['Probably decent, but the true accuracy could easily be anywhere from about 70% to 97%', 1]], why: 'Small samples wobble. With 20 examples, the likely range is wide. Test on hundreds to narrow it.' },
+  { q: 'A 99% accurate checker looks for something that happens once in 1,000 cases. Most of its flags are…', a: [['Real cases', 0], ['False alarms', 1], ['Impossible to say without more data', 0]], why: 'In 1,000 cases there is about 1 real one, but 1% of the 999 others (about 10) get flagged by mistake. Rare targets mean mostly false alarms.' },
+  { q: 'Two prompts both average 80% in an evaluation. Prompt A always scores between 78% and 82%. Prompt B swings between 50% and 100%. Which should power a feature customers rely on?', a: [['Prompt A: same average, far less spread', 1], ['Prompt B: it sometimes hits 100%', 0], ['Either, the average is what counts', 0]], why: 'The average is only half the story. Customers experience single results, and B often gives bad ones.' }
+], { part: 'p5', doneCard: $('#doneCard'), doneTitle: 'You can think in chances now.', doneText: 'You know how an AI samples its words, what temperature does, why small tests mislead, and how base rates turn accurate checkers into false-alarm machines.' });
+})();
+</script>
+</body>
+</html>
