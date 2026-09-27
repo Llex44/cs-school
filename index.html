@@ -67,8 +67,19 @@
 <script src="assets/cs-school.js"></script>
 <script>
 CS.home(CS.$('#catalog'));
-CS.$('#resetBtn').addEventListener('click', () => {
-  if (confirm('Clear your progress on every course?')) { CS.progress.reset(); CS.home(CS.$('#catalog')); }
+const resetBtn = CS.$('#resetBtn');
+let resetArmed = null;
+resetBtn.addEventListener('click', () => {
+  if (!resetArmed) {
+    resetBtn.textContent = 'Clear all progress? Click again';
+    resetBtn.classList.add('danger');
+    resetArmed = setTimeout(() => { resetArmed = null; resetBtn.textContent = 'Reset my progress'; resetBtn.classList.remove('danger'); }, 4000);
+    return;
+  }
+  clearTimeout(resetArmed); resetArmed = null;
+  CS.progress.reset(); CS.home(CS.$('#catalog'));
+  resetBtn.textContent = 'Progress cleared'; resetBtn.classList.remove('danger');
+  setTimeout(() => { resetBtn.textContent = 'Reset my progress'; }, 2500);
 });
 </script>
 </body>
