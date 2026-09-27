@@ -1030,7 +1030,7 @@ function run(a, line, io, api) {
       return null;
     }
     if (typeof n === 'object') { print(`cat: ${esc(a[1])}: Is a directory`, 'r'); tutor(`It's a folder. Try <b>ls ${esc(a[1])}</b>, or <b>cd ${esc(a[1])}</b>.`); return null; }
-    if (n === BIN) { print('<span class="dim">����JFIF��C… (binary data)</span>'); tutor('A photo. Binary files look like gibberish in a terminal. Files in <b>public/</b> are sent to anyone who asks, so never put anything private there.'); return null; }
+    if (n === BIN) { print('<span class="dim">&#xFFFD;&#xFFFD;&#xFFFD;&#xFFFD;JFIF&#xFFFD;&#xFFFD;C… (binary data)</span>'); tutor('A photo. Binary files look like gibberish in a terminal. Files in <b>public/</b> are sent to anyone who asks, so never put anything private there.'); return null; }
     print(n);
     const first = !readFiles.has(path); readFiles.add(path);
     if (TUTOR[path]) tutor(TUTOR[path] + (KEY_FILES.some(k => k[0] === path) && first ? ' Label it in the <b>Project map</b>.' : ''));
