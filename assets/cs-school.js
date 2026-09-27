@@ -326,7 +326,7 @@
     const logs = []; const fmt = v => typeof v === 'string' ? v : (() => { try { return JSON.stringify(v); } catch (e) { return String(v); } })();
     const con = { log: (...a) => logs.push(a.map(fmt).join(' ')), error: (...a) => logs.push(a.map(fmt).join(' ')) };
     let error = null, value;
-    const guarded = code.replace(/\b(for|while)\s*\(([^)]*)\)\s*\{/g, (m) => m + ' if (++__g > 100000) throw new Error("Stopped: this loop ran more than 100,000 times. Is it infinite?");');
+    const guarded = code.replace(/\b(for|while)\s*\(([^)]*)\)\s*\{/g, (m) => m + ' if (++__g > 5000000) throw new Error("Stopped: this loop ran more than 5 million times. Is it infinite?");');
     try { value = new Function('console', '"use strict"; let __g = 0;\n' + guarded)(con); } catch (e) { error = e.name + ': ' + e.message; }
     return { code, logs, error, value };
   };
@@ -356,7 +356,7 @@
       if (res.logs && res.logs.length) html += res.logs.map(l => `<div>${CS.esc(l)}</div>`).join('');
       if (res.html) html += res.html;
       if (res.error) html += `<div class="r">${CS.esc(res.error)}</div>`;
-      if (!html) html = '<span class="dim">(no output — try console.log(...) to print something)</span>';
+      if (!html) html = '<span class="dim">(No output yet. Use console.log(...) to print something.)</span>';
       print(html);
       if (res.error && cfg.explainError) { const x = cfg.explainError(res.error); if (x) tutor(x); }
       let moved = false;

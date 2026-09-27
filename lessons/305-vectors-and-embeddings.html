@@ -1,0 +1,1036 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Vectors &amp; embeddings · CS School</title>
+<meta name="description" content="Course 305: how AI turns meaning into points in space you can measure, and how that powers search by meaning and retrieval-augmented generation.">
+<link rel="icon" href="../assets/favicon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="../assets/cs-school.css">
+<style>
+/* lesson-specific styles: word map, measuring card, arrow arithmetic, search, prompt preview, chunking, lab side panel */
+:root{--well:color-mix(in srgb, var(--ink) 6%, transparent)}
+.cl-lines{font-size:16px}
+@media (max-width:900px){ .pg{align-items:stretch} }
+svg.fit{display:block; width:100%; height:auto}
+.svg-t{font-family:var(--f-body); font-size:13.5px; fill:var(--ink-2)}
+.svg-b{font-family:var(--f-display); font-weight:800; fill:var(--ink)}
+.svg-m{font-family:var(--f-mono); font-size:12.5px; fill:var(--ink-2)}
+.pg.map-pg{grid-template-columns:minmax(0,1.45fr) minmax(0,1fr)}
+.explain{margin-top:48px}
+.explain > p{max-width:70ch}
+
+/* word map */
+.map-card{padding:16px}
+.map-card .ctl-title{margin-left:4px}
+.map{border-radius:14px; background:var(--well); touch-action:pan-y; user-select:none; -webkit-user-select:none}
+.pill{cursor:grab; touch-action:none; outline:none}
+.pill rect{fill:var(--glass-strong); stroke:var(--hair); stroke-width:1; transition:fill .2s}
+.pill text{font-family:var(--f-display); font-weight:700; fill:var(--ink); pointer-events:none}
+.pill:hover rect{fill:var(--paper)}
+.pill:focus-visible rect{stroke:var(--l2); stroke-width:2.5}
+.pill.drag{cursor:grabbing}
+.pill.drag rect{fill:var(--paper); filter:drop-shadow(0 6px 10px rgba(0,0,0,.18))}
+.model .pill{cursor:pointer}
+.pill.sel rect{fill:var(--ink); stroke:none}
+.pill.sel text{fill:var(--paper)}
+.map-cap{margin:10px 4px 0; font-size:.92rem; color:var(--ink-2)}
+.map-tools{display:flex; flex-wrap:wrap; gap:10px; margin-top:12px; align-items:center}
+.vec-row{display:flex; justify-content:space-between; align-items:center; gap:10px; background:var(--well); border-radius:12px; padding:8px 12px; margin-bottom:8px}
+.vec-row b{font-family:var(--f-display)}
+.vec-row code{background:none; padding:0; font-size:.95rem}
+.m-grid{display:grid; grid-template-columns:auto 1fr; gap:4px 14px; margin:10px 0 6px; font-size:1rem}
+.m-grid dt{color:var(--ink-2)} .m-grid dd{margin:0; font-family:var(--f-display); font-weight:800; font-variant-numeric:tabular-nums}
+.sim-big{font-family:var(--f-display); font-weight:900; font-size:2.6rem; line-height:1; font-variant-numeric:tabular-nums}
+.meter2{position:relative; height:12px; border-radius:6px; background:var(--well); margin-top:10px}
+.meter2 i{position:absolute; top:0; bottom:0; border-radius:6px; transition:left .4s, width .4s, background .4s}
+.meter2 b{position:absolute; top:-3px; bottom:-3px; left:50%; width:2px; margin-left:-1px; background:var(--ink-2); opacity:.5; border-radius:1px}
+.meter-l{display:flex; justify-content:space-between; font-size:.9rem; color:var(--ink-2); margin-top:4px}
+.bigvec{display:flex; gap:2px; align-items:center; height:64px; background:var(--term); border-radius:12px; padding:10px 14px; overflow:hidden}
+.bigvec i{flex:1 1 0; min-width:2px; border-radius:2px}
+.vec-cap{font-family:var(--f-mono); font-size:.95rem; color:var(--ink-2)}
+
+/* arrow arithmetic */
+.arith{display:grid; grid-template-columns:minmax(0,1fr) minmax(0,1.2fr); gap:28px; align-items:start}
+
+/* search */
+.search-row{display:flex; gap:10px; flex-wrap:wrap}
+.search-row .input{flex:1 1 200px}
+.chips{display:flex; flex-wrap:wrap; gap:8px; margin-top:12px}
+.chips button{font:inherit; font-size:.95rem; border:0; background:var(--well); color:var(--ink); border-radius:99px; padding:8px 14px; min-height:40px; cursor:pointer}
+.chips button:hover{background:color-mix(in srgb, var(--ink) 12%, transparent)}
+.mode-row{display:flex; align-items:center; gap:12px; flex-wrap:wrap; margin-top:14px}
+.results{list-style:none; margin:0; padding:0; display:flex; flex-direction:column; gap:8px; counter-reset:r}
+.results li{counter-increment:r; display:grid; grid-template-columns:28px minmax(0,1fr) auto; gap:4px 12px; align-items:start; background:var(--well); border-radius:12px; padding:10px 12px; animation:rise .3s backwards}
+.results li::before{content:counter(r); width:26px; height:26px; border-radius:50%; display:grid; place-items:center; font-family:var(--f-display); font-weight:800; font-size:.85rem; background:var(--paper); color:var(--ink); margin-top:1px}
+.results li:first-child::before{background:var(--ink); color:var(--paper)}
+.results .t{font-family:var(--f-display); font-weight:800; line-height:1.25}
+.results .x{grid-column:2 / 4; font-size:.95rem; color:var(--ink-2); line-height:1.4}
+.results .sc{font-family:var(--f-display); font-weight:800; font-variant-numeric:tabular-nums; display:flex; align-items:center; gap:8px; font-size:.95rem}
+.results .sc span{display:inline-block; width:54px; height:8px; border-radius:4px; background:var(--well); overflow:hidden}
+.results .sc span i{display:block; height:100%; background:var(--l3); border-radius:4px}
+.results mark{background:color-mix(in srgb, var(--l4) 40%, transparent); color:inherit; border-radius:3px; padding:0 2px}
+.results .none{display:block; grid-template-columns:none; background:none; padding:0; color:var(--ink-2)}
+.results .none::before{display:none}
+.dims{display:grid; grid-template-columns:4.6em minmax(0,1fr) 2.6em; gap:5px 10px; align-items:center; font-size:.95rem}
+.dims .dn{font-family:var(--f-mono); font-size:.9rem; color:var(--ink-2)}
+.dims .db{height:10px; border-radius:5px; background:var(--well); overflow:hidden}
+.dims .db i{display:block; height:100%; border-radius:5px; background:var(--l2); transition:width .45s cubic-bezier(.3,1,.4,1)}
+.dims .dv{font-family:var(--f-display); font-weight:700; font-variant-numeric:tabular-nums; text-align:right}
+.known{font-size:.95rem; color:var(--ink-2); margin-top:10px}
+.prompt .q{color:#FFC53D} .prompt .src{color:#7CC4FF}
+
+/* chunking */
+.chunk-q{font-family:var(--f-display); font-weight:800; font-size:1.15rem}
+.article{background:var(--well); border-radius:14px; padding:14px 16px; font-size:1rem; line-height:1.9; margin-top:12px}
+.article .ch{border-radius:5px; padding:2px 0; transition:background .3s; -webkit-box-decoration-break:clone; box-decoration-break:clone}
+.article .ch.a{background:color-mix(in srgb, var(--l2) 12%, transparent)}
+.article .ch.b{background:color-mix(in srgb, var(--l3) 14%, transparent)}
+.article .ch.hit{background:color-mix(in srgb, var(--l4) 45%, transparent); font-weight:700}
+.article .para{display:block; margin-bottom:6px}
+.article .para:last-child{margin-bottom:0}
+.sent{margin-top:12px; background:var(--term); color:var(--term-ink); border-radius:12px; padding:12px 14px; font-family:var(--f-mono); font-size:.95rem; white-space:pre-wrap; line-height:1.6}
+.sent .d{color:var(--term-dim)}
+
+/* lab side */
+.fp{display:grid; grid-template-columns:minmax(0,1fr) repeat(4, 30px) 58px; gap:6px 6px; align-items:center; font-size:.95rem}
+.fp .h{font-family:var(--f-mono); font-size:.8rem; color:var(--ink-2); text-align:center}
+.fp .h:first-child{text-align:left}
+.fp .nm{font-family:var(--f-display); font-weight:700; line-height:1.2; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap}
+.fp .nm.q{color:var(--l2)}
+.fp .cell{height:26px; border-radius:6px; background:var(--well); position:relative; overflow:hidden}
+.fp .cell i{position:absolute; left:0; right:0; bottom:0; border-radius:6px; background:var(--l2)}
+.fp .s{font-family:var(--f-display); font-weight:800; text-align:right; font-variant-numeric:tabular-nums}
+.fp .top .nm{color:var(--good)}
+.fp .row{display:contents}
+
+@media (max-width:900px){
+  .arith,.pg.map-pg{grid-template-columns:minmax(0,1fr)}
+}
+@media (max-width:640px){
+  .map-card{padding:12px}
+  .results .sc span{width:36px}
+}
+</style>
+</head>
+<body>
+<main id="top">
+  <section class="wrap hero">
+    <div>
+      <div class="kicker">Theory elective · Course 305 · Vectors &amp; embeddings</div>
+      <h1>To an AI, every meaning is a place on a map.</h1>
+      <p class="lede">An embedding turns a word, a sentence or a whole document into a list of numbers: a point in space. Similar meanings land close together, so a computer can measure how related two ideas are. It's how AI search finds "puppy" when you type "dog".</p>
+      <ul class="facts">
+        <li>About 15 minutes</li>
+        <li>5 parts</li>
+        <li>Code lab</li>
+        <li>No math background needed</li>
+      </ul>
+      <div class="row hero-cta"><a class="btn primary" href="#p1">Start the lesson</a></div>
+    </div>
+    <figure style="margin:0">
+      <div class="hero-visual glass">
+        <svg id="heroArt" class="fit" role="img" aria-label="An animated map of pet-shop words. Words with similar meanings sit in groups. A search appears as a star, lands near the words it means, and lines connect it to its closest matches with their similarity scores."></svg>
+        <div class="legend" id="heroLegend"></div>
+      </div>
+      <div class="hero-caption glass" aria-hidden="true"><span>embed</span><span id="heroCap">("chew toy for my pup")</span></div>
+    </figure>
+  </section>
+
+  <div class="wrap">
+  <!-- PART 1 -->
+  <section class="part" id="p1">
+    <span class="bullet glass" data-p="p1">1</span>
+    <div class="part-head">
+      <div class="kicker">Part 1 of 5</div>
+      <h2>Meaning becomes a place</h2>
+      <p>An <b>embedding model</b> reads some text and gives back a list of numbers, called a <b>vector</b>. Treat the numbers as coordinates and every text becomes a point on a map. The model is trained so that texts with similar meanings get nearby points.</p>
+    </div>
+
+    <div class="chat" aria-label="Example conversation">
+      <div class="msg me"><span class="who">You</span>People search our pet shop for "dog bed" and get nothing, because we call it a "puppy crate mattress". Can you fix search?</div>
+      <div class="msg ai"><span class="who">AI assistant</span>I'll switch to semantic search with embeddings. It compares meanings instead of exact words, so "dog bed" will find the puppy mattress.</div>
+      <div class="msg me"><span class="who">You</span>What's an embedding?</div>
+      <div class="msg ai"><span class="who">AI assistant</span>A list of numbers that places each piece of text on a kind of map, where similar meanings sit close together.</div>
+    </div>
+
+    <div class="task glass" data-part="p1">
+      <h3>Your task</h3>
+      <ol>
+        <li data-t="drag"><span>Drag the words so that similar meanings sit close together. Move at least four.</span></li>
+        <li data-t="reveal"><span>Press <b>Show the AI's map</b> to see where an embedding model puts them.</span></li>
+        <li data-t="near"><span>Tap two words to measure them. Find a pair with similarity above 0.9.</span></li>
+        <li data-t="far"><span>Find a pair with similarity below 0.</span></li>
+      </ol>
+    </div>
+
+    <div class="pg map-pg">
+      <div class="pg-col">
+        <div class="o1 ctl glass map-card">
+          <h3 class="ctl-title" id="mapTitle">Your map: group the words</h3>
+          <svg id="wordMap" class="map fit" role="application" aria-label="Word map. Drag words, or focus one and use the arrow keys to move it."></svg>
+          <div class="map-tools">
+            <button class="btn primary" id="revealBtn">Show the AI's map</button>
+            <button class="btn" id="resetMap">Start over</button>
+          </div>
+        </div>
+      </div>
+      <div class="pg-col">
+        <div class="o2 note" id="n1" aria-live="polite">Drag a word with your mouse or finger. On a keyboard, press Tab to reach a word, then use the arrow keys.</div>
+        <div class="o3 ctl glass" aria-live="polite">
+          <h3 class="ctl-title">Measure two words</h3>
+          <div id="measure"><p class="muted">After you reveal the AI's map, tap any two words to compare them.</p></div>
+        </div>
+        <details class="deeper glass o4">
+          <summary>Under the hood: cosine similarity <small>optional</small></summary>
+          <div>
+            <p>Draw an arrow from the center of the map to each point. <b>Cosine similarity</b> measures the angle between two arrows and ignores their length: 1 means the same direction, 0 means at right angles, −1 means opposite.</p>
+            <div class="code">cosine(a, b) = (a₁×b₁ + a₂×b₂ + …) ÷ (length of a × length of b)</div>
+            <p>The top part, multiplying matching numbers and adding them up, is called the <b>dot product</b>. Dividing by the lengths makes long and short arrows comparable. You'll write this in part 3.</p>
+            <p>This toy map is flat, so unrelated words can point in opposite directions. In real models, unrelated texts usually score a little above zero rather than below, and each model has its own typical range. Compare scores from the same model, as a ranking.</p>
+          </div>
+        </details>
+      </div>
+    </div>
+
+    <div class="stack explain">
+      <h3>A vector is just a list of numbers</h3>
+      <p>On this map every word is two numbers, its position across and up. That pair is its vector, like <code>puppy → [0.65, 0.63]</code>. Measuring meaning is now arithmetic: close points, or arrows pointing the same way, mean related ideas.</p>
+      <p>Two numbers can only hold a little meaning. Real embedding models use hundreds or thousands of numbers per text, often 384, 768, 1,536 or 3,072. Nobody can picture that many directions, but the math is exactly the same: distance and angle work in any number of dimensions.</p>
+      <div class="bigvec" id="bigVec" role="img" aria-label="A bar chart of 64 numbers from a real-sized embedding, some positive, some negative"></div>
+      <p class="vec-cap">embed("puppy crate mattress") → [0.021, −0.113, 0.087, 0.004, … 1,536 numbers in all]</p>
+      <p>Those numbers don't come with labels. The model learned them by reading huge amounts of text, and no single number means "dog" or "furry". Only the pattern as a whole carries meaning.</p>
+    </div>
+
+    <div class="stack" style="margin-top:56px">
+      <h3>Arrow arithmetic</h3>
+      <p class="muted">If directions carry meaning, you can add and subtract them. The arrow from "dog" to "puppy" roughly means "the young one". What happens if you add that arrow to another animal?</p>
+      <div class="task glass" data-part="p1" style="margin-bottom:0">
+        <h3>Your task</h3>
+        <ol><li data-t="arith"><span>Pick a starting animal, then add the dog → puppy arrow to it. Where does it land?</span></li></ol>
+      </div>
+      <div class="arith">
+        <div class="stack" style="gap:18px">
+          <div class="ctl glass">
+            <h3 class="ctl-title">Start from</h3>
+            <div class="seg-control" id="arStart" role="group" aria-label="Starting animal">
+              <button type="button" data-v="cat" aria-pressed="true">cat</button><button type="button" data-v="horse" aria-pressed="false">horse</button><button type="button" data-v="cow" aria-pressed="false">cow</button>
+            </div>
+            <div class="row" style="margin-top:14px"><button class="btn primary" id="arGo">Add the dog → puppy arrow</button></div>
+          </div>
+          <div class="note" id="arNote" aria-live="polite">The violet arrow will copy the step from dog to puppy onto your animal.</div>
+        </div>
+        <div class="ctl glass map-card"><svg id="arMap" class="map fit" role="img" aria-label="Map of animals and their young, with arrows"></svg></div>
+      </div>
+      <p>The famous example is <b>king − man + woman ≈ queen</b>. It's real, but it's tidier than the truth. It worked for some examples in older word-embedding models, the answer is usually "the closest word that isn't one of the inputs", it fails often, and it can repeat stereotypes from the text the model learned from. Treat it as a picture of how directions hold meaning, not as a reliable tool.</p>
+    </div>
+  </section>
+
+  <!-- PART 2 -->
+  <section class="part" id="p2">
+    <span class="bullet glass" data-p="p2">2</span>
+    <div class="part-head">
+      <div class="kicker">Part 2 of 5</div>
+      <h2>Search by meaning</h2>
+      <p>Pawsome, a pet shop, has a help center with a dozen articles. Every article was turned into a vector once, ahead of time. When a customer searches, their words become a vector too, and the closest articles win. That's <b>semantic search</b>.</p>
+    </div>
+
+    <div class="task glass" data-part="p2">
+      <h3>Your task</h3>
+      <ol>
+        <li data-t="meaning"><span>Search for <b>dog bed</b> by meaning. Which article comes first?</span></li>
+        <li data-t="keyword"><span>Switch to <b>By keywords</b> and search <b>dog bed</b> again.</span></li>
+        <li data-t="code"><span>Search the product code <b>4471</b> both ways.</span></li>
+        <li data-t="own"><span>Type your own question and search by meaning.</span></li>
+      </ol>
+    </div>
+
+    <div class="pg">
+      <div class="pg-col">
+        <div class="o1 ctl glass">
+          <label class="ctl-title" for="q">Search the Pawsome help center</label>
+          <form class="search-row" id="searchForm" autocomplete="off">
+            <input class="input" id="q" type="text" placeholder="For example: dog bed">
+            <button class="btn primary" type="submit">Search</button>
+          </form>
+          <div class="chips" id="chips"></div>
+          <div class="mode-row"><span class="label" style="font-size:1rem">Search</span>
+            <div class="seg-control" id="modeSeg" role="group" aria-label="Search mode">
+              <button type="button" data-m="meaning" aria-pressed="true">By meaning</button><button type="button" data-m="keyword" aria-pressed="false">By keywords</button>
+            </div>
+          </div>
+        </div>
+        <div class="o3 ctl glass" aria-live="polite">
+          <h3 class="ctl-title">Results</h3>
+          <ol class="results" id="results"><li class="none">Search for something to see results.</li></ol>
+        </div>
+        <div class="o5 ctl glass">
+          <h3 class="ctl-title" id="vecTitle">Your search as numbers</h3>
+          <div id="vecBox"></div>
+        </div>
+      </div>
+      <div class="pg-col">
+        <div class="o2 ctl glass map-card">
+          <h3 class="ctl-title">The help center, as a map</h3>
+          <svg id="docMap" class="map fit" role="img" aria-label="Map of help articles"></svg>
+          <p class="map-cap" id="docCap">Each dot is one help article.</p>
+        </div>
+        <div class="o4 note" id="n2" aria-live="polite">Try one of the example searches, or type your own.</div>
+        <details class="deeper glass o6">
+          <summary>Under the hood: how this toy model works <small>optional</small></summary>
+          <div>
+            <p>Our model knows about 160 words, and gives each one ten numbers with names like "dog", "food" and "delivery". A text's vector is the average of its known words, scaled to length 1. Averaging word vectors was a real early technique.</p>
+            <p>Modern embedding models read the whole text at once, so word order and context count: "dog bites man" and "man bites dog" get different vectors. They also give a vector to any text at all, including words they've never seen.</p>
+            <p>The map is flattened from ten dimensions to two so you can see it, which squashes some distances. The scores in the list are the true ones.</p>
+          </div>
+        </details>
+      </div>
+    </div>
+
+    <div class="stack explain">
+      <h3>Meaning, keywords, or both</h3>
+      <p><b>Keyword search</b> looks for the same words. It's fast, exact and predictable, perfect for product codes, names and error messages. But it can't know that "dog bed" and "puppy crate mattress" mean nearly the same thing.</p>
+      <p><b>Semantic search</b> compares embeddings, so it matches meaning even when no words are shared. It's fuzzier with exact strings like codes and order numbers. Many real systems run both and merge the results, called <b>hybrid search</b>.</p>
+      <p>The article vectors are usually kept in a <b>vector database</b>, which is built to find the nearest vectors among millions quickly (see <a href="205-data-and-databases.html">course 205</a>).</p>
+    </div>
+
+    <div class="stack" style="margin-top:56px">
+      <h3>Retrieval-augmented generation (RAG)</h3>
+      <p class="muted">A chatbot doesn't know Pawsome's return policy. So before the AI answers, the app searches the help center and pastes the closest chunks into the prompt. <b>R</b>etrieve, then <b>a</b>ugment the prompt, then <b>g</b>enerate the answer. Here's what the AI would receive for your last search:</p>
+      <div class="code prompt" id="prompt"></div>
+      <p>The AI can only use what it's handed. If retrieval grabs the wrong chunks, even a brilliant model answers badly. That makes how you cut documents into chunks surprisingly important.</p>
+      <div class="task glass" data-part="p2" style="margin-bottom:0">
+        <h3>Your task</h3>
+        <ol><li data-t="chunk"><span>Split the returns article both ways. Which one hands the AI the full answer?</span></li></ol>
+      </div>
+      <div class="ctl glass">
+        <div class="chunk-q">Customer: "Can I return an opened bag of dog treats?"</div>
+        <div class="mode-row"><span class="label" style="font-size:1rem">Split the article</span>
+          <div class="seg-control" id="chunkSeg" role="group" aria-label="How to split the article">
+            <button type="button" data-c="fixed" aria-pressed="false">Every 80 characters</button><button type="button" data-c="para" aria-pressed="false">By paragraph</button>
+          </div>
+        </div>
+        <div class="article" id="article"></div>
+        <div id="sentBox"></div>
+      </div>
+      <div class="note" id="chunkNote" hidden aria-live="polite"></div>
+    </div>
+  </section>
+
+  <!-- PART 3 -->
+  <section class="part" id="p3">
+    <span class="bullet glass" data-p="p3">3</span>
+    <div class="part-head">
+      <div class="kicker">Part 3 of 5</div>
+      <h2>Try it: rank articles with cosine similarity</h2>
+      <p>You'll build the heart of a semantic search in a few lines of JavaScript. Each text is a tiny vector with four numbers: how much it's about dogs, cats, food and toys.</p>
+    </div>
+
+    <div class="lab">
+      <div class="a-mission ctl glass">
+        <h3 class="ctl-title">Your mission</h3>
+        <p class="ctl-sub" style="margin-top:0">A customer searched "something for my dog to play with". Make the search rank the articles fairly, best first.</p>
+        <ol class="mission" id="mission"></ol>
+      </div>
+      <div class="a-work" id="lab"></div>
+      <div class="a-side">
+        <div class="ctl glass">
+          <h3 class="ctl-title">The vectors</h3>
+          <p class="ctl-sub">Each bar is one number. Scores come from your last run.</p>
+          <div class="fp" id="fp"></div>
+        </div>
+      </div>
+      <div class="a-extra">
+        <details class="deeper glass">
+          <summary>Under the hood: real vector search <small>optional</small></summary>
+          <div>
+            <p>With a few articles you can compare the query with every one, as your code does. With millions, that's too slow, so vector databases use clever indexes that find <i>nearly</i> the closest vectors much faster. It's called approximate nearest neighbor search.</p>
+            <p>Many embedding models return vectors that already have length 1. Then cosine similarity and the plain dot product give the same ranking, and systems often skip the division.</p>
+          </div>
+        </details>
+      </div>
+    </div>
+  </section>
+
+  <!-- PART 4 -->
+  <section class="part" id="p4">
+    <span class="bullet glass" data-p="p4">4</span>
+    <div class="part-head">
+      <div class="kicker">Part 4 of 5</div>
+      <h2>Steer the AI</h2>
+      <p>AI tools set up search and RAG quickly, and the defaults aren't always wise. Here are four things one might say. Pick the reply you'd send.</p>
+    </div>
+    <p class="counter" id="steerCount"></p>
+    <div id="steer"></div>
+  </section>
+
+  <!-- PART 5 -->
+  <section class="part" id="p5">
+    <span class="bullet glass" data-p="p5">5</span>
+    <div class="part-head">
+      <div class="kicker">Part 5 of 5</div>
+      <h2>Check your understanding</h2>
+      <p>Five quick questions. Each answer explains itself.</p>
+    </div>
+    <div id="quiz"></div>
+    <div id="doneCard" aria-live="polite"></div>
+  </section>
+  </div>
+
+  <section class="after" id="terms">
+    <div class="wrap stack">
+      <h2>Key terms</h2>
+      <p class="muted">The words you'll hear when an AI tool sets up search, memory or RAG.</p>
+      <dl class="terms">
+        <div class="glass"><dt>Vector</dt><dd>A list of numbers. Read as coordinates, it's a point or an arrow in space.</dd></div>
+        <div class="glass"><dt>Embedding</dt><dd>A vector made from text (or images, or sound) by a model, so that similar meanings get nearby vectors.</dd></div>
+        <div class="glass"><dt>Dimensions</dt><dd>How many numbers are in each vector. Real embeddings have hundreds or thousands.</dd></div>
+        <div class="glass"><dt>Cosine similarity</dt><dd>How closely two vectors point the same way: 1 is the same direction, 0 is unrelated.</dd></div>
+        <div class="glass"><dt>Semantic search</dt><dd>Finding texts whose embeddings are closest to the query's embedding: search by meaning.</dd></div>
+        <div class="glass"><dt>Keyword search</dt><dd>Finding texts that contain the same words. Best for codes, names and exact phrases.</dd></div>
+        <div class="glass"><dt>Hybrid search</dt><dd>Running keyword and semantic search together and merging the results.</dd></div>
+        <div class="glass"><dt>Chunk</dt><dd>A piece of a longer document, embedded on its own. Good chunks hold one complete idea.</dd></div>
+        <div class="glass"><dt>RAG</dt><dd>Retrieval-augmented generation: find the closest chunks, put them in the prompt, then let the AI answer from them.</dd></div>
+        <div class="glass"><dt>Vector database</dt><dd>A store built to find the nearest vectors among millions, fast.</dd></div>
+      </dl>
+    </div>
+  </section>
+</main>
+<script src="../assets/cs-school.js"></script>
+<script>
+(() => {
+const { $, $$, esc, reduce } = CS;
+
+CS.lesson({
+  id: '305',
+  parts: [
+    { id: 'p1', title: 'Meaning becomes a place' },
+    { id: 'p2', title: 'Search by meaning' },
+    { id: 'p3', title: 'Try it' },
+    { id: 'p4', title: 'Steer the AI' },
+    { id: 'p5', title: 'Check' }
+  ]
+});
+
+/* ---------------- helpers ---------------- */
+function fitSvg(svg, h) {
+  const p = svg.parentElement, cs = getComputedStyle(p);
+  const w = Math.max(240, Math.round(p.getBoundingClientRect().width - parseFloat(cs.paddingLeft) - parseFloat(cs.paddingRight)));
+  svg.setAttribute('viewBox', `0 0 ${w} ${h}`);
+  return w;
+}
+function onResize(el, fn) {
+  let last = 0;
+  new ResizeObserver(() => { const w = Math.round(el.getBoundingClientRect().width); if (w !== last) { last = w; fn(); } }).observe(el);
+}
+const ease = k => 1 - Math.pow(1 - k, 3);
+function tween(ms, fn, done) {
+  if (reduce) { fn(1); if (done) done(); return; }
+  const t0 = performance.now();
+  (function f(t) { const k = Math.min(1, (t - t0) / ms); fn(k); if (k < 1) requestAnimationFrame(f); else if (done) done(); })(t0);
+}
+const wait = ms => new Promise(r => setTimeout(r, reduce ? 0 : ms));
+const rad = d => d * Math.PI / 180;
+const f2 = v => (v < 0 ? '−' : '') + Math.abs(v).toFixed(2);
+const FAM = { dog: { c: 'var(--l2)', n: 'dogs' }, cat: { c: 'var(--l5)', n: 'cats' }, fish: { c: 'var(--l3)', n: 'fish' }, bird: { c: 'var(--l4)', n: 'birds' }, shop: { c: 'var(--l1)', n: 'orders' } };
+
+/* ---------------- the 2D word model (parts 1 and hero) ---------------- */
+const WORDS = [['dog', 'dog', 25, .49], ['puppy', 'dog', 44, .90], ['cat', 'cat', 112, .46], ['kitten', 'cat', 103, .72], ['goldfish', 'fish', 160, .82], ['aquarium', 'fish', 178, .62], ['parrot', 'bird', 246, .90], ['birdseed', 'bird', 231, .63], ['delivery', 'shop', 308, .93], ['refund', 'shop', 325, .54]]
+  .map(([w, f, a, r]) => ({ w, f, x: Math.cos(rad(a)) * r, y: Math.sin(rad(a)) * r }));
+const cos2 = (a, b) => (a.x * b.x + a.y * b.y) / (Math.hypot(a.x, a.y) * Math.hypot(b.x, b.y));
+
+/* ---------------- hero ---------------- */
+(function hero() {
+  const svg = $('#heroArt'), cap = $('#heroCap'), H = 350;
+  $('#heroLegend').innerHTML = Object.values(FAM).map(f => `<span><i style="background:${f.c}"></i>${f.n}</span>`).join('');
+  const QUERIES = [
+    ['chew toy for my pup', 38, .75], ['my kitty won’t eat', 106, .7], ['tank looks cloudy', 170, .72], ['where’s my order?', 316, .76], ['budgie food', 238, .7]
+  ].map(([t, a, r]) => ({ t, x: Math.cos(rad(a)) * r, y: Math.sin(rad(a)) * r }));
+  let st = { q: null, k: 0, lines: 0, t: 0 };
+  function draw() {
+    const W = fitSvg(svg, H), narrow = W < 440, HH = narrow ? Math.round(Math.min(H, W - 30)) : H;
+    if (narrow) svg.setAttribute('viewBox', `0 0 ${W} ${HH}`);
+    const cx = W / 2, cy = HH / 2 + 4, R = Math.min(W / 2 - (narrow ? 50 : 60), HH / 2 - 26);
+    const P = p => [cx + p.x * R, cy - p.y * R];
+    let s = `<line x1="${cx - R - 20}" x2="${cx + R + 20}" y1="${cy}" y2="${cy}" style="stroke:var(--hair)"/><line x1="${cx}" x2="${cx}" y1="${cy - R - 16}" y2="${cy + R + 16}" style="stroke:var(--hair)"/>`;
+    const q = st.q;
+    let near = [];
+    if (q) near = WORDS.map(w => [cos2(q, w), w]).sort((a, b) => b[0] - a[0]).slice(0, 2);
+    const [qx, qy] = q ? P(q) : [0, 0];
+    near.forEach(([c, w], i) => {
+      const [x, y] = P(w), k = Math.max(0, Math.min(1, st.lines * 2 - i * .5));
+      if (k <= 0) return;
+      const ex = qx + (x - qx) * k, ey = qy + (y - qy) * k;
+      s += `<line x1="${qx}" y1="${qy}" x2="${ex}" y2="${ey}" style="stroke:${FAM[w.f].c}" stroke-width="2.5" stroke-linecap="round"/>`;
+    });
+    WORDS.forEach((w, i) => {
+      const [x, y] = P(w), wob = reduce ? 0 : Math.sin(st.t / 900 + i) * 1.2;
+      const hit = near.find(n => n[1] === w), hot = hit && st.lines >= 1;
+      s += `<circle cx="${x}" cy="${y + wob}" r="${hot ? 7 : 5.5}" style="fill:${FAM[w.f].c}"/>`;
+      const right = w.x >= -0.05, lx = x + (right ? 12 : -12), anchor = right ? 'start' : 'end';
+      // Put the score beside the word, or under it when there's no room at the edge.
+      const fits = !hot || (right ? lx + (w.w.length + 6) * 8 < W - 4 : lx - (w.w.length + 6) * 8 > 4);
+      const sc = hot ? `<tspan style="fill:${FAM[w.f].c}">${hit[0].toFixed(2)}</tspan>` : '';
+      s += `<text x="${lx}" y="${y + wob + 4.5}" text-anchor="${anchor}" class="svg-t" style="font-size:13.5px;${hot ? 'fill:var(--ink);font-weight:700' : ''}">${hot && fits && !right ? sc + '  ' : ''}${w.w}${hot && fits && right ? '  ' + sc : ''}</text>`;
+      if (hot && !fits) s += `<text x="${lx}" y="${y + wob + 21}" text-anchor="${anchor}" class="svg-t" style="font-size:13.5px;font-weight:700">${sc}</text>`;
+    });
+    if (q && st.k > 0) {
+      const y = qy - (1 - st.k) * 60, o = st.k;
+      if (st.k >= 1 && !reduce) s += `<circle cx="${qx}" cy="${qy}" r="${10 + (st.t % 1600) / 1600 * 18}" style="fill:var(--ink)" opacity="${.18 * (1 - (st.t % 1600) / 1600)}"/>`;
+      s += `<path transform="translate(${qx} ${y})" d="M0 -9 L2.6 -2.8 L9.2 -2.8 L3.9 1.2 L5.8 7.6 L0 3.8 L-5.8 7.6 L-3.9 1.2 L-9.2 -2.8 L-2.6 -2.8 Z" style="fill:var(--ink);stroke:var(--paper)" stroke-width="2" opacity="${o}"/>`;
+    }
+    svg.innerHTML = s;
+  }
+  onResize(svg.parentElement, draw);
+  if (reduce) { st = { q: QUERIES[0], k: 1, lines: 1, t: 0 }; cap.textContent = `("${QUERIES[0].t}") → [${f2(QUERIES[0].x)}, ${f2(QUERIES[0].y)}, …]`; draw(); return; }
+  let qi = 0, phase = 0, t0 = performance.now();
+  (function frame(t) {
+    st.t = t;
+    const e = t - t0;
+    if (phase === 0 && e > 900) { st.q = QUERIES[qi]; st.k = 0; st.lines = 0; cap.textContent = `("${st.q.t}")`; phase = 1; t0 = t; }
+    else if (phase === 1) { st.k = ease(Math.min(1, e / 700)); if (e > 800) { phase = 2; t0 = t; cap.textContent = `("${st.q.t}") → [${f2(st.q.x)}, ${f2(st.q.y)}, …]`; } }
+    else if (phase === 2) { st.lines = Math.min(1, e / 900); if (e > 3200) { phase = 3; t0 = t; } }
+    else if (phase === 3) { st.k = 1 - Math.min(1, e / 400); st.lines = st.k; if (e > 450) { st.q = null; qi = (qi + 1) % QUERIES.length; phase = 0; t0 = t; } }
+    if (!document.hidden) draw();
+    requestAnimationFrame(frame);
+  })(performance.now());
+})();
+
+/* ---------------- Part 1: the word map ---------------- */
+const map = $('#wordMap');
+let mode = 'mine';            // 'mine' (learner's layout) or 'model'
+let mine = [];                // learner positions as fractions of the map box
+let anim = null;              // during the reveal: fractions 0..1
+let sel = [];
+const moved = new Set();
+let mapW = 600, mapH = 440;
+const pillW = (w, fs) => w.length * fs * 0.6 + 22;
+function scatter() {
+  const slots = [];
+  for (let r = 0; r < 4; r++) for (let c = 0; c < 3; c++) slots.push([(c + .5) / 3, (r + .5) / 4]);
+  for (let i = slots.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [slots[i], slots[j]] = [slots[j], slots[i]]; }
+  mine = WORDS.map((_, i) => ({ u: slots[i][0] + (Math.random() - .5) * .12, v: slots[i][1] + (Math.random() - .5) * .08 }));
+}
+function geometry() {
+  const fs = mapW < 420 ? 13.5 : 15, ph = fs * 2;
+  const cx = mapW / 2, cy = mapH / 2;
+  let R = Math.min(mapW, mapH) / 2;
+  WORDS.forEach(w => {
+    const hw = pillW(w.w, fs) / 2 + 6;
+    if (Math.abs(w.x) > 0.01) R = Math.min(R, (mapW / 2 - hw) / Math.abs(w.x));
+    if (Math.abs(w.y) > 0.01) R = Math.min(R, (mapH / 2 - ph / 2 - 6) / Math.abs(w.y));
+  });
+  return { fs, ph, cx, cy, R };
+}
+function pos(i, g) {
+  const w = WORDS[i];
+  const mx = g.cx + w.x * g.R, my = g.cy - w.y * g.R;
+  const hw = pillW(w.w, g.fs) / 2 + 4;
+  const ux = Math.min(mapW - hw, Math.max(hw, mine[i].u * mapW)), uy = Math.min(mapH - g.ph / 2 - 4, Math.max(g.ph / 2 + 4, mine[i].v * mapH));
+  if (mode === 'mine') return [ux, uy];
+  if (anim !== null) { const k = ease(anim); return [ux + (mx - ux) * k, uy + (my - uy) * k]; }
+  return [mx, my];
+}
+function drawMap() {
+  mapW = fitSvg(map, 10); mapH = mapW < 420 ? Math.round(mapW * 1.08) : Math.round(Math.min(470, mapW * .74));
+  map.setAttribute('viewBox', `0 0 ${mapW} ${mapH}`);
+  const g = geometry();
+  let s = '';
+  const showModel = mode === 'model';
+  if (showModel) {
+    const k = anim === null ? 1 : ease(anim);
+    s += `<g opacity="${k}"><line x1="10" x2="${mapW - 10}" y1="${g.cy}" y2="${g.cy}" style="stroke:var(--ink)" opacity=".13"/><line x1="${g.cx}" x2="${g.cx}" y1="10" y2="${mapH - 10}" style="stroke:var(--ink)" opacity=".13"/>`;
+    s += `<text x="${mapW - 12}" y="${g.cy - 8}" text-anchor="end" class="svg-t" style="font-size:12.5px">first number →</text><text x="${g.cx + 8}" y="22" class="svg-t" style="font-size:12.5px">↑ second number</text></g>`;
+    if (anim === null && sel.length) {
+      s += `<defs><marker id="ah" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" style="fill:var(--ink)"/></marker></defs>`;
+      const pts = sel.map(i => pos(i, g));
+      if (sel.length === 2) {
+        const a0 = Math.atan2(-(pts[0][1] - g.cy), pts[0][0] - g.cx), a1 = Math.atan2(-(pts[1][1] - g.cy), pts[1][0] - g.cx);
+        let d = a1 - a0; while (d > Math.PI) d -= 2 * Math.PI; while (d < -Math.PI) d += 2 * Math.PI;
+        const r = 34, sx = g.cx + Math.cos(a0) * r, sy = g.cy - Math.sin(a0) * r, ex = g.cx + Math.cos(a0 + d) * r, ey = g.cy - Math.sin(a0 + d) * r;
+        s += `<path d="M${g.cx} ${g.cy} L${sx} ${sy} A${r} ${r} 0 0 ${d > 0 ? 0 : 1} ${ex} ${ey} Z" style="fill:var(--l4)" opacity=".35"/>`;
+        s += `<line x1="${pts[0][0]}" y1="${pts[0][1]}" x2="${pts[1][0]}" y2="${pts[1][1]}" style="stroke:var(--ink)" opacity=".55" stroke-width="2" stroke-dasharray="4 5"/>`;
+      }
+      pts.forEach(([x, y]) => { const L = Math.hypot(x - g.cx, y - g.cy), sh = Math.max(0, L - 18) / L; s += `<line x1="${g.cx}" y1="${g.cy}" x2="${g.cx + (x - g.cx) * sh}" y2="${g.cy + (y - g.cy) * sh}" style="stroke:var(--ink)" stroke-width="2.5" marker-end="url(#ah)"/>`; });
+      s += `<circle cx="${g.cx}" cy="${g.cy}" r="4.5" style="fill:var(--ink)"/>`;
+    }
+  }
+  WORDS.forEach((w, i) => {
+    const [x, y] = pos(i, g), pw = pillW(w.w, g.fs);
+    const isSel = sel.includes(i);
+    s += `<g class="pill${isSel ? ' sel' : ''}" data-i="${i}" tabindex="0" role="button" aria-label="${w.w}${showModel ? (isSel ? ', selected' : ', tap to measure') : ', drag to move'}" transform="translate(${x} ${y})">
+      <rect x="${-pw / 2}" y="${-g.ph / 2}" width="${pw}" height="${g.ph}" rx="${g.ph / 2}"/>
+      ${showModel ? `<circle cx="${-pw / 2 + 12}" cy="0" r="4" style="fill:${FAM[w.f].c}"/>` : ''}
+      <text x="${showModel ? 5 : 0}" y="${g.fs * .36}" text-anchor="middle" style="font-size:${g.fs}px">${w.w}</text></g>`;
+  });
+  map.innerHTML = s;
+  map.classList.toggle('model', mode === 'model');
+  if (focusIdx !== null) { const el = map.querySelector(`.pill[data-i="${focusIdx}"]`); if (el) el.focus({ preventScroll: true }); }
+}
+let focusIdx = null;
+function n1(html, kind = '') { CS.say($('#n1'), html, kind); }
+// dragging
+let dragI = null, dragOff = [0, 0];
+const toSvg = e => { const r = map.getBoundingClientRect(); return [(e.clientX - r.left) * mapW / r.width, (e.clientY - r.top) * mapH / r.height]; };
+map.addEventListener('pointerdown', e => {
+  const p = e.target.closest('.pill'); if (!p) return;
+  const i = +p.dataset.i;
+  if (mode === 'model') { if (anim === null) toggleSel(i); return; }
+  dragI = i; const [x, y] = toSvg(e); const [px, py] = pos(i, geometry());
+  dragOff = [x - px, y - py]; map.setPointerCapture(e.pointerId); p.classList.add('drag');
+  e.preventDefault();
+});
+map.addEventListener('pointermove', e => {
+  if (dragI === null) return;
+  const [x, y] = toSvg(e);
+  mine[dragI] = { u: (x - dragOff[0]) / mapW, v: (y - dragOff[1]) / mapH };
+  const g = geometry(), [px, py] = pos(dragI, g);
+  const el = map.querySelector(`.pill[data-i="${dragI}"]`); if (el) el.setAttribute('transform', `translate(${px} ${py})`);
+});
+const endDrag = () => {
+  if (dragI === null) return;
+  noteMove(dragI); dragI = null; drawMap();
+};
+map.addEventListener('pointerup', endDrag); map.addEventListener('pointercancel', endDrag);
+map.addEventListener('keydown', e => {
+  const p = e.target.closest('.pill'); if (!p) return;
+  const i = +p.dataset.i;
+  if (mode === 'model') { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); focusIdx = i; toggleSel(i); } return; }
+  const d = { ArrowLeft: [-.03, 0], ArrowRight: [.03, 0], ArrowUp: [0, -.03], ArrowDown: [0, .03] }[e.key];
+  if (!d) return;
+  e.preventDefault();
+  mine[i] = { u: Math.min(1, Math.max(0, mine[i].u + d[0])), v: Math.min(1, Math.max(0, mine[i].v + d[1])) };
+  focusIdx = i; noteMove(i); drawMap();
+});
+map.addEventListener('focusout', () => { focusIdx = null; });
+function noteMove(i) {
+  moved.add(i);
+  if (moved.size >= 4) CS.tick('p1', 'drag');
+  if (moved.size < 4) n1(`<strong>${moved.size} moved.</strong> Keep going: put words that mean similar things next to each other.`);
+  else n1(`<strong>Nice map.</strong> ${moved.size} words moved. When you're happy with your groups, press <b>Show the AI's map</b>.`, CS.ticked('p1', 'reveal') ? '' : 'good');
+}
+function groupScore() {
+  const g = geometry();
+  const P = WORDS.map((_, i) => [mine[i].u * mapW, mine[i].v * mapH]);
+  let ok = 0; const pairs = [];
+  WORDS.forEach((w, i) => {
+    let best = -1, bd = 1e9;
+    P.forEach((q, j) => { if (j !== i) { const d = Math.hypot(P[i][0] - q[0], P[i][1] - q[1]); if (d < bd) { bd = d; best = j; } } });
+    if (WORDS[best].f === w.f) { ok++; if (i < best) pairs.push(`${w.w} and ${WORDS[best].w}`); }
+  });
+  return { ok, pairs };
+}
+$('#revealBtn').addEventListener('click', () => {
+  if (mode === 'model') return;
+  const gs = groupScore();
+  mode = 'model'; anim = 0; sel = [];
+  $('#revealBtn').disabled = true;
+  $('#mapTitle').textContent = "The AI's map";
+  tween(1100, k => { anim = k; drawMap(); }, () => {
+    anim = null; drawMap();
+    CS.tick('p1', 'reveal');
+    n1(`<strong>This is how an embedding model places them.</strong> Each family now shares a direction from the center. In your map, ${gs.ok} of 10 words sat closest to a word from their own family${gs.pairs.length ? `, like ${esc(gs.pairs.slice(0, 2).join(' or '))}` : ''}. You and the model both group by meaning. Now tap two words to measure them.`, 'good');
+    renderMeasure();
+  });
+});
+$('#resetMap').addEventListener('click', () => {
+  mode = 'mine'; anim = null; sel = []; scatter(); drawMap();
+  $('#revealBtn').disabled = false; $('#mapTitle').textContent = 'Your map: group the words';
+  renderMeasure();
+  n1('Words shuffled. Drag them into groups again.');
+});
+function toggleSel(i) {
+  if (sel.includes(i)) sel = sel.filter(x => x !== i);
+  else { sel.push(i); if (sel.length > 2) sel.shift(); }
+  drawMap(); renderMeasure();
+}
+function renderMeasure() {
+  const box = $('#measure');
+  if (mode !== 'model') { box.innerHTML = '<p class="muted">After you reveal the AI\'s map, tap any two words to compare them.</p>'; return; }
+  if (!sel.length) { box.innerHTML = '<p class="muted">Tap a word on the map. Then tap a second one.</p>'; return; }
+  const rows = sel.map(i => `<div class="vec-row"><b><i style="display:inline-block;width:10px;height:10px;border-radius:50%;background:${FAM[WORDS[i].f].c};margin-right:8px"></i>${WORDS[i].w}</b><code>[${f2(WORDS[i].x)}, ${f2(WORDS[i].y)}]</code></div>`).join('');
+  if (sel.length < 2) { box.innerHTML = rows + '<p class="muted">That pair of numbers is the word\'s vector. Now tap a second word.</p>'; return; }
+  const [a, b] = sel.map(i => WORDS[i]);
+  const c = cos2(a, b), d = Math.hypot(a.x - b.x, a.y - b.y), ang = Math.acos(Math.max(-1, Math.min(1, c))) * 180 / Math.PI;
+  const left = c >= 0 ? 50 : 50 + c * 50, width = Math.abs(c) * 50;
+  box.innerHTML = rows + `<dl class="m-grid"><dt>Distance apart</dt><dd>${d.toFixed(2)}</dd><dt>Angle between arrows</dt><dd>${Math.round(ang)}°</dd></dl>
+    <div class="label" style="font-size:1rem;margin-top:8px">Cosine similarity</div><div class="sim-big">${f2(c)}</div>
+    <div class="meter2" aria-hidden="true"><b></b><i style="left:${left}%;width:${width}%;background:${c >= 0 ? 'var(--l3)' : 'var(--l1)'}"></i></div>
+    <div class="meter-l"><span>−1 opposite</span><span>0 unrelated</span><span>1 same way</span></div>`;
+  if (c > 0.9) { CS.tick('p1', 'near'); n1(`<strong>${a.w} and ${b.w}: ${f2(c)}.</strong> Their arrows point almost the same way, so the model treats them as close in meaning. ${CS.ticked('p1', 'far') ? '' : 'Now find a pair that scores below 0.'}`, 'good'); }
+  else if (c < 0) { CS.tick('p1', 'far'); n1(`<strong>${a.w} and ${b.w}: ${f2(c)}.</strong> Their arrows point in roughly opposite directions: unrelated on this map. ${CS.ticked('p1', 'near') ? '' : 'Now find a pair above 0.9.'}`, 'good'); }
+  else n1(`<strong>${a.w} and ${b.w}: ${f2(c)}.</strong> Somewhat related. Both are pet-shop words, but from different families. Look for a pair above 0.9, or below 0.`);
+}
+scatter();
+onResize(map.parentElement, drawMap);
+drawMap();
+
+// a real-sized vector, pictured
+(function bigVec() {
+  let seed = 305; const rnd = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
+  const n = 64, vals = Array.from({ length: n }, () => { const u = rnd() + rnd() + rnd() - 1.5; return u / 1.5; });
+  $('#bigVec').innerHTML = vals.map(v => `<i style="height:${Math.max(3, Math.abs(v) * 44)}px; background:${v >= 0 ? '#7CC4FF' : '#FF9A8A'}; align-self:${v >= 0 ? 'flex-end' : 'flex-start'}; margin-${v >= 0 ? 'bottom' : 'top'}:${22}px"></i>`).join('');
+})();
+
+/* ---------------- Part 1b: arrow arithmetic ---------------- */
+const AR = { dog: [-.66, .52], puppy: [-.6, -.36], cat: [.02, .58], kitten: [.1, -.3], horse: [.62, .5], foal: [.7, -.4], cow: [.32, .12], calf: [.4, -.72] };
+const AR_FAM = { dog: 'var(--l2)', puppy: 'var(--l2)', cat: 'var(--l5)', kitten: 'var(--l5)', horse: 'var(--l4)', foal: 'var(--l4)', cow: 'var(--l3)', calf: 'var(--l3)' };
+let arStart = 'cat', arK = 0, arRes = null;
+function drawAr() {
+  const svg = $('#arMap'), W = fitSvg(svg, 10), H = Math.round(Math.min(360, Math.max(300, W * .7)));
+  svg.setAttribute('viewBox', `0 0 ${W} ${H}`);
+  const cx = W / 2 - 10, cy = H / 2, Rx = Math.min(W / 2 - 60, (H / 2 - 26) * 1.8), Ry = H / 2 - 30;
+  const P = ([x, y]) => [cx + x * Rx / .75, cy - y * Ry / .8];
+  let s = `<defs><marker id="ah2" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0L10 5L0 10z" style="fill:var(--l5)"/></marker></defs>`;
+  s += `<text x="12" y="22" class="svg-t" style="font-size:12.5px">↑ grown-up</text><text x="12" y="${H - 12}" class="svg-t" style="font-size:12.5px">↓ young</text>`;
+  const d = [AR.puppy[0] - AR.dog[0], AR.puppy[1] - AR.dog[1]];
+  if (arK > 0) {
+    const [ax, ay] = P(AR.dog), k1 = Math.min(1, arK * 2);
+    const [bx, by] = P([AR.dog[0] + d[0] * k1, AR.dog[1] + d[1] * k1]);
+    s += `<line x1="${ax}" y1="${ay}" x2="${bx}" y2="${by}" style="stroke:var(--l5)" stroke-width="3" stroke-linecap="round" ${k1 > .3 ? 'marker-end="url(#ah2)"' : ''}/>`;
+    if (arK > .5) {
+      const k2 = (arK - .5) * 2, st = AR[arStart];
+      const [sx, sy] = P(st), [ex, ey] = P([st[0] + d[0] * k2, st[1] + d[1] * k2]);
+      s += `<line x1="${sx}" y1="${sy}" x2="${ex}" y2="${ey}" style="stroke:var(--l5)" stroke-width="3" stroke-dasharray="7 5" stroke-linecap="round" ${k2 > .3 ? 'marker-end="url(#ah2)"' : ''}/>`;
+    }
+  }
+  Object.entries(AR).forEach(([w, p]) => {
+    const [x, y] = P(p), hit = arRes && arRes.near === w && arK >= 1;
+    if (hit) s += `<circle cx="${x}" cy="${y}" r="15" style="fill:var(--l5)" opacity=".22"/>`;
+    s += `<circle cx="${x}" cy="${y}" r="6" style="fill:${AR_FAM[w]}"/><text x="${x + 11}" y="${y + 5}" class="svg-t" style="font-size:14px;fill:var(--ink);font-weight:${hit || w === arStart ? 700 : 400}">${w}</text>`;
+  });
+  if (arRes && arK >= 1) {
+    const [x, y] = P(arRes.p);
+    s += `<path transform="translate(${x} ${y})" d="M0 -9 L2.6 -2.8 L9.2 -2.8 L3.9 1.2 L5.8 7.6 L0 3.8 L-5.8 7.6 L-3.9 1.2 L-9.2 -2.8 L-2.6 -2.8 Z" style="fill:var(--ink);stroke:var(--paper)" stroke-width="2"/>`;
+  }
+  svg.innerHTML = s;
+}
+$('#arStart').addEventListener('click', e => {
+  const b = e.target.closest('button'); if (!b) return;
+  $$('#arStart button').forEach(x => x.setAttribute('aria-pressed', x === b));
+  arStart = b.dataset.v; arK = 0; arRes = null; drawAr();
+  CS.say($('#arNote'), `Starting from <b>${arStart}</b>. Press the button to add the dog → puppy arrow.`, '');
+});
+$('#arGo').addEventListener('click', () => {
+  const st = AR[arStart], d = [AR.puppy[0] - AR.dog[0], AR.puppy[1] - AR.dog[1]];
+  const p = [st[0] + d[0], st[1] + d[1]];
+  const near = Object.keys(AR).filter(w => w !== arStart && w !== 'dog' && w !== 'puppy').map(w => [Math.hypot(AR[w][0] - p[0], AR[w][1] - p[1]), w]).sort((a, b) => a[0] - b[0])[0][1];
+  arRes = { p, near }; arK = 0;
+  $('#arGo').disabled = true;
+  tween(1600, k => { arK = k; drawAr(); }, () => {
+    arK = 1; drawAr(); $('#arGo').disabled = false;
+    CS.tick('p1', 'arith');
+    CS.say($('#arNote'), `<strong>${arStart} − dog + puppy lands next to ${near}.</strong> The step from grown-up to young points the same way for every animal on this map, so copying it works. Try another starting animal.`, 'good');
+  });
+});
+onResize($('#arMap').parentElement, drawAr);
+drawAr();
+
+/* ---------------- Part 2: the toy embedding model with 10 named dimensions ---------------- */
+const DIMS = ['dog', 'cat', 'fish', 'bird', 'food', 'play', 'care', 'home', 'delivery', 'refund'];
+const VOC = {};
+const add = (ws, v) => ws.split(' ').forEach(w => { VOC[w] = v; });
+add('dog dogs doggy doggie puppy puppies pup pups hound', { dog: 1 });
+add('bark barking woof', { dog: .8, care: .2 });
+add('leash harness lead collar', { dog: .7, play: .2 });
+add('walk walks walking', { dog: .6, play: .4 });
+add('fetch', { dog: .5, play: .8 });
+add('bone bones', { dog: .6, food: .4, play: .3 });
+add('cat cats kitten kittens kitty kitties', { cat: 1 });
+add('meow whiskers purr', { cat: .8 });
+add('scratch scratching scratches claws', { cat: .6, home: .4 });
+add('litter', { cat: .8, care: .4 });
+add('fish goldfish guppy betta', { fish: 1 });
+add('tank aquarium', { fish: .9, home: .3 });
+add('water', { fish: .6, care: .3 });
+add('cloudy milky murky dirty', { fish: .3, care: .6 });
+add('filter', { fish: .7, care: .4 });
+add('fins', { fish: .8 });
+add('bird birds parrot parrots budgie budgies canary canaries parakeet', { bird: 1 });
+add('cage perch perches', { bird: .7, home: .4 });
+add('seed seeds birdseed', { bird: .6, food: .7 });
+add('feather feathers', { bird: .8, care: .2 });
+add('food eat eats eating hungry feed feeding meal meals dinner kibble flakes diet', { food: 1 });
+add('treat treats snack snacks', { food: .8, play: .3 });
+add('toy toys play playing ball balls bored busy game games', { play: 1 });
+add('chew chews chewing chewer chewers', { play: 1, dog: .3 });
+add('coat brush brushes comb combs sick ill vet health healthy vomit vomiting itchy itch flea fleas tick ticks teeth clean cleaning wash washable groom grooming hygiene', { care: 1 });
+add('bed beds mattress cushion crate sleep sleeping blanket cozy cosy sofa couch furniture spot', { home: 1 });
+add('delivery deliver delivered shipping ship arrive arrives arrived parcel package track tracking late courier', { delivery: 1 });
+add('return returns returned refund refunds money cancel payment exchange price', { refund: 1 });
+add('order orders', { delivery: .6, refund: .4 });
+const norm = w => w.replace(/'s$/, '');
+const tokens = t => t.toLowerCase().replace(/[’‘]/g, "'").replace(/[^a-z0-9' ]+/g, ' ').split(/\s+/).filter(Boolean).map(norm);
+function embed(text) {
+  const v = DIMS.map(() => 0), known = [], unknown = [];
+  tokens(text).forEach(w => { const e = VOC[w]; if (e) { known.push(w); DIMS.forEach((d, i) => { v[i] += e[d] || 0; }); } else unknown.push(w); });
+  const n = Math.hypot(...v);
+  return { v: n ? v.map(x => x / n) : v, known, unknown, zero: !n };
+}
+const dot = (a, b) => a.reduce((s, x, i) => s + x * b[i], 0);
+const DOCS = [
+  ['Puppy crate mattress', 'A washable mattress that turns any crate into a cozy sleeping spot for your puppy. SKU 4471.', 'mattress', 36, .82],
+  ['Chew toys for strong chewers', 'Tough rubber toys for dogs who chew everything in sight.', 'chew toys', 16, .86],
+  ['Grooming brushes for dogs', "Brushes and combs that keep your dog's coat clean and shiny.", 'grooming', 2, .6],
+  ['Kitten food guide', 'What to feed your kitten in its first year, and how often.', 'kitten food', 96, .88],
+  ['Save your sofa with a scratching post', 'Give your cat a better place to scratch than the couch.', 'scratch post', 120, .72],
+  ['Litter box basics', 'Setting up and cleaning a litter box your cat will actually use.', 'litter box', 84, .56],
+  ['Why is my aquarium cloudy?', 'Why tank water turns cloudy, and how a filter clears it.', 'cloudy tank', 166, .82],
+  ['Goldfish flakes', 'Daily food for goldfish and other small fish. SKU 2208.', 'fish flakes', 190, .66],
+  ['Parrot toys and perches', 'Keep a clever parrot busy with toys to play with.', 'parrot toys', 236, .86],
+  ['Seed mix for budgies', 'A healthy seed mix for budgies and canaries.', 'seed mix', 258, .62],
+  ['Delivery times', 'When your order will arrive, and how to track the parcel.', 'delivery', 304, .84],
+  ['Returns and refunds', 'How to return an item and get your money back.', 'returns', 326, .66],
+  ['Flea and tick care', 'Keep dogs and cats itch-free with monthly flea treatment.', 'flea care', 58, .5]
+].map(([t, x, short, a, r]) => ({ t, x, short, e: embed(t + ' ' + x), mx: Math.cos(rad(a)) * r, my: Math.sin(rad(a)) * r, fam: a < 70 ? 'dog' : a < 140 ? 'cat' : a < 215 ? 'fish' : a < 280 ? 'bird' : 'shop' }));
+DOCS[12].fam = 'dog';
+const STOP = new Set('a an the my is are to for of and i can it in on with how what where when why your you do does me our this that be its at'.split(' '));
+const stem = w => w.length > 3 && w.endsWith('s') && !w.endsWith('ss') ? w.slice(0, -1) : w;
+const kwTokens = t => [...new Set(tokens(t).filter(w => !STOP.has(w)).map(stem))];
+DOCS.forEach(d => { d.kw = new Set(kwTokens(d.t + ' ' + d.x)); });
+const CHIPS = ['dog bed', "my kitten won't eat", 'stop my cat wrecking the couch', 'fish tank looks milky', 'where is my parcel', '4471'];
+let smode = 'meaning', lastQ = '', lastRes = [], lastE = null;
+const searched = { code: new Set() };
+$('#chips').innerHTML = CHIPS.map(c => `<button type="button" data-q="${esc(c)}">${esc(c)}</button>`).join('');
+function search(q) {
+  q = q.trim(); if (!q) return;
+  lastQ = q; $('#q').value = q;
+  if (smode === 'meaning') {
+    const e = embed(q); lastE = e;
+    lastRes = e.zero ? [] : DOCS.map(d => ({ d, s: dot(e.v, d.e.v) })).filter(r => r.s > 0.05).sort((a, b) => b.s - a.s).slice(0, 4);
+  } else {
+    const qt = kwTokens(q); lastE = { qt };
+    lastRes = DOCS.map(d => ({ d, hits: qt.filter(w => d.kw.has(w)) })).filter(r => r.hits.length).sort((a, b) => b.hits.length - a.hits.length).slice(0, 4);
+  }
+  renderSearch(); react(q);
+}
+function hl(text, hits) {
+  if (!hits || !hits.length) return esc(text);
+  return text.split(/(\s+)/).map(w => { const k = stem(norm(w.toLowerCase().replace(/[^a-z0-9']/g, ''))); return hits.includes(k) && k ? `<mark>${esc(w)}</mark>` : esc(w); }).join('');
+}
+function renderSearch() {
+  const ol = $('#results');
+  if (!lastQ) { ol.innerHTML = '<li class="none">Search for something to see results.</li>'; }
+  else if (!lastRes.length) ol.innerHTML = `<li class="none">${smode === 'meaning' ? (lastE && lastE.zero ? 'Nothing. This toy model found no meaning in those words, so it has nothing to compare.' : 'Nothing close enough.') : 'No article contains those words.'}</li>`;
+  else ol.innerHTML = lastRes.map((r, i) => `<li style="animation-delay:${i * 60}ms"><span class="t">${smode === 'keyword' ? hl(r.d.t, r.hits) : esc(r.d.t)}</span>${smode === 'meaning' ? `<span class="sc">${r.s.toFixed(2)}<span><i style="width:${Math.max(0, r.s) * 100}%"></i></span></span>` : `<span class="sc">${r.hits.length} word${r.hits.length > 1 ? 's' : ''}</span>`}<span class="x">${smode === 'keyword' ? hl(r.d.x, r.hits) : esc(r.d.x)}</span></li>`).join('');
+  // vector card
+  const vb = $('#vecBox');
+  if (smode === 'meaning') {
+    $('#vecTitle').textContent = 'Your search as numbers';
+    const v = lastE && lastE.v ? lastE.v : null;
+    if (!v) { vb.innerHTML = '<p class="muted">Search by meaning to see your words turned into numbers.</p>'; drawDocMap(); renderPrompt(); return; }
+    vb.innerHTML = `<div class="dims">${DIMS.map((d, i) => `<span class="dn">${d}</span><span class="db"><i style="width:${Math.max(0, v[i]) * 100}%"></i></span><span class="dv">${v[i].toFixed(2)}</span>`).join('')}</div>
+      <p class="known">${lastE && lastE.known ? (lastE.known.length ? `Words the model knew: <b>${esc(lastE.known.join(', '))}</b>.` : 'The model knew none of these words.') + (lastE.unknown.length ? ` Ignored: ${esc(lastE.unknown.join(', '))}.` : '') : 'Our toy model has 10 named dimensions. Real ones have hundreds of unnamed ones.'}</p>`;
+  } else {
+    $('#vecTitle').textContent = 'What keyword search sees';
+    vb.innerHTML = `<p>${lastE && lastE.qt ? (lastE.qt.length ? `It looks for these exact words: ${lastE.qt.map(w => `<span class="chip" style="--c:var(--l4)"><i></i>${esc(w)}</span>`).join(' ')}` : 'No useful words to look for.') : 'Just the words you typed, minus little ones like "my" and "the".'}</p><p class="known">No numbers, no meaning: only matching letters. Plurals are handled, synonyms are not.</p>`;
+  }
+  drawDocMap(); renderPrompt();
+}
+function drawDocMap() {
+  const svg = $('#docMap'), W = fitSvg(svg, 10), H = Math.round(W < 420 ? W * .95 : Math.min(420, W * .82));
+  svg.setAttribute('viewBox', `0 0 ${W} ${H}`);
+  const cx = W / 2, cy = H / 2, R = Math.min(W / 2 - (W < 420 ? 70 : 56), H / 2 - 30);
+  const P = d => [cx + d.mx * R, cy - d.my * R];
+  let s = `<line x1="10" x2="${W - 10}" y1="${cy}" y2="${cy}" style="stroke:var(--ink)" opacity=".1"/><line x1="${cx}" x2="${cx}" y1="10" y2="${H - 10}" style="stroke:var(--ink)" opacity=".1"/>`;
+  const famPos = { dog: [48, 1.14], cat: [104, 1.12], fish: [178, 1.14], bird: [248, 1.13], shop: [316, 1.12] };
+  Object.entries(famPos).forEach(([f, [a, r]]) => { const x = cx + Math.cos(rad(a)) * r * R, y = cy - Math.sin(rad(a)) * r * R; s += `<text x="${x}" y="${y + 4}" text-anchor="middle" class="svg-b" style="font-size:13px;fill:${FAM[f].c}">${FAM[f].n}</text>`; });
+  const top = lastRes.map(r => r.d);
+  let qp = null;
+  if (smode === 'meaning' && lastRes.length) {
+    const ws = lastRes.slice(0, 3).map(r => Math.pow(Math.max(0, r.s), 4)), tot = ws.reduce((a, b) => a + b, 0) || 1;
+    const mx = lastRes.slice(0, 3).reduce((a, r, i) => a + r.d.mx * ws[i], 0) / tot, my = lastRes.slice(0, 3).reduce((a, r, i) => a + r.d.my * ws[i], 0) / tot;
+    qp = [cx + mx * R * .86, cy - my * R * .86];
+    lastRes.slice(0, 3).forEach((r, i) => { const [x, y] = P(r.d); s += `<line x1="${qp[0]}" y1="${qp[1]}" x2="${x}" y2="${y}" style="stroke:var(--ink)" opacity="${.6 - i * .15}" stroke-width="${3 - i * .6}" stroke-linecap="round"/>`; });
+  }
+  DOCS.forEach(d => {
+    const [x, y] = P(d), k = top.indexOf(d), on = k >= 0 && (smode === 'meaning' ? k < 3 : true);
+    s += `<circle cx="${x}" cy="${y}" r="${on ? 7.5 : 5}" style="fill:${FAM[d.fam].c}" opacity="${lastQ && !on ? .45 : 1}"/>`;
+    if (on) { const right = d.mx > -0.2; s += `<text x="${x + (right ? 12 : -12)}" y="${y + 4.5}" text-anchor="${right ? 'start' : 'end'}" class="svg-b" style="font-size:13px">${d.short}</text>`; }
+  });
+  if (qp) s += `<path transform="translate(${qp[0]} ${qp[1]})" d="M0 -10 L2.9 -3.1 L10.2 -3.1 L4.3 1.3 L6.4 8.4 L0 4.2 L-6.4 8.4 L-4.3 1.3 L-10.2 -3.1 L-2.9 -3.1 Z" style="fill:var(--ink);stroke:var(--paper)" stroke-width="2"/>`;
+  $('#docCap').textContent = smode === 'keyword' && lastQ ? 'Keyword search ignores the map. It only matches words, so the matching articles can sit anywhere.' : smode === 'meaning' && lastQ && !lastRes.length ? 'No meaning found, so there is nowhere to place the search.' : !lastQ ? 'Each dot is one help article, placed by meaning.' : 'The star is your search. Lines join it to the three closest articles.';
+  svg.innerHTML = s;
+}
+function renderPrompt() {
+  const res = lastRes.slice(0, 3);
+  const body = res.length ? res.map((r, i) => `<span class="src">[${i + 1}] ${esc(r.d.t)}</span>\n${esc(r.d.x)}`).join('\n\n') : lastQ ? '<span class="c">(no articles found: the AI would have nothing to go on)</span>' : '<span class="c">(search the help center above to see which articles land here)</span>';
+  $('#prompt').innerHTML = `<span class="c">You are Pawsome's help assistant. Answer using only the</span>\n<span class="c">articles below, and say which one you used. If they don't</span>\n<span class="c">contain the answer, say you don't know.</span>\n\n${body}\n\n<span class="q">Customer question: ${esc(lastQ || '…')}</span>`;
+}
+function n2(html, kind = '') { CS.say($('#n2'), html, kind); }
+function react(q) {
+  const lq = q.toLowerCase().trim();
+  const isDogBed = /\bdog\b/.test(lq) && /\bbed\b/.test(lq);
+  const top = lastRes[0];
+  if (/4471/.test(lq)) {
+    searched.code.add(smode);
+    if (searched.code.size === 2) CS.tick('p2', 'code');
+    if (smode === 'meaning') n2(`<strong>Meaning search is stuck.</strong> A product code has no meaning for this toy model to place. Real embedding models do turn "4471" into numbers, but they match codes, names and exact numbers unreliably. ${searched.code.has('keyword') ? '' : 'Now try it with keywords.'}`, searched.code.size === 2 ? 'good' : '');
+    else n2(`<strong>Keyword search nails it.</strong> The mattress article contains "4471" exactly. For codes and order numbers, exact matching is the right tool. ${searched.code.has('meaning') ? '' : 'Now try it by meaning.'}`, searched.code.size === 2 ? 'good' : '');
+    return;
+  }
+  if (isDogBed && smode === 'meaning') { CS.tick('p2', 'meaning'); n2(`<strong>"${esc(top.d.t)}" comes first</strong>, with a score of ${top.s.toFixed(2)}, even though it never says "dog" or "bed". "Puppy" sits near "dog", and "mattress", "crate" and "sleeping" sit near "bed". ${CS.ticked('p2', 'keyword') ? '' : 'Now switch to keywords and search again.'}`, 'good'); return; }
+  if (isDogBed && smode === 'keyword') { CS.tick('p2', 'keyword'); n2(`<strong>Keyword search misses the mattress.</strong> It found articles containing "dog", but none says "bed", and it can't know that a crate mattress is a bed. This is exactly the problem in the chat at the top.`, 'good'); return; }
+  const own = !CHIPS.some(c => c.toLowerCase() === lq);
+  if (smode === 'meaning') {
+    if (lastE.zero) { n2(`<strong>No known words.</strong> Our toy model only knows about 160 pet-shop words. Try something like "my dog is itchy" or "bird cage".`); return; }
+    if (own) CS.tick('p2', 'own');
+    n2(`<strong>Top match: "${esc(top.d.t)}" (${top.s.toFixed(2)}).</strong> ${own ? 'Your own search worked. ' : ''}The model knew ${esc(lastE.known.join(', '))}${lastE.unknown.length ? ` and ignored ${esc(lastE.unknown.join(', '))}` : ''}. The star on the map lands among the closest articles.`, own ? 'good' : '');
+  } else {
+    n2(lastRes.length ? `<strong>${lastRes.length} article${lastRes.length > 1 ? 's' : ''} share a word with your search.</strong> Keyword search counts matching words. It doesn't know which words mean the same thing.` : `<strong>No matches.</strong> None of the articles use these exact words. Semantic search might still find something. Switch to By meaning.`);
+  }
+}
+$('#searchForm').addEventListener('submit', e => { e.preventDefault(); search($('#q').value); });
+$('#chips').addEventListener('click', e => { const b = e.target.closest('button'); if (b) search(b.dataset.q); });
+$('#modeSeg').addEventListener('click', e => {
+  const b = e.target.closest('button'); if (!b) return;
+  $$('#modeSeg button').forEach(x => x.setAttribute('aria-pressed', x === b));
+  smode = b.dataset.m;
+  if (lastQ) search(lastQ); else renderSearch();
+});
+onResize($('#docMap').parentElement, drawDocMap);
+renderSearch();
+
+/* ---------------- Part 2b: chunking ---------------- */
+const PARAS = [
+  'You can return most items within 30 days of delivery, as long as they are unused and in the original packaging.',
+  "Food and treats can only be returned if the bag is unopened. For hygiene reasons we can't take back anything that has been used.",
+  "To start a return, open your order and choose Return item. We'll email you a free return label.",
+  'Refunds go back to your original payment method within 5 working days of the parcel reaching us.'
+];
+const CQ = embed('Can I return an opened bag of dog treats?');
+const seenChunk = new Set();
+function renderChunks(kind) {
+  let chunks;
+  if (kind === 'fixed') { const all = PARAS.join(' '); chunks = []; for (let i = 0; i < all.length; i += 80) chunks.push(all.slice(i, i + 80)); }
+  else chunks = PARAS.slice();
+  const scores = chunks.map(c => dot(CQ.v, embed(c).v));
+  const best = scores.indexOf(Math.max(...scores));
+  let html = '';
+  if (kind === 'fixed') html = chunks.map((c, i) => `<span class="ch ${i === best ? 'hit' : i % 2 ? 'b' : 'a'}">${esc(c)}</span>`).join('');
+  else html = chunks.map((c, i) => `<span class="para"><span class="ch ${i === best ? 'hit' : i % 2 ? 'b' : 'a'}">${esc(c)}</span></span>`).join('');
+  $('#article').innerHTML = html;
+  $('#sentBox').innerHTML = `<div class="label" style="font-size:1rem;margin-top:14px">Chunk sent to the AI (score ${scores[best].toFixed(2)})</div><div class="sent"><span class="d">"</span>${esc(chunks[best].trim())}<span class="d">"</span></div>`;
+  seenChunk.add(kind);
+  const n = $('#chunkNote');
+  if (kind === 'fixed') CS.say(n, `<strong>The rule got cut in half.</strong> Each colored stretch is one 80-character chunk. The best match ends with "…returned if the bag", so the AI never sees the word "unopened". It has to guess, and it may guess wrong. ${seenChunk.has('para') ? '' : 'Now split by paragraph.'}`, 'bad');
+  else CS.say(n, `<strong>The whole rule arrives in one piece.</strong> Splitting along the article's own paragraphs keeps each idea complete, so the AI can answer: opened bags of treats can't be returned. Real systems often add a little overlap between chunks and put the article title on each one.`, 'good');
+  if (seenChunk.size === 2) CS.tick('p2', 'chunk');
+}
+$('#chunkSeg').addEventListener('click', e => {
+  const b = e.target.closest('button'); if (!b) return;
+  $$('#chunkSeg button').forEach(x => x.setAttribute('aria-pressed', x === b));
+  renderChunks(b.dataset.c);
+});
+$('#article').innerHTML = PARAS.map(p => `<span class="para">${esc(p)}</span>`).join('');
+$('#sentBox').innerHTML = '<p class="muted" style="margin-top:12px">Pick a way to split the article above.</p>';
+
+/* ---------------- Part 3: code lab ---------------- */
+const STARTER = `// Each vector: [dog, cat, food, toys]
+const docs = [
+  { title: "Chew toys for dogs", vec: [0.9, 0, 0.1, 0.8] },
+  { title: "Kitten food guide", vec: [0, 0.9, 0.8, 0.1] },
+  { title: "Puppy crate mattress", vec: [0.8, 0, 0, 0.1] },
+  { title: "Cat scratching post", vec: [0.1, 0.9, 0, 0.5] },
+  { title: "EVERYTHING for pets!!", vec: [2, 2, 2, 2] },
+];
+// "something for my dog to play with"
+const query = [0.8, 0, 0, 0.9];
+
+// Multiply matching numbers and add them up.
+function dot(a, b) {
+  let sum = 0;
+  for (let i = 0; i < a.length; i++) sum += a[i] * b[i];
+  return sum;
+}
+// How long is the arrow?
+function length(v) {
+  return Math.sqrt(dot(v, v));
+}
+function similarity(a, b) {
+  return dot(a, b);   // step 2: divide by both lengths
+}
+
+const results = docs.map(d => ({
+  title: d.title, score: similarity(query, d.vec)
+}));
+// results.sort((a, b) => b.score - a.score);
+for (const r of results) {
+  console.log(r.score.toFixed(2) + "  " + r.title);
+}`;
+const labState = { docs: null, query: null, scores: null };
+function runLab(code) {
+  const logs = []; const fmt = v => typeof v === 'string' ? v : (() => { try { return JSON.stringify(v); } catch (e) { return String(v); } })();
+  const con = { log: (...a) => logs.push(a.map(fmt).join(' ')), error: (...a) => logs.push(a.map(fmt).join(' ')) };
+  let error = null, value = null;
+  const guarded = code.replace(/\b(for|while)\s*\(([^)]*)\)\s*\{/g, m => m + ' if (++__g > 100000) throw new Error("Stopped: this loop ran more than 100,000 times. Is it endless?");');
+  try { value = new Function('console', '"use strict"; let __g = 0;\n' + guarded + '\n;return { docs: typeof docs !== "undefined" ? docs : null, query: typeof query !== "undefined" ? query : null };')(con); } catch (e) { error = e.name + ': ' + e.message; }
+  const rows = logs.map(l => l.match(/^\s*(-?\d+(?:\.\d+)?)\s+(.+)$/)).filter(Boolean).map(m => ({ s: +m[1], t: m[2].trim() }));
+  if (value && Array.isArray(value.docs)) { labState.docs = value.docs; labState.query = value.query; labState.scores = rows; drawFp(); }
+  return { code, logs, error, rows };
+}
+const TRUE_COS = t => { const d = (labState.docs || []).find(x => x.title === t); const q = labState.query; if (!d || !q) return null; const dd = d.vec.reduce((s, x, i) => s + x * q[i], 0); return dd / (Math.hypot(...d.vec) * Math.hypot(...q)); };
+function drawFp() {
+  const docs = labState.docs || [], q = labState.query || [0, 0, 0, 0];
+  const mx = Math.max(1, ...docs.flatMap(d => d.vec || []), ...q);
+  const score = t => { const r = (labState.scores || []).find(x => x.t === t); return r ? r.s.toFixed(2) : ''; };
+  const topT = labState.scores && labState.scores.length ? labState.scores.reduce((a, b) => b.s > a.s ? b : a).t : null;
+  const cells = v => [0, 1, 2, 3].map(i => `<span class="cell" title="${(v[i] || 0)}"><i style="height:${Math.max(0, (v[i] || 0) / mx) * 100}%"></i></span>`).join('');
+  $('#fp').innerHTML = `<span class="h">text</span><span class="h">dog</span><span class="h">cat</span><span class="h">food</span><span class="h">toys</span><span class="h" style="text-align:right">score</span>
+    <span class="row"><span class="nm q">Your search</span>${cells(q)}<span class="s"></span></span>` +
+    docs.map(d => `<span class="row${d.title === topT ? ' top' : ''}"><span class="nm" title="${esc(d.title)}">${esc(d.title)}</span>${cells(d.vec || [])}<span class="s">${score(d.title)}</span></span>`).join('');
+}
+labState.docs = [{ title: 'Chew toys for dogs', vec: [0.9, 0, .1, .8] }, { title: 'Kitten food guide', vec: [0, .9, .8, .1] }, { title: 'Puppy crate mattress', vec: [.8, 0, 0, .1] }, { title: 'Cat scratching post', vec: [.1, .9, 0, .5] }, { title: 'EVERYTHING for pets!!', vec: [2, 2, 2, 2] }];
+labState.query = [.8, 0, 0, .9];
+drawFp();
+const isSorted = rows => rows.length >= 3 && rows.every((r, i) => i === 0 || rows[i - 1].s >= r.s);
+const cosineOk = rows => rows.length >= 3 && rows.every(r => { const c = TRUE_COS(r.t); return c !== null && Math.abs(c - r.s) < 0.011; });
+CS.codeLab($('#lab'), {
+  part: 'p3', mission: $('#mission'), language: 'JavaScript', starter: STARTER,
+  run: runLab,
+  steps: [
+    { t: 'Run the search', how: 'Press Run. Which article wins?', hint: 'Just press <b>Run</b> and read the scores in the output.',
+      check: r => r.rows.length >= 3 },
+    { t: 'Make it fair with cosine similarity', how: 'Change <code>return dot(a, b);</code> to <code>return dot(a, b) / (length(a) * length(b));</code> and Run.', hint: 'Replace the line inside <code>similarity</code> with: <code>return dot(a, b) / (length(a) * length(b));</code>',
+      check: r => cosineOk(r.rows), nudge: r => r.rows.some(x => x.s > 1.01) ? 'The "EVERYTHING" article wins just because its numbers are big: its arrow is long, not well aimed. Divide the dot product by both lengths so only the direction counts.' : '' },
+    { t: 'Best match first', how: 'Delete the <code>//</code> in front of <code>results.sort(…)</code>, then Run.', hint: 'Find the line <code>// results.sort((a, b) => b.score - a.score);</code> and delete the two slashes at the start.',
+      check: r => cosineOk(r.rows) && isSorted(r.rows) && /^\s*results\.sort/m.test(r.code), nudge: () => 'The list is in the original order. Remove the <b>//</b> before <code>results.sort</code> so the highest score comes first.' },
+    { t: 'Search for kitten food', how: 'Change the query to <code>[0, 0.9, 0.9, 0]</code>, then Run. What wins now?', hint: 'Edit the line <code>const query = [0.8, 0, 0, 0.9];</code> to <code>const query = [0, 0.9, 0.9, 0];</code>',
+      check: r => isSorted(r.rows) && r.rows[0] && r.rows[0].t === 'Kitten food guide', nudge: r => r.rows[0] ? `Top result: ${esc(r.rows[0].t)}. Change the query numbers so cat and food are high and dog and toys are 0.` : '' }
+  ],
+  explainError: err => /SyntaxError/.test(err) ? 'A bracket or bracket pair may be missing. Compare your line with the hint, or press Reset code.' : /is not defined/.test(err) ? 'A name is misspelled. Names must match exactly, capitals included: <code>dot</code>, <code>length</code>, <code>results</code>.' : '',
+  doneTutor: '<b>Mission complete!</b> You wrote cosine similarity and ranked articles with it. That loop, compare the query with every text and sort, is the core of semantic search and of the "retrieve" step in RAG.'
+});
+
+/* ---------------- Part 4: steer the AI ---------------- */
+CS.steer($('#steer'), [
+  { ai: 'To set up search over the help center, I split every article into chunks of exactly 200 characters and embedded each one.',
+    opts: [["Perfect, small equal chunks are always the most precise.", 0, "Cutting at a fixed character count splits sentences and rules in half, so the chunk that gets retrieved can miss the part that matters."],
+           ["Split along paragraphs or headings instead, keep a little overlap between chunks, and put the article title on each chunk.", 1, "Yes. Chunks that follow the text's own structure hold complete ideas, and the title gives each chunk context when it's retrieved alone."],
+           ["Skip chunking and embed each whole article as one vector.", 0, "One vector for a long article blurs many topics together, so specific questions match poorly, and you'd paste far more text into the prompt than needed."]] },
+  { ai: "For product search I'll just match the exact words customers type. Embeddings seem like overkill for a shop.",
+    opts: [["Use embeddings too, so \"doggy bed\" finds the puppy mattress, and keep keyword matching for exact things like product codes.", 1, "Right. Hybrid search is common: meaning for natural questions, keywords for codes, names and exact phrases."],
+           ["Fine, exact words are enough.", 0, "Customers use their own words. Exact matching misses \"doggy bed\" when the product says \"puppy crate mattress\"."],
+           ["Replace every search with embeddings, including order-number lookup.", 0, "Embeddings are fuzzy about exact strings. Order numbers and codes should be looked up exactly."]] },
+  { ai: 'The top chunk had a similarity of 0.92, so the answer I gave from it is definitely correct.',
+    opts: [["Great, 0.92 is very high.", 0, "Similarity says the chunk is about the same topic as the question. It says nothing about whether the chunk is true or up to date."],
+           ["Raise the cut-off to 0.99 so only correct chunks come back.", 0, "A higher cut-off just returns fewer chunks. An outdated article can still score 0.99."],
+           ["Similarity only means the chunk is on topic. Show the source with every answer, and remove outdated articles from the index.", 1, "Exactly. Retrieval finds related text, and correctness depends on what's in your documents. Showing sources lets people check."]] },
+  { ai: "I switched to a newer embedding model for incoming questions. The stored article vectors can stay as they are.",
+    opts: [["Sounds efficient.", 0, "Each model makes its own map. Vectors from two different models can't be compared, so the search results would be nonsense."],
+           ["Re-embed all the articles with the new model before switching, so questions and articles share one map.", 1, "Yes. Queries and documents must be embedded by the same model, so an upgrade means re-embedding everything."],
+           ["Never upgrade embedding models.", 0, "You can upgrade. You just have to re-embed the documents with the new model too."]] }
+], { part: 'p4', counter: $('#steerCount') });
+
+/* ---------------- Part 5: quiz ---------------- */
+CS.quiz($('#quiz'), [
+  { q: 'What is an embedding?', a: [['A list of numbers that places text on a map where similar meanings are close', 1], ['A shorter summary of the text written by the AI', 0], ['A list of the keywords in the text', 0]], why: 'An embedding is a vector. Its numbers are learned so that similar meanings get nearby points, which lets a computer measure how related two texts are.' },
+  { q: 'Two texts have a cosine similarity of 0.97. What does that tell you?', a: [['They point in almost the same direction, so they are very similar in meaning', 1], ['One of them is 97% correct', 0], ['They share 97% of their words', 0]], why: 'Cosine similarity compares directions. Close to 1 means closely related meaning. It says nothing about truth, and texts can score high without sharing any words.' },
+  { q: 'A customer types the order number "SKU 4471". Which search should find it?', a: [['Semantic search', 0], ['Keyword or exact search', 1], ['Either works equally well', 0]], why: 'Codes, IDs and names need exact matching. Embeddings capture meaning and are fuzzy about exact strings.' },
+  { q: 'In retrieval-augmented generation (RAG), what does the retrieval step do?', a: [['Retrains the AI on your documents', 0], ['Searches the whole internet', 0], ['Finds the chunks most similar to the question and puts them in the prompt', 1]], why: 'RAG doesn\'t change the model. It finds relevant chunks and hands them to the AI as part of the prompt, so it can answer from them.' },
+  { q: 'How many numbers are in a typical real embedding?', a: [['Two: an x and a y', 0], ['Hundreds or thousands', 1], ['One per word in the dictionary', 0]], why: 'Common sizes include 384, 768, 1,536 and 3,072. The flat maps in this lesson are simplified pictures of that high-dimensional space.' }
+], { part: 'p5', doneCard: $('#doneCard'), doneTitle: 'You can measure meaning now.', doneText: 'You know what embeddings are, how cosine similarity ranks them, when keyword search is better, and how retrieval and chunking make or break a RAG system.' });
+})();
+</script>
+</body>
+</html>

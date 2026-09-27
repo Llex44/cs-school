@@ -1,0 +1,1134 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>How neural networks learn · CS School</title>
+<meta name="description" content="Course 306: weights, loss and gradient descent. Tune a neuron by hand, roll a ball down an error landscape, catch a model memorizing, and write a training loop yourself.">
+<link rel="icon" href="../assets/favicon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="../assets/cs-school.css">
+<style>
+/* lesson-specific styles: mango neuron, loss landscape, overfitting, training lab, next-token trainer */
+:root{--well:color-mix(in srgb, var(--ink) 6%, transparent); --leaf:color-mix(in srgb, var(--l3) 62%, var(--ink))}
+.cl-lines{font-size:16px}
+@media (max-width:900px){ .pg{align-items:stretch} }
+svg.fit{display:block; width:100%; height:auto; overflow:visible}
+.svg-t{font-family:var(--f-body); font-size:14px; fill:var(--ink-2)}
+.svg-b{font-family:var(--f-display); font-weight:800; fill:var(--ink)}
+.svg-m{font-family:var(--f-mono); font-size:14px; fill:var(--ink)}
+.explain{margin-top:48px}
+.explain > p{max-width:70ch}
+.chart-box{border-radius:14px; background:var(--well); padding:6px}
+.key{display:flex; flex-wrap:wrap; gap:4px 16px; font-size:.95rem; color:var(--ink-2); margin-top:10px}
+.key span{display:flex; align-items:center; gap:8px}
+.key i{flex:none; width:12px; height:12px; border-radius:50%; display:block}
+.key i.ring, .legend i.ring{background:none; box-shadow:inset 0 0 0 2.5px var(--l1)}
+.key i.hollow{background:none; box-shadow:inset 0 0 0 3px var(--l5)}
+.hero-visual .legend i{flex:none}
+
+/* part 1: the neuron */
+.pg.wide-left{grid-template-columns:minmax(0,1.15fr) minmax(0,1fr)}
+#mangoChart{cursor:pointer; touch-action:manipulation}
+.big-score{display:flex; align-items:baseline; gap:10px; flex-wrap:wrap; margin:-4px 0 12px}
+.big-score b{font-family:var(--f-display); font-weight:900; font-size:2.1rem; line-height:1; font-variant-numeric:tabular-nums}
+.big-score span{color:var(--ink-2); font-size:1rem}
+.dial + .dial{margin-top:18px}
+.dial-top{display:flex; justify-content:space-between; align-items:baseline; gap:12px; margin-bottom:4px}
+.dial-top label{font-family:var(--f-display); font-weight:800; font-size:1.05rem; color:var(--ink)}
+.dial-top b{font-family:var(--f-mono); font-size:1.05rem; font-variant-numeric:tabular-nums; background:var(--well); border-radius:8px; padding:1px 8px}
+.dial-sub{font-size:.95rem; color:var(--ink-2); margin:2px 0 0}
+.range:disabled{opacity:.55}
+.learn-row{display:flex; flex-wrap:wrap; align-items:center; gap:10px; margin-top:16px}
+.epoch-read{font-size:1rem; color:var(--ink-2); margin:12px 0 4px; min-height:1.6em}
+.epoch-read b{color:var(--ink); font-family:var(--f-display); font-variant-numeric:tabular-nums}
+.math-line{font-family:var(--f-mono); font-size:.95rem; line-height:1.75; background:var(--well); border-radius:12px; padding:10px 12px; margin-top:10px; overflow-wrap:anywhere}
+.math-line b{font-family:var(--f-display)}
+.verdict{display:flex; flex-wrap:wrap; gap:8px; align-items:center; margin-top:10px; font-size:1rem}
+
+/* part 2: landscape */
+.rate-read{display:flex; align-items:baseline; gap:12px; flex-wrap:wrap; margin-bottom:6px}
+.rate-read b{font-family:var(--f-display); font-weight:900; font-size:2.2rem; line-height:1; font-variant-numeric:tabular-nums}
+.rate-read span{color:var(--ink-2); font-size:1rem}
+.ticks{display:flex; justify-content:space-between; gap:8px; font-size:.9rem; color:var(--ink-2); margin-top:4px}
+.readouts{display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:8px; margin-top:16px}
+.readouts div{background:var(--well); border-radius:12px; padding:8px 10px; min-width:0}
+.readouts span{display:block; font-size:.9rem; color:var(--ink-2)}
+.readouts b{display:block; font-family:var(--f-display); font-size:1.15rem; font-variant-numeric:tabular-nums; white-space:nowrap; overflow:hidden; text-overflow:ellipsis}
+.table-wrap.slim table{min-width:0}
+
+/* overfitting */
+.flex-read{font-size:1.05rem; color:var(--ink-2); margin-bottom:6px}
+.flex-read b{font-family:var(--f-display); font-weight:900; font-size:2.2rem; line-height:1; color:var(--ink); font-variant-numeric:tabular-nums}
+.errbar{display:grid; grid-template-columns:minmax(0,9.5em) minmax(0,1fr) 3.4em; gap:10px; align-items:center; margin-top:8px; font-size:1rem}
+.errbar .tr{height:14px; border-radius:7px; background:var(--well); position:relative; overflow:hidden}
+.errbar .tr i{position:absolute; left:0; top:0; bottom:0; border-radius:7px; background:var(--c); transition:width .4s cubic-bezier(.3,1,.4,1)}
+.errbar b{font-family:var(--f-display); text-align:right; font-variant-numeric:tabular-nums}
+.u-title{font-family:var(--f-display); font-weight:800; font-size:1.05rem; margin:18px 0 4px}
+
+/* lab side */
+.final-read{display:flex; flex-wrap:wrap; align-items:baseline; gap:6px 12px; margin:10px 0 4px; font-size:1rem; color:var(--ink-2)}
+.final-read b{font-family:var(--f-display); font-weight:900; font-size:1.8rem; line-height:1; color:var(--ink); font-variant-numeric:tabular-nums}
+.side-sub{font-family:var(--f-display); font-weight:800; font-size:1.05rem; margin:18px 0 6px}
+
+/* scale ladder */
+.ladder{border-radius:20px; padding:18px 20px; display:flex; flex-direction:column; gap:14px}
+.rung{display:grid; grid-template-columns:minmax(0,15em) minmax(0,1fr); gap:4px 18px; align-items:center}
+.rung .nm{font-weight:600; font-size:1rem; line-height:1.35}
+.rung .nm small{display:block; font-weight:400; font-size:.92rem; color:var(--ink-2)}
+.rung .track{display:flex; align-items:center; gap:10px; min-width:0}
+.rung .track i{display:block; height:18px; border-radius:9px; background:var(--c); flex:none; transform-origin:left; animation:grow .9s cubic-bezier(.3,1,.4,1) backwards}
+.rung .track b{font-family:var(--f-display); font-variant-numeric:tabular-nums; white-space:nowrap}
+@keyframes grow{from{transform:scaleX(0)}}
+
+/* llm step loop + next-token trainer */
+.llm{display:grid; grid-template-columns:minmax(0,1fr) minmax(0,1.1fr); gap:28px; align-items:start}
+.loop4{list-style:none; margin:0; padding:18px 20px; border-radius:20px; display:flex; flex-direction:column; gap:14px; counter-reset:s}
+.loop4 li{counter-increment:s; display:grid; grid-template-columns:34px minmax(0,1fr); gap:12px; align-items:start; font-size:1rem}
+.loop4 li::before{content:counter(s); width:34px; height:34px; border-radius:50%; display:grid; place-items:center; font-family:var(--f-display); font-weight:900; background:var(--ink); color:var(--paper)}
+.loop4 b{font-family:var(--f-display)}
+.sentence{font-family:var(--f-display); font-weight:800; font-size:1.3rem; line-height:1.45; background:var(--well); border-radius:14px; padding:12px 16px}
+.sentence .blank{display:inline-block; min-width:3.2em; border-radius:8px; background:color-mix(in srgb, var(--l2) 15%, transparent); color:var(--l2); text-align:center; padding:0 .35em}
+.bars{display:flex; flex-direction:column; gap:4px; margin:14px 0}
+.bar{--c:var(--l2); display:grid; grid-template-columns:5.6em minmax(0,1fr) 3.2em; align-items:center; gap:10px; border-radius:10px; padding:3px 8px}
+.bar .wd{font-family:var(--f-mono); font-size:.95rem}
+.bar .tr{position:relative; height:16px; border-radius:8px; background:var(--well); overflow:hidden}
+.bar .tr i{position:absolute; left:0; top:0; bottom:0; border-radius:8px; background:var(--c); transition:width .5s cubic-bezier(.3,1,.4,1)}
+.bar .pc{font-family:var(--f-display); font-weight:700; font-size:.95rem; text-align:right; font-variant-numeric:tabular-nums}
+.bar.target{background:color-mix(in srgb, var(--l4) 22%, transparent)}
+.stats{font-size:1rem; color:var(--ink-2); margin-top:10px; min-height:1.6em}
+.stats b{color:var(--ink); font-family:var(--f-display)}
+
+@media (max-width:900px){
+  .pg.wide-left{grid-template-columns:minmax(0,1fr)}
+  .llm{grid-template-columns:minmax(0,1fr)}
+}
+@media (max-width:640px){
+  .readouts{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .rung{grid-template-columns:minmax(0,1fr)}
+  .errbar{grid-template-columns:minmax(0,7.4em) minmax(0,1fr) 3.2em}
+  .sentence{font-size:1.15rem}
+}
+</style>
+</head>
+<body>
+<main id="top">
+  <section class="wrap hero">
+    <div>
+      <div class="kicker">Theory elective · Course 306 · How neural networks learn</div>
+      <h1>Neural networks learn by being a little less wrong.</h1>
+      <p class="lede">Nobody writes the rules. A network starts with random numbers, makes guesses, measures how wrong they were, and nudges every number downhill. You'll tune a neuron by hand, roll a ball down an error landscape, catch a model memorizing, and write the training loop yourself.</p>
+      <ul class="facts">
+        <li>About 15 minutes</li>
+        <li>5 parts</li>
+        <li>Code lab</li>
+        <li>No math background needed</li>
+      </ul>
+      <div class="row hero-cta"><a class="btn primary" href="#p1">Start the lesson</a></div>
+    </div>
+    <figure style="margin:0">
+      <div class="hero-visual glass">
+        <svg id="heroArt" class="fit" role="img" aria-label="An animated chart of 20 mangos plotted by softness and yellowness, ripe ones orange and unripe ones green. A neuron's dividing line starts in the wrong place, then turns and slides as training runs until it separates ripe from unripe. Below, a line shows the error falling with each pass through the data."></svg>
+        <div class="legend"><span><i style="background:var(--l4)"></i>ripe</span><span><i style="background:var(--l3)"></i>not ripe</span><span><i class="ring"></i>wrong guess</span><span><i style="background:var(--l2)"></i>error</span></div>
+      </div>
+      <div class="hero-caption glass" aria-hidden="true"><span>training</span><span id="heroCap">epoch 0</span></div>
+    </figure>
+  </section>
+
+  <div class="wrap">
+  <!-- PART 1 -->
+  <section class="part" id="p1">
+    <span class="bullet glass" data-p="p1">1</span>
+    <div class="part-head">
+      <div class="kicker">Part 1 of 5</div>
+      <h2>One neuron, three dials</h2>
+      <p>A neural network is built from tiny units called <b>neurons</b>. Each one takes in some numbers, weighs them up, and makes a call. Here's a single neuron with one job at a fruit stand: decide whether a mango is ripe from two things you can measure, how soft it is and how yellow it is.</p>
+    </div>
+
+    <div class="chat" aria-label="Example conversation">
+      <div class="msg me"><span class="who">You</span>Could an app tell shoppers at our mango stand whether a mango is ripe?</div>
+      <div class="msg ai"><span class="who">AI assistant</span>Yes. We could train a neural network on mangos you've labeled ripe or not ripe, and it would learn the pattern.</div>
+      <div class="msg me"><span class="who">You</span>Learn? Who writes the rules?</div>
+      <div class="msg ai"><span class="who">AI assistant</span>Nobody. The network starts with random numbers, guesses, measures how wrong it was, and adjusts the numbers. After enough rounds, the numbers are the rule.</div>
+    </div>
+
+    <div class="task glass" data-part="p1">
+      <h3>Your task</h3>
+      <ol>
+        <li data-t="move"><span>Drag the three dials and watch the dividing line move.</span></li>
+        <li data-t="score"><span>Get at least 18 of the 20 mangos right by hand.</span></li>
+        <li data-t="feed"><span>Tap a mango, or press <b>Next mango</b>, to see the neuron's math for it.</span></li>
+        <li data-t="learn"><span>Press <b>Let it learn</b> and watch the dials turn by themselves.</span></li>
+      </ol>
+    </div>
+
+    <div class="pg wide-left">
+      <div class="pg-col">
+        <div class="o1 ctl glass">
+          <h3 class="ctl-title">Is this mango ripe?</h3>
+          <div class="big-score" aria-live="polite"><b id="rightN">11 of 20</b><span id="rightWords">right. Ringed mangos are the neuron's mistakes.</span></div>
+          <div class="chart-box"><svg id="mangoChart" class="fit" role="img" aria-label="Chart of 20 mangos by softness, left to right, and yellowness, bottom to top. Ripe mangos are orange and unripe ones green. A straight line splits the chart into the side the neuron calls ripe and the side it calls not ripe. Mangos it gets wrong are circled in red."></svg></div>
+          <div class="key"><span><i style="background:var(--l4)"></i>really ripe</span><span><i style="background:var(--l3)"></i>really not ripe</span><span><i class="ring"></i>neuron is wrong</span></div>
+          <div class="learn-row">
+            <button class="btn primary" id="learnBtn">Let it learn</button>
+            <button class="btn" id="scrambleBtn">Scramble the dials</button>
+          </div>
+          <p class="epoch-read" id="epochRead" aria-live="polite">Not trained yet. Tune it by hand first, if you like.</p>
+          <svg id="spark" class="fit" role="img" aria-label="Line chart of the loss during training"></svg>
+        </div>
+      </div>
+      <div class="pg-col">
+        <div class="o2 ctl glass">
+          <h3 class="ctl-title">The neuron's dials</h3>
+          <div class="dial">
+            <div class="dial-top"><label for="wS">Softness weight</label><b id="wSv">0.20</b></div>
+            <input type="range" class="range" id="wS" min="-1" max="3" step="0.05" value="0.2">
+            <p class="dial-sub">How much softness counts toward "ripe"</p>
+          </div>
+          <div class="dial">
+            <div class="dial-top"><label for="wY">Yellowness weight</label><b id="wYv">1.00</b></div>
+            <input type="range" class="range" id="wY" min="-1" max="3" step="0.05" value="1">
+            <p class="dial-sub">How much color counts</p>
+          </div>
+          <div class="dial">
+            <div class="dial-top"><label for="wB">Bias</label><b id="wBv">−5.00</b></div>
+            <input type="range" class="range" id="wB" min="-20" max="5" step="0.5" value="-5">
+            <p class="dial-sub">How easily it says "ripe" before looking at anything</p>
+          </div>
+        </div>
+        <div class="o3 note" id="n1" aria-live="polite">This neuron judges mangos mostly by color, like many shoppers do. It gets 11 of 20 right. The ringed mangos are its mistakes. Move the dials to do better.</div>
+        <div class="o4 ctl glass">
+          <h3 class="ctl-title">Inside the neuron</h3>
+          <p class="ctl-sub" id="neuronSub"></p>
+          <svg id="neuron" class="fit" role="img" aria-label="Diagram of the neuron: two inputs, softness and yellowness, each multiplied by its weight, added up with the bias into a score, then squashed by an S-shaped curve into a chance of being ripe."></svg>
+          <div class="math-line" id="neuronMath" aria-live="polite"></div>
+          <div class="verdict" id="verdict"></div>
+          <div class="row" style="margin-top:14px">
+            <button class="btn" id="prevM">Previous mango</button>
+            <button class="btn" id="nextM">Next mango</button>
+          </div>
+        </div>
+        <details class="deeper glass o5">
+          <summary>Under the hood: the neuron's formula <small>optional</small></summary>
+          <div>
+            <p>The neuron works out a <b>score</b>, then squashes it into a chance:</p>
+            <div class="code">score = w₁ × softness + w₂ × yellowness + bias
+chance ripe = 1 ÷ (1 + e<sup>−score</sup>)</div>
+            <p>The S-shaped squash is called the <b>sigmoid</b>. It's one of several <b>activation functions</b>. Modern networks mostly use even simpler ones inside, like ReLU, which just turns negative scores into 0. Without some squash or bend like this, stacking neurons would still only ever draw straight lines.</p>
+            <p>Despite the name, an artificial neuron is only loosely inspired by brain cells. It's a weighted sum and a squash, nothing more.</p>
+          </div>
+        </details>
+      </div>
+    </div>
+
+    <div class="stack explain">
+      <h3>What just happened</h3>
+      <p>Your neuron did three small things. It multiplied each input by its <b>weight</b>, added the results together with the <b>bias</b> to get a score, and squashed the score into a chance between 0% and 100%. A score above 0 means a chance over 50%, so the neuron says "ripe".</p>
+      <p>The <b>weights</b> say how much each input counts, and in which direction. A big softness weight means softness matters a lot. A negative weight would mean "more of this makes ripe less likely". The <b>bias</b> sets how easily the neuron says yes before it looks at anything.</p>
+      <p>The line where the score is exactly 0 is the <b>decision boundary</b>. One neuron can only draw a straight line. Networks stack thousands of neurons in <b>layers</b>, each feeding the next, so their boundaries can bend and twist. That's what lets them recognize faces or read handwriting.</p>
+      <p>And "Let it learn" found good dials without you. That's <b>training</b>: start with any numbers, measure how wrong they are, nudge them to be less wrong, and repeat. One full pass through all the examples is an <b>epoch</b>. Part 2 shows exactly how the nudging works.</p>
+      <p class="note"><strong>When you build with AI:</strong> everything a model "knows" is stored as numbers like these weights, billions of them, set during training. It has no list of facts to look things up in. That's why it can sound certain and still be wrong: it produces what its weights make likely, not what it has checked. To ground it in real facts, hand it your documents, as in <a href="305-vectors-and-embeddings.html">course 305</a>. (Is color really a poor guide to ripeness? For many mango varieties, yes: some stay green when ripe, so a gentle squeeze tells you more. Our 20 mangos are made up to show this.)</p>
+    </div>
+  </section>
+
+  <!-- PART 2 -->
+  <section class="part" id="p2">
+    <span class="bullet glass" data-p="p2">2</span>
+    <div class="part-head">
+      <div class="kicker">Part 2 of 5</div>
+      <h2>Learning is rolling downhill</h2>
+      <p>"Let it learn" wasn't magic. It measured how wrong the neuron was, worked out which way to turn each dial to be less wrong, and turned them a little. To see that clearly, here's a model with only one dial. The stand wants to guess how many days until a mango is ripe from how firm it is: <b>days = w × firmness</b>. What's the best <b>w</b>?</p>
+    </div>
+
+    <div class="task glass" data-part="p2">
+      <h3>Your task</h3>
+      <ol>
+        <li data-t="tiny"><span>Set a tiny learning rate (0.002 or less) and take 20 steps. Did the ball reach the bottom?</span></li>
+        <li data-t="huge"><span>Set a huge rate (0.028 or more) and take steps until something goes wrong.</span></li>
+        <li data-t="good"><span>Find a rate that reaches the bottom in 10 steps or fewer.</span></li>
+      </ol>
+    </div>
+
+    <div class="pg">
+      <div class="pg-col">
+        <div class="o1 ctl glass">
+          <h3 class="ctl-title">The loss landscape</h3>
+          <p class="ctl-sub">Every possible w has a loss: how wrong the model is with that w. The ball is the model's w right now.</p>
+          <div class="chart-box"><svg id="land" class="fit" role="img" aria-label="A U-shaped curve of loss against the weight w. A ball on the curve moves each time the model takes a learning step. A short line under the ball shows the slope."></svg></div>
+        </div>
+        <div class="o4 ctl glass">
+          <h3 class="ctl-title">The model's guesses</h3>
+          <p class="ctl-sub">The line is days = w × firmness. Red dashes are its errors, one per mango.</p>
+          <div class="chart-box"><svg id="fit2" class="fit" role="img" aria-label="Six mangos plotted by firmness and days until ripe, with the model's straight line through the origin and dashed lines showing each error."></svg></div>
+        </div>
+      </div>
+      <div class="pg-col">
+        <div class="o2 ctl glass">
+          <h3 class="ctl-title">Learning rate</h3>
+          <p class="ctl-sub">How big each step is. Changing it puts the ball back at the start.</p>
+          <div class="rate-read"><b id="rateVal">0.010</b><span id="rateWord">medium steps</span></div>
+          <label class="vh" for="rate">Learning rate</label>
+          <input type="range" class="range" id="rate" min="0" max="11" step="1" value="5">
+          <div class="ticks"><span>0.001: tiny steps</span><span>0.032: huge steps</span></div>
+          <div class="row" style="margin-top:16px">
+            <button class="btn primary" id="stepBtn">Take a step</button>
+            <button class="btn" id="step20">Take 20 steps</button>
+            <button class="btn" id="ballReset">Start over</button>
+          </div>
+          <div class="readouts" id="readouts" aria-live="polite"></div>
+        </div>
+        <div class="o3 note" id="n2" aria-live="polite">The ball starts at w = 0: a model that guesses 0 days for every mango. Its loss is high. Press <b>Take a step</b>.</div>
+        <details class="deeper glass o5">
+          <summary>Under the hood: the slope, worked out <small>optional</small></summary>
+          <div>
+            <p>For these six mangos the loss is the average of (w × firmness − days)². Worked out, that's a U-shaped curve:</p>
+            <div class="code">loss(w) = 38.7 w² − 55 w + 19.7
+slope(w) = 77.3 w − 55</div>
+            <p>The bottom is where the slope is 0: w ≈ 0.71, or about 0.7 days per point of firmness. Each step moves w by learning rate × slope. With a rate above about 0.026, every step overshoots the bottom by more than the last, which is why the ball flew off.</p>
+          </div>
+        </details>
+      </div>
+    </div>
+
+    <div class="stack explain">
+      <h3>What just happened</h3>
+      <p>To train anything, you need one number that says how wrong the model is: the <b>loss</b>. Here it's the average squared error. For each mango, take the guess minus the real number of days, square it, and average them all. Squaring makes every miss count as positive, and makes big misses count extra.</p>
+      <p>Try every possible w, plot its loss, and you get a landscape. Training means finding the lowest point. But the model can't see the whole landscape. It only knows the slope right under the ball, called the <b>gradient</b>. So it steps downhill: <b>new w = w − learning rate × slope</b>. That's <b>gradient descent</b>. Where the ground is steep it takes big steps, and near the bottom the steps shrink by themselves.</p>
+      <div class="table-wrap glass slim">
+        <table>
+          <thead><tr><th>Learning rate</th><th>What happens</th><th>In real training</th></tr></thead>
+          <tbody>
+            <tr><td>Too small</td><td>Creeps downhill, step after step</td><td>Wastes hours of expensive computer time</td></tr>
+            <tr><td>About right</td><td>Reaches the bottom in a few steps</td><td>The loss falls quickly, then levels off</td></tr>
+            <tr><td>Too big</td><td>Overshoots, bounces, can blow up</td><td>The loss jumps around or becomes NaN ("not a number")</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p>Your neuron in Part 1 did the same thing with three dials at once. Its landscape had three directions, and the gradient said which way was downhill in each one. A language model does it with billions of dials. Nobody can draw a landscape with a billion directions, but the slope can still be calculated for every dial. The method is called <b>backpropagation</b>, because it works backward from the loss through each layer.</p>
+    </div>
+
+    <div class="stack" style="margin-top:56px">
+      <h3>Memorizing is not learning</h3>
+      <p class="muted" style="max-width:70ch">A mango keeps getting sweeter for a few days after it's picked, then levels off. The stand measured 8 mangos. Now fit a curve to them. A more flexible curve can bend more to pass near every point. Is more flexible always better?</p>
+      <div class="task glass" data-part="p2" style="margin-bottom:0">
+        <h3>Your task</h3>
+        <ol>
+          <li data-t="flex"><span>Turn flexibility all the way up. What happens to the training error?</span></li>
+          <li data-t="best"><span>Press <b>Show new mangos</b>, then find a flexibility with a low test error.</span></li>
+        </ol>
+      </div>
+      <div class="pg">
+        <div class="pg-col">
+          <div class="o1 ctl glass">
+            <h3 class="ctl-title">Sweetness after picking</h3>
+            <div class="chart-box"><svg id="over" class="fit" role="img" aria-label="Chart of mango sweetness against days since picking, with a fitted curve. Training mangos are filled dots. New test mangos, when shown, are hollow rings with dashed lines showing the curve's errors."></svg></div>
+            <div class="key"><span><i style="background:var(--l2)"></i>mangos it trained on</span><span id="keyNew" hidden><i class="hollow"></i>new mangos (test)</span></div>
+          </div>
+        </div>
+        <div class="pg-col">
+          <div class="o2 ctl glass">
+            <h3 class="ctl-title">Flexibility</h3>
+            <div class="flex-read" aria-live="polite"><b id="flexN">1</b>: <span id="flexWord">a straight line</span></div>
+            <label class="vh" for="flex">Flexibility</label>
+            <input type="range" class="range" id="flex" min="1" max="7" step="1" value="1">
+            <div class="ticks"><span>1: stiff</span><span>7: bends through every point</span></div>
+            <div class="row" style="margin-top:14px"><button class="btn" id="testBtn" aria-pressed="false">Show new mangos</button></div>
+          </div>
+          <div class="o3 ctl glass">
+            <h3 class="ctl-title">How wrong is the curve?</h3>
+            <div class="errbar" style="--c:var(--l2)"><span>Training error</span><span class="tr"><i id="trBar"></i></span><b id="trVal">0.58</b></div>
+            <div class="errbar" style="--c:var(--l5)"><span>Test error</span><span class="tr"><i id="teBar" style="width:0"></i></span><b id="teVal">?</b></div>
+            <div class="u-title">Error at each flexibility you've tried</div>
+            <svg id="uChart" class="fit" role="img" aria-label="Chart of training error and test error for each flexibility setting you have tried"></svg>
+          </div>
+          <div class="o4 note" id="n3" aria-live="polite">A straight line is the stiffest curve there is. Slide the flexibility up and watch the curve bend toward the mangos.</div>
+        </div>
+      </div>
+      <p style="max-width:70ch">The <b>training error</b> says how well the curve fits mangos it has already seen. The <b>test error</b> says how well it does on new ones, which is the only thing your users will ever experience. At full flexibility the curve threads every training mango exactly, then swings wildly in between. It memorized the random wobble in those 8 mangos instead of the real trend. That's <b>overfitting</b>. The opposite, a curve too stiff to follow the real pattern, is <b>underfitting</b>.</p>
+      <p style="max-width:70ch">The fix starts with a habit: before training, set some examples aside as a <b>test set</b>, often 10 to 20% of the data. Never train on them and never tune on them. Their score is your honest estimate of how the model will do for real.</p>
+      <p class="note"><strong>When you build with AI:</strong> the same trap exists for prompts. If you keep tweaking a prompt until it aces your 10 favorite examples, you've fit the prompt to those examples. Keep a separate set of test cases you don't tune on, and make it big enough to trust (<a href="304-probability-for-ai.html">course 304</a> shows why small tests wobble).</p>
+    </div>
+  </section>
+
+  <!-- PART 3 -->
+  <section class="part" id="p3">
+    <span class="bullet glass" data-p="p3">3</span>
+    <div class="part-head">
+      <div class="kicker">Part 3 of 5</div>
+      <h2>Try it: write the training loop</h2>
+      <p>Here's the days model from Part 2 as real JavaScript. Every epoch it already measures the loss and the slope. The one thing missing is the line that actually learns.</p>
+    </div>
+
+    <div class="lab">
+      <div class="a-mission ctl glass">
+        <h3 class="ctl-title">Your mission</h3>
+        <p class="ctl-sub" style="margin-top:0">Train the model so its loss drops below 0.12 within 20 epochs.</p>
+        <ol class="mission" id="mission"></ol>
+      </div>
+      <div class="a-work" id="lab"></div>
+      <div class="a-side">
+        <div class="ctl glass">
+          <h3 class="ctl-title">Your training runs</h3>
+          <p class="ctl-sub">Loss at each epoch. Your latest run is the bold line, the run before it is faint.</p>
+          <svg id="lossChart" class="fit" role="img" aria-label="Line chart of the loss at each epoch for your latest training runs"></svg>
+          <div class="final-read" id="finalRead" aria-live="polite">Press Run to train.</div>
+          <div class="side-sub">The line it learned</div>
+          <svg id="labFit" class="fit" role="img" aria-label="The six mangos with the straight line your trained model draws through them"></svg>
+        </div>
+      </div>
+      <div class="a-extra">
+        <details class="deeper glass">
+          <summary>Under the hood: real training loops <small>optional</small></summary>
+          <div>
+            <p>Real projects use libraries such as PyTorch or JAX. You describe the model, and the library works out every slope for you automatically, using backpropagation.</p>
+            <p>Instead of all the examples at once, real loops usually take a small random batch for each step, called <b>stochastic gradient descent</b>. And instead of one fixed learning rate, most use smarter step rules like <b>Adam</b>, which adjusts the step size for each weight as it goes.</p>
+            <p>The shape of the loop is the same as yours: guess, measure the loss, find the slopes, step downhill, repeat.</p>
+          </div>
+        </details>
+      </div>
+    </div>
+
+    <div class="stack explain">
+      <h3>From your loop to a language model</h3>
+      <p>You just wrote the loop that trains every neural network. A large language model, the kind behind AI coding tools (<a href="103-how-ai-coding-tools-work.html">course 103</a>), is trained with the same loop. What changes is the scale.</p>
+      <div class="ladder glass" id="ladder"></div>
+      <p class="muted" style="max-width:70ch">The bars use a squeezed scale: each extra stretch of bar means 10 times more numbers. On a normal scale, GPT-3's bar would be about 58 billion times longer than your neuron's. Many newer models don't publish their size at all.</p>
+      <div class="llm">
+        <ol class="loop4 glass">
+          <li><span><b>Take real text.</b> Trillions of tokens of books, websites and code. (Tokens are words or pieces of words.)</span></li>
+          <li><span><b>Hide the next token and guess it.</b> The model gives every possible token a chance, like the bars in <a href="304-probability-for-ai.html">course 304</a>.</span></li>
+          <li><span><b>Measure the surprise.</b> The loss is low if the model gave the real next token a high chance, and high if it was caught off guard.</span></li>
+          <li><span><b>Nudge every weight downhill.</b> Backpropagation finds the slope for each of the billions of weights, and each moves a tiny step. Then on to the next token.</span></li>
+        </ol>
+        <div class="ctl glass">
+          <h3 class="ctl-title">Train on one sentence</h3>
+          <p class="ctl-sub">The training text says "Ripe mangos smell sweet." The model has to guess the last word.</p>
+          <div class="sentence">Ripe mangos smell <span class="blank">?</span></div>
+          <div class="bars" id="tokBars"></div>
+          <div class="row"><button class="btn primary" id="tokTrain">Train one step</button><button class="btn" id="tokReset">Reset</button></div>
+          <p class="stats" id="tokStats" aria-live="polite"></p>
+        </div>
+      </div>
+      <p>This toy jumps a lot in one step so you can see it move. In a real model a single step barely changes anything. It's hundreds of billions of steps, over trillions of tokens, that add up. After this <b>pretraining</b>, the model is trained further on examples of good conversations and on human feedback about which answers are better. That's what turns a next-token predictor into a helpful assistant.</p>
+      <p class="note"><strong>When you build with AI:</strong> the weights are frozen when you use a model. It doesn't learn from your chats. Anything it seems to remember is text sent along with your message (<a href="103-how-ai-coding-tools-work.html">course 103</a>). To teach it your facts, put them in the prompt or retrieve them. Training a model yourself, or fine-tuning one, is usually the last thing to try, not the first.</p>
+    </div>
+  </section>
+
+  <!-- PART 4 -->
+  <section class="part" id="p4">
+    <span class="bullet glass" data-p="p4">4</span>
+    <div class="part-head">
+      <div class="kicker">Part 4 of 5</div>
+      <h2>Steer the AI</h2>
+      <p>AI coding tools will happily train models for you. They're less careful about whether training was needed, or whether the results are real. Here are four things one might say. Pick the reply you'd send.</p>
+    </div>
+    <p class="counter" id="steerCount"></p>
+    <div id="steer"></div>
+  </section>
+
+  <!-- PART 5 -->
+  <section class="part" id="p5">
+    <span class="bullet glass" data-p="p5">5</span>
+    <div class="part-head">
+      <div class="kicker">Part 5 of 5</div>
+      <h2>Check your understanding</h2>
+      <p>Five quick questions. Each answer explains itself.</p>
+    </div>
+    <div id="quiz"></div>
+    <div id="doneCard" aria-live="polite"></div>
+  </section>
+  </div>
+
+  <section class="after" id="terms">
+    <div class="wrap stack">
+      <h2>Key terms</h2>
+      <p class="muted">The words you'll hear when people talk about how AI models are trained.</p>
+      <dl class="terms">
+        <div class="glass"><dt>Neuron</dt><dd>A small unit that multiplies each input by a weight, adds them up with a bias, and squashes the result.</dd></div>
+        <div class="glass"><dt>Weight</dt><dd>A number that sets how much one input counts, and in which direction. Training adjusts the weights.</dd></div>
+        <div class="glass"><dt>Bias</dt><dd>A number added to a neuron's score. It sets how easily the neuron says yes.</dd></div>
+        <div class="glass"><dt>Parameters</dt><dd>All the numbers a model learns, its weights and biases. "175 billion parameters" counts these.</dd></div>
+        <div class="glass"><dt>Activation function</dt><dd>The squash or bend applied to a neuron's score, like the S-shaped sigmoid. It lets stacked layers learn curved patterns.</dd></div>
+        <div class="glass"><dt>Decision boundary</dt><dd>The line or surface where a model switches from one answer to the other.</dd></div>
+        <div class="glass"><dt>Loss</dt><dd>One number for how wrong the model's guesses are. Training tries to push it down.</dd></div>
+        <div class="glass"><dt>Gradient</dt><dd>The slope of the loss for each weight: which way is uphill, and how steep it is.</dd></div>
+        <div class="glass"><dt>Gradient descent</dt><dd>Moving every weight a small step downhill, over and over: weight = weight − learning rate × gradient.</dd></div>
+        <div class="glass"><dt>Learning rate</dt><dd>How big each step is. Too small is slow. Too big overshoots and can blow up.</dd></div>
+        <div class="glass"><dt>Epoch</dt><dd>One full pass through all the training examples.</dd></div>
+        <div class="glass"><dt>Overfitting</dt><dd>Fitting the training examples so closely, random noise included, that the model does worse on new data.</dd></div>
+        <div class="glass"><dt>Test set</dt><dd>Examples held back from training, used only to measure how the model does on data it hasn't seen.</dd></div>
+        <div class="glass"><dt>Backpropagation</dt><dd>The method that works out the gradient for every weight in a network, working backward from the loss.</dd></div>
+      </dl>
+    </div>
+  </section>
+</main>
+<script src="../assets/cs-school.js"></script>
+<script>
+(() => {
+const { $, $$, esc, reduce } = CS;
+
+CS.lesson({
+  id: '306',
+  parts: [
+    { id: 'p1', title: 'One neuron, three dials' },
+    { id: 'p2', title: 'Learning is rolling downhill' },
+    { id: 'p3', title: 'Try it' },
+    { id: 'p4', title: 'Steer the AI' },
+    { id: 'p5', title: 'Check' }
+  ]
+});
+
+/* ---------------- helpers ---------------- */
+function fitSvg(svg, h) {
+  const p = svg.parentElement, cs = getComputedStyle(p);
+  const w = Math.max(240, Math.round(p.getBoundingClientRect().width - parseFloat(cs.paddingLeft) - parseFloat(cs.paddingRight)));
+  svg.setAttribute('viewBox', `0 0 ${w} ${h}`);
+  return w;
+}
+function onResize(el, fn) {
+  let last = 0;
+  new ResizeObserver(() => { const w = Math.round(el.getBoundingClientRect().width); if (w !== last) { last = w; fn(); } }).observe(el);
+}
+const ease = k => 1 - Math.pow(1 - k, 3);
+function tween(ms, fn, done) {
+  if (reduce) { fn(1); if (done) done(); return; }
+  const t0 = performance.now();
+  (function f(t) { const k = Math.min(1, Math.max(0, (t - t0) / ms)); fn(k); if (k < 1) requestAnimationFrame(f); else if (done) done(); })(t0);
+}
+const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+const sgn = v => v < 0 ? '−' : '';
+const f2 = v => sgn(v) + Math.abs(v).toFixed(2);
+const f1 = v => sgn(v) + Math.abs(v).toFixed(1);
+const sig = z => 1 / (1 + Math.exp(-z));
+const pct = p => p > 0.995 ? '>99%' : p < 0.005 ? '<1%' : Math.round(p * 100) + '%';
+function big(v, d = 2) {
+  if (!isFinite(v)) return 'huge';
+  if (Math.abs(v) >= 1e6) return 'huge';
+  if (Math.abs(v) >= 1000) return sgn(v) + Math.round(Math.abs(v)).toLocaleString('en-US');
+  return sgn(v) + Math.abs(v).toFixed(d);
+}
+
+/* ---------------- mangos ---------------- */
+const MANGO_D = 'M-1 -8C5 -8.5 9 -3 8 2.5C7 7.5 1 9.5 -4 8C-8.5 6.5 -9 0 -7 -4C-5.5 -7 -3.5 -7.8 -1 -8Z';
+const LEAF_D = 'M-1.5 -7.6C-1 -11.5 3 -13.5 7 -12.5C5.5 -9.5 2.5 -7.9 -1.5 -7.6Z';
+const RIPE = 'var(--l4)', UNRIPE = 'var(--l3)';
+const mango = (x, y, ripe, k = 1, op = 1) => `<g transform="translate(${x.toFixed(1)} ${y.toFixed(1)}) scale(${k})" opacity="${op}"><path d="${LEAF_D}" style="fill:var(--leaf)"/><path d="${MANGO_D}" style="fill:${ripe ? RIPE : UNRIPE};stroke:var(--paper)" stroke-width="1.4"/><ellipse cx="3" cy="-2.6" rx="2.4" ry="1.3" transform="rotate(-35 3 -2.6)" style="fill:#fff" opacity=".5"/></g>`;
+// softness 0-10, yellowness 0-10, really ripe?
+const MANGOS = [[8.5, 8, 1], [9, 3, 1], [7.5, 6, 1], [8, 1.5, 1], [6.8, 7.5, 1], [9.2, 6.5, 1], [7, 3.5, 1], [6, 9, 1], [8, 4.5, 1], [5.5, 8.5, 1],
+  [2, 2, 0], [3, 8.5, 0], [1.5, 5, 0], [4, 3, 0], [2.5, 9, 0], [5, 1.5, 0], [4.5, 6, 0], [3.5, 4.5, 0], [1, 7.5, 0], [6.2, 1, 0]].map(([s, y, r], i) => ({ s, y, r, i }));
+const zOf = (m, n) => n.ws * m.s + n.wy * m.y + n.b;
+const isRight = (m, n) => (zOf(m, n) > 0) === !!m.r;
+const nRight = n => MANGOS.filter(m => isRight(m, n)).length;
+const nLoss = n => MANGOS.reduce((t, m) => { const p = clamp(sig(zOf(m, n)), 1e-9, 1 - 1e-9); return t - (m.r ? Math.log(p) : Math.log(1 - p)); }, 0) / MANGOS.length;
+function nStep(n) {   // one epoch of gradient descent on the log loss
+  let ga = 0, gb = 0, gc = 0;
+  MANGOS.forEach(m => { const e = sig(zOf(m, n)) - m.r; ga += e * m.s; gb += e * m.y; gc += e; });
+  const k = MANGOS.length;
+  return { ws: clamp(n.ws - 0.08 * ga / k, -1, 3), wy: clamp(n.wy - 0.08 * gb / k, -1, 3), b: clamp(n.b - 1.5 * gc / k, -20, 5) };
+}
+// the chart: shaded halves, the boundary line, the mangos
+function plotMangos(n, box, o = {}) {
+  const { L, T, w, h } = box, k = o.k || 1;
+  const X = s => L + s / 10 * w, Y = y => T + (1 - y / 10) * h;
+  const f = p => n.ws * p[0] + n.wy * p[1] + n.b;
+  const sq = [[0, 0], [10, 0], [10, 10], [0, 10]];
+  const half = sign => { const out = []; for (let i = 0; i < 4; i++) { const a = sq[i], c = sq[(i + 1) % 4], fa = sign * f(a), fc = sign * f(c); if (fa >= 0) out.push(a); if ((fa >= 0) !== (fc >= 0)) { const t = fa / (fa - fc); out.push([a[0] + (c[0] - a[0]) * t, a[1] + (c[1] - a[1]) * t]); } } return out; };
+  const poly = pts => pts.length > 2 ? pts.map(p => `${X(p[0]).toFixed(1)},${Y(p[1]).toFixed(1)}`).join(' ') : '';
+  let s = '';
+  const pu = poly(half(-1)), pr = poly(half(1));
+  if (pu) s += `<polygon points="${pu}" style="fill:${UNRIPE}" opacity=".14"/>`;
+  if (pr) s += `<polygon points="${pr}" style="fill:${RIPE}" opacity=".22"/>`;
+  const cross = [];
+  for (let i = 0; i < 4; i++) { const a = sq[i], c = sq[(i + 1) % 4], fa = f(a), fc = f(c); if ((fa > 0) !== (fc > 0) && fa !== fc) { const t = fa / (fa - fc); cross.push([a[0] + (c[0] - a[0]) * t, a[1] + (c[1] - a[1]) * t]); } }
+  if (cross.length >= 2) s += `<line x1="${X(cross[0][0])}" y1="${Y(cross[0][1])}" x2="${X(cross[1][0])}" y2="${Y(cross[1][1])}" style="stroke:var(--ink)" stroke-width="2.5" stroke-linecap="round"/>`;
+  if (o.labels && pr && pu) {
+    // tiny labels in each region, placed at the corner farthest from the line
+    const corners = sq.map(p => [p, f(p)]);
+    const cr = corners.filter(c => c[1] > 0).sort((a, b) => b[1] - a[1])[0], cu = corners.filter(c => c[1] <= 0).sort((a, b) => a[1] - b[1])[0];
+    const lab = (c, txt) => { const [x, y] = c[0]; const tx = X(x) + (x ? -8 : 8), ty = Y(y) + (y ? 18 : -9); return `<text x="${tx}" y="${ty}" text-anchor="${x ? 'end' : 'start'}" class="svg-b" style="font-size:13px;fill:var(--ink-2)">${txt}</text>`; };
+    if (cr) s += lab(cr, 'says ripe'); if (cu) s += lab(cu, 'says not ripe');
+  }
+  MANGOS.forEach(m => { if (!isRight(m, n)) s += `<circle cx="${X(m.s)}" cy="${Y(m.y)}" r="${13.5 * k}" style="fill:none;stroke:var(--l1)" stroke-width="2.5"/>`; });
+  MANGOS.forEach(m => { s += mango(X(m.s), Y(m.y) + 1, m.r, k); });
+  return s;
+}
+function axes(box, o = {}) {
+  const { L, T, w, h } = box;
+  let s = `<rect x="${L}" y="${T}" width="${w}" height="${h}" rx="8" style="fill:none;stroke:var(--hair)"/>`;
+  if (o.ticks) [0, 5, 10].forEach(v => {
+    s += `<text x="${L + v / 10 * w}" y="${T + h + 18}" text-anchor="${v === 0 ? 'start' : v === 10 ? 'end' : 'middle'}" class="svg-t">${v}</text>`;
+    s += `<text x="${L - 8}" y="${T + (1 - v / 10) * h + 5}" text-anchor="end" class="svg-t">${v}</text>`;
+  });
+  s += `<text x="${L + w}" y="${T + h + (o.ticks ? 38 : 20)}" text-anchor="end" class="svg-t">softer →</text>`;
+  s += `<text x="${L}" y="${T - 9}" class="svg-t">↑ more yellow</text>`;
+  return s;
+}
+
+/* ---------------- hero: a neuron training itself ---------------- */
+(function hero() {
+  const svg = $('#heroArt'), cap = $('#heroCap'), H = 372, E = 160;
+  const STARTS = [{ ws: -0.3, wy: 1.2, b: -4 }, { ws: 0.5, wy: -0.8, b: 1 }, { ws: 0.1, wy: 0.9, b: -7 }];
+  let si = 0, n = { ...STARTS[0] }, hist = [nLoss(n)], epoch = 0, visible = true;
+  const say = () => { cap.textContent = `epoch ${epoch} · ${nRight(n)} of 20 right`; };
+  function draw() {
+    const W = fitSvg(svg, H), k = W < 420 ? .9 : 1.2;
+    const box = { L: 10, T: 28, w: W - 20, h: H - 28 - 132 };
+    let s = axes(box) + plotMangos(n, box, { k });
+    // loss strip
+    const lt = box.T + box.h + 58, lh = H - 8 - lt, lw = W - 20;
+    s += `<text x="10" y="${lt - 10}" class="svg-t">error (loss), falling as it learns</text>`;
+    s += `<line x1="10" x2="${10 + lw}" y1="${lt + lh}" y2="${lt + lh}" style="stroke:var(--hair)" stroke-width="1.5"/>`;
+    const mx = Math.max(1, hist[0]), X = e => 10 + e / E * lw, Y = v => lt + lh - Math.sqrt(Math.min(1, v / mx)) * lh;
+    if (hist.length > 1) s += `<path d="${hist.map((v, e) => (e ? 'L' : 'M') + X(e).toFixed(1) + ' ' + Y(v).toFixed(1)).join('')}" style="fill:none;stroke:var(--l2)" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>`;
+    s += `<circle cx="${X(hist.length - 1)}" cy="${Y(hist[hist.length - 1])}" r="5.5" style="fill:var(--l2);stroke:var(--paper)" stroke-width="2"/>`;
+    svg.innerHTML = s;
+  }
+  onResize(svg.parentElement, draw);
+  if (reduce) { while (epoch < E) { n = nStep(n); hist.push(nLoss(n)); epoch++; } draw(); say(); return; }
+  new IntersectionObserver(es => { visible = es[0].isIntersecting; }).observe(svg);
+  let phase = 'wait', t0 = performance.now();
+  draw(); say();
+  function frame(t) {
+    requestAnimationFrame(frame);
+    if (!visible || document.hidden) return;
+    if (phase === 'wait' && t - t0 > 900) { phase = 'train'; t0 = t; }
+    else if (phase === 'train') {
+      const k = Math.min(1, (t - t0) / 4600), target = Math.round(E * Math.pow(k, 1.7));
+      if (target > epoch) { while (epoch < target) { n = nStep(n); hist.push(nLoss(n)); epoch++; } draw(); say(); }
+      if (k >= 1) { phase = 'hold'; t0 = t; }
+    } else if (phase === 'hold' && t - t0 > 2800) {
+      si = (si + 1) % STARTS.length; n = { ...STARTS[si] }; hist = [nLoss(n)]; epoch = 0; phase = 'wait'; t0 = t; draw(); say();
+    }
+  }
+  requestAnimationFrame(frame);
+})();
+
+/* ---------------- Part 1: the neuron ---------------- */
+let N = { ws: 0.2, wy: 1.0, b: -5 }, sel = 1, learning = false;
+const P1 = { X: null, Y: null, W: 0 };
+const sl = { ws: $('#wS'), wy: $('#wY'), b: $('#wB') };
+function syncDials() {
+  sl.ws.value = N.ws; sl.wy.value = N.wy; sl.b.value = N.b;
+  $('#wSv').textContent = f2(N.ws); $('#wYv').textContent = f2(N.wy); $('#wBv').textContent = f2(N.b);
+  sl.ws.setAttribute('aria-valuetext', f2(N.ws)); sl.wy.setAttribute('aria-valuetext', f2(N.wy)); sl.b.setAttribute('aria-valuetext', f2(N.b));
+}
+function drawP1() {
+  const svg = $('#mangoChart'), W = fitSvg(svg, 10), narrow = W < 440;
+  const H = Math.round(clamp(W * .86, 280, 450));
+  svg.setAttribute('viewBox', `0 0 ${W} ${H}`);
+  const box = { L: 30, T: 28, w: W - 30 - 10, h: H - 28 - 46 };
+  P1.X = s => box.L + s / 10 * box.w; P1.Y = y => box.T + (1 - y / 10) * box.h; P1.W = W;
+  let s = axes(box, { ticks: true }) + plotMangos(N, box, { k: narrow ? .95 : 1.1, labels: true });
+  const m = MANGOS[sel], x = P1.X(m.s), y = P1.Y(m.y), p = sig(zOf(m, N));
+  s += `<circle cx="${x}" cy="${y}" r="${narrow ? 17 : 19}" style="fill:none;stroke:var(--ink)" stroke-width="2" stroke-dasharray="4 3"/>`;
+  const txt = `${pct(p)} ripe`, bw = txt.length * 8.4 + 16, bx = clamp(x - bw / 2, box.L + 2, box.L + box.w - bw - 2), up = y - 50 > box.T, by = up ? y - 50 : y + 24;
+  s += `<rect x="${bx}" y="${by}" width="${bw}" height="26" rx="13" style="fill:var(--ink)"/><text x="${bx + bw / 2}" y="${by + 18}" text-anchor="middle" class="svg-b" style="font-size:14px;fill:var(--paper)">${txt}</text>`;
+  svg.innerHTML = s;
+  const r = nRight(N);
+  $('#rightN').textContent = `${r} of 20`;
+  $('#rightWords').textContent = r === 20 ? 'right. Every mango is on the correct side.' : 'right. Ringed mangos are the neuron\'s mistakes.';
+}
+function drawNeuron() {
+  const svg = $('#neuron'), W = fitSvg(svg, 10), H = 200;
+  svg.setAttribute('viewBox', `0 0 ${W} ${H}`);
+  const m = MANGOS[sel], z = zOf(m, N), p = sig(z);
+  const ix = 34, iy = [62, 148], nx = Math.round(clamp(W * .47, 150, 260)), ny = 105, nr = 30;
+  const sx0 = nx + nr + 30, sx1 = W - 6, sy0 = 66, sy1 = 140;
+  let s = '';
+  [[N.ws, iy[0], 'softness', m.s, 36], [N.wy, iy[1], 'yellowness', m.y, 194]].forEach(([w, y, name, v, ly]) => {
+    const col = w >= 0 ? 'var(--l2)' : 'var(--l1)', sw = 1.5 + Math.min(3, Math.abs(w)) * 2.4;
+    s += `<line x1="${ix + 22}" y1="${y}" x2="${nx - nr + 2}" y2="${ny}" style="stroke:${col}" stroke-width="${sw.toFixed(1)}" stroke-linecap="round" opacity="${Math.abs(w) < .03 ? .25 : .9}"/>`;
+    s += `<circle cx="${ix}" cy="${y}" r="22" style="fill:var(--paper);stroke:var(--hair)" stroke-width="1.5"/><text x="${ix}" y="${y + 5}" text-anchor="middle" class="svg-b" style="font-size:15px">${v.toFixed(1)}</text>`;
+    s += `<text x="${ix - 22}" y="${ly}" class="svg-t">${name}</text>`;
+    const mx = (ix + 22 + nx - nr) / 2 + 4, my = (y + ny) / 2, lbl = '× ' + f2(w), pw = lbl.length * 8.2 + 14;
+    s += `<rect x="${mx - pw / 2}" y="${my - 13}" width="${pw}" height="26" rx="13" style="fill:var(--paper);stroke:${col}" stroke-width="1.5"/><text x="${mx}" y="${my + 5}" text-anchor="middle" class="svg-m">${lbl}</text>`;
+  });
+  s += `<circle cx="${nx}" cy="${ny}" r="${nr}" style="fill:var(--ink)"/><text x="${nx}" y="${ny + 7}" text-anchor="middle" class="svg-b" style="font-size:22px;fill:var(--paper)">Σ</text>`;
+  s += `<text x="${nx}" y="${ny - nr - 10}" text-anchor="middle" class="svg-t">score ${f2(z)}</text>`;
+  s += `<text x="${nx}" y="${ny + nr + 22}" text-anchor="middle" class="svg-t">+ bias ${f2(N.b)}</text>`;
+  s += `<line x1="${nx + nr + 2}" y1="${ny}" x2="${sx0 - 6}" y2="${ny}" style="stroke:var(--ink)" stroke-width="2.5"/><path d="M${sx0 - 4} ${ny} l-8 -5 v10 Z" style="fill:var(--ink)"/>`;
+  // the squash
+  const SX = zz => sx0 + (clamp(zz, -8, 8) + 8) / 16 * (sx1 - sx0), SY = pp => sy1 - pp * (sy1 - sy0);
+  let d = ''; for (let i = 0; i <= 40; i++) { const zz = -8 + i * .4; d += (i ? 'L' : 'M') + SX(zz).toFixed(1) + ' ' + SY(sig(zz)).toFixed(1); }
+  s += `<rect x="${sx0}" y="${sy0 - 6}" width="${sx1 - sx0}" height="${sy1 - sy0 + 12}" rx="10" style="fill:var(--well)"/>`;
+  s += `<line x1="${sx0}" x2="${sx1}" y1="${SY(.5)}" y2="${SY(.5)}" style="stroke:var(--ink-2)" stroke-dasharray="3 4" opacity=".6"/>`;
+  s += `<path d="${d}" style="fill:none;stroke:var(--ink)" stroke-width="2.5"/>`;
+  s += `<circle cx="${SX(z)}" cy="${SY(p)}" r="7" style="fill:${p > .5 ? RIPE : UNRIPE};stroke:var(--paper)" stroke-width="2"/>`;
+  s += `<text x="${(sx0 + sx1) / 2}" y="${sy0 - 14}" text-anchor="middle" class="svg-t">squash</text>`;
+  s += `<text x="${(sx0 + sx1) / 2}" y="${sy1 + 34}" text-anchor="middle" class="svg-b" style="font-size:18px">${pct(p)} ripe</text>`;
+  svg.innerHTML = s;
+  $('#neuronSub').textContent = `Mango ${sel + 1} of 20: softness ${m.s.toFixed(1)}, yellowness ${m.y.toFixed(1)}.`;
+  $('#neuronMath').innerHTML = `${m.s.toFixed(1)} × ${f2(N.ws)} + ${m.y.toFixed(1)} × ${f2(N.wy)} + (${f2(N.b)}) = <b>score ${f2(z)}</b><br>squash(${f2(z)}) = <b>${pct(p)} chance it's ripe</b>`;
+  const says = z > 0, ok = says === !!m.r;
+  $('#verdict').innerHTML = `<span>Neuron says <b>${says ? 'ripe' : 'not ripe'}</b>. Really <b>${m.r ? 'ripe' : 'not ripe'}</b>.</span><span class="chip" style="--c:${ok ? 'var(--good)' : 'var(--l1)'}"><i></i>${ok ? 'Correct' : 'Wrong'}</span>`;
+}
+function n1(html, kind = '') { CS.say($('#n1'), html, kind); }
+function dialNote() {
+  const r = nRight(N), saysRipe = MANGOS.filter(m => zOf(m, N) > 0).length;
+  if (saysRipe === 0 || saysRipe === 20) { n1(`<strong>${r} of 20.</strong> Every mango is on the same side of the line, so the neuron gives everything the same answer. Slide the bias to bring the line back into the chart.`); return; }
+  if (r >= 18) { CS.tick('p1', 'score'); n1(`<strong>${r} of 20 right.</strong> ${N.ws > N.wy ? 'Your neuron now counts softness more than color, and that\'s the pattern in these mangos.' : 'Nice tuning.'} ${CS.ticked('p1', 'feed') ? '' : 'Now tap a mango to see the math inside the neuron.'}`, 'good'); return; }
+  if (N.ws <= N.wy) { n1(`<strong>${r} of 20.</strong> This neuron trusts color more than softness. Some ripe mangos stay green, and some yellow ones are still hard. Try making softness count more, then slide the bias to move the line.`); return; }
+  n1(`<strong>${r} of 20.</strong> Closer. The weights tilt the line and the bias slides it. Get the ringed mangos onto the right side.`);
+}
+Object.entries(sl).forEach(([k, el]) => el.addEventListener('input', () => {
+  if (learning) return;
+  N = { ...N, [k]: +el.value };
+  syncDials(); drawP1(); drawNeuron();
+  CS.tick('p1', 'move'); dialNote();
+}));
+function pick(i) {
+  sel = (i + MANGOS.length) % MANGOS.length;
+  drawP1(); drawNeuron();
+  if (!CS.ticked('p1', 'feed')) {
+    CS.tick('p1', 'feed');
+    const m = MANGOS[sel], z = zOf(m, N);
+    n1(`<strong>That's all a neuron does.</strong> Multiply, add, squash. This mango's score is ${f2(z)}, so the neuron says ${z > 0 ? '"ripe"' : '"not ripe"'}. The line on the chart is every point where the score is exactly 0. ${CS.ticked('p1', 'learn') ? '' : 'Now press <b>Let it learn</b>.'}`, 'good');
+  }
+}
+$('#mangoChart').addEventListener('click', e => {
+  const svg = e.currentTarget, r = svg.getBoundingClientRect(), k = P1.W / r.width;
+  const x = (e.clientX - r.left) * k, y = (e.clientY - r.top) * k;
+  let best = null, bd = 28;
+  MANGOS.forEach(m => { const d = Math.hypot(P1.X(m.s) - x, P1.Y(m.y) - y); if (d < bd) { bd = d; best = m; } });
+  if (best) pick(best.i);
+});
+$('#prevM').addEventListener('click', () => pick(sel - 1));
+$('#nextM').addEventListener('click', () => pick(sel + 1));
+function drawSpark(hist) {
+  const svg = $('#spark'), W = fitSvg(svg, 10), H = 74;
+  svg.setAttribute('viewBox', `0 0 ${W} ${H}`);
+  if (!hist || hist.length < 2) { svg.innerHTML = `<rect x="0" y="4" width="${W}" height="${H - 8}" rx="12" style="fill:var(--well)"/><text x="14" y="${H / 2 + 5}" class="svg-t">The loss will be drawn here as it learns.</text>`; return; }
+  const L = 4, T = 8, pw = W - 70, ph = H - 26, E = Math.max(150, hist.length - 1), mx = Math.max(hist[0], .5);
+  const X = e => L + e / E * pw, Y = v => T + (1 - Math.min(1, v / mx)) * ph;
+  let s = `<line x1="${L}" x2="${L + pw}" y1="${T + ph}" y2="${T + ph}" style="stroke:var(--hair)" stroke-width="1.5"/>`;
+  s += `<path d="${hist.map((v, e) => (e ? 'L' : 'M') + X(e).toFixed(1) + ' ' + Y(v).toFixed(1)).join('')}" style="fill:none;stroke:var(--l2)" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>`;
+  const last = hist[hist.length - 1];
+  s += `<circle cx="${X(hist.length - 1)}" cy="${Y(last)}" r="5" style="fill:var(--l2)"/><text x="${X(hist.length - 1) + 10}" y="${Y(last) + 5}" class="svg-b" style="font-size:14px">${last.toFixed(2)}</text>`;
+  s += `<text x="${L}" y="${H - 2}" class="svg-t">epochs →</text>`;
+  svg.innerHTML = s;
+}
+function setBusy(b) {
+  learning = b;
+  Object.values(sl).forEach(el => { el.disabled = b; });
+  $('#learnBtn').disabled = b; $('#scrambleBtn').disabled = b;
+}
+$('#learnBtn').addEventListener('click', () => {
+  if (learning) return;
+  setBusy(true);
+  const E = 150, hist = [nLoss(N)], start = nRight(N);
+  let e = 0; const t0 = performance.now();
+  const go = target => {
+    while (e < target) { N = nStep(N); hist.push(nLoss(N)); e++; }
+    syncDials(); drawP1(); drawNeuron(); drawSpark(hist);
+    $('#epochRead').innerHTML = `Epoch <b>${e}</b> · loss <b>${hist[hist.length - 1].toFixed(2)}</b> · <b>${nRight(N)}</b> of 20 right`;
+  };
+  const finish = () => {
+    setBusy(false); CS.tick('p1', 'learn');
+    const ratio = N.wy > 0.05 ? N.ws / N.wy : null;
+    n1(`<strong>Trained in ${E} epochs: ${nRight(N)} of 20 right.</strong> It started at ${start} of 20. Softness weight ${f2(N.ws)}, yellowness weight ${f2(N.wy)}: ${ratio ? `it worked out that softness matters about ${Math.round(ratio)} times as much as color` : 'it worked out that color barely matters'}. Nobody told it that. It only saw the 20 labeled mangos. The loss is its measure of how wrong it is, and it fell every epoch.`, 'good');
+  };
+  if (reduce) { go(E); finish(); return; }
+  (function f(t) { const k = Math.min(1, Math.max(0, (t - t0) / 3600)); go(Math.round(E * Math.pow(k, 1.5))); if (k < 1) requestAnimationFrame(f); else finish(); })(t0);
+});
+$('#scrambleBtn').addEventListener('click', () => {
+  if (learning) return;
+  let tries = 0;
+  do { N = { ws: Math.round((Math.random() * 2 - 1) * 20) / 20, wy: Math.round((Math.random() * 3 - 1) * 20) / 20, b: Math.round((Math.random() * 10 - 6) * 2) / 2 }; tries++; } while (nRight(N) > 12 && tries < 50);
+  syncDials(); drawP1(); drawNeuron(); drawSpark(null);
+  $('#epochRead').textContent = 'Dials scrambled. Not trained yet.';
+  n1(`<strong>Scrambled: ${nRight(N)} of 20 right.</strong> Random dials, like a brand-new network. Press <b>Let it learn</b> and watch it recover.`);
+});
+syncDials();
+onResize($('#mangoChart').parentElement, drawP1);
+onResize($('#neuron').parentElement, drawNeuron);
+onResize($('#spark').parentElement, () => drawSpark(null));
+
+/* ---------------- Part 2: rolling downhill ---------------- */
+const D2 = [[9, 6], [7, 5], [8, 6], [3, 2], [5, 4], [2, 1]];
+const A2 = D2.reduce((t, [x]) => t + x * x, 0) / D2.length, B2 = D2.reduce((t, [x, y]) => t + x * y, 0) / D2.length, C2 = D2.reduce((t, [, y]) => t + y * y, 0) / D2.length;
+const W_BEST = B2 / A2, L_MIN = C2 - B2 * B2 / A2;
+const loss2 = w => A2 * w * w - 2 * B2 * w + C2;
+const slope2 = w => 2 * (A2 * w - B2);
+const RATES = [0.001, 0.002, 0.004, 0.006, 0.008, 0.01, 0.013, 0.016, 0.02, 0.024, 0.028, 0.032];
+const WMIN = -0.4, WMAX = 1.8, LMAX = 50;
+let rate = 0.01, ball = { w: 0, path: [0], steps: 0, gone: false }, runTok = 0, lastNote = '';
+const rateWord = r => r <= 0.002 ? 'tiny steps' : r <= 0.006 ? 'small steps' : r <= 0.016 ? 'medium steps' : r <= 0.024 ? 'big steps' : 'huge steps';
+function drawLand(anim) {
+  const svg = $('#land'), W = fitSvg(svg, 10), H = Math.round(clamp(W * .64, 240, 340));
+  svg.setAttribute('viewBox', `0 0 ${W} ${H}`);
+  const L = 36, R = 10, T = 30, B = 42, pw = W - L - R, ph = H - T - B;
+  const X = w => L + (w - WMIN) / (WMAX - WMIN) * pw, Y = l => T + (1 - l / LMAX) * ph;
+  let d = '';
+  for (let i = 0; i <= 140; i++) { const w = WMIN + (WMAX - WMIN) * i / 140; d += (i ? 'L' : 'M') + X(w).toFixed(1) + ' ' + Y(Math.min(loss2(w), LMAX)).toFixed(1); }
+  let s = `<path d="${d}L${X(WMAX)} ${T + ph}L${X(WMIN)} ${T + ph}Z" style="fill:var(--l3)" opacity=".16"/>`;
+  s += `<line x1="${L}" x2="${L + pw}" y1="${T + ph}" y2="${T + ph}" style="stroke:var(--ink-2)" stroke-width="1.5" opacity=".5"/>`;
+  [0, 1.5].forEach(v => { s += `<text x="${X(v)}" y="${T + ph + 18}" text-anchor="middle" class="svg-t">${v}</text>`; });
+  [0, 25, 50].forEach(v => { s += `<text x="${L - 7}" y="${Y(v) + 5}" text-anchor="end" class="svg-t">${v}</text>`; });
+  s += `<text x="${L + pw}" y="${T + ph + 36}" text-anchor="end" class="svg-t">weight w →</text><text x="${L}" y="${T - 14}" class="svg-t">↑ loss</text>`;
+  s += `<path d="${d}" style="fill:none;stroke:var(--ink)" stroke-width="2.5" stroke-linejoin="round"/>`;
+  s += `<line x1="${X(W_BEST)}" x2="${X(W_BEST)}" y1="${Y(L_MIN) + 6}" y2="${T + ph}" style="stroke:var(--ink-2)" stroke-dasharray="3 4" opacity=".6"/>`;
+  s += `<text x="${X(W_BEST)}" y="${T + ph + 18}" text-anchor="middle" class="svg-b" style="font-size:13.5px;fill:var(--ink-2)">bottom</text>`;
+  // trail
+  const tail = ball.path.slice(-24);
+  tail.forEach((w, i) => {
+    if (i === tail.length - 1 || w < WMIN || w > WMAX) return;
+    const nx = tail[i + 1];
+    if (nx >= WMIN && nx <= WMAX) { const x0 = X(w), y0 = Y(loss2(w)) - 10, x1 = X(nx), y1 = Y(loss2(nx)) - 10, hh = Math.min(70, Math.abs(x1 - x0) * .4 + 8); s += `<path d="M${x0} ${y0}Q${(x0 + x1) / 2} ${Math.min(y0, y1) - hh} ${x1} ${y1}" style="fill:none;stroke:var(--ink-2)" stroke-width="1.5" stroke-dasharray="3 4" opacity=".55"/>`; }
+    s += `<circle cx="${X(w)}" cy="${Y(loss2(w))}" r="3.5" style="fill:var(--ink-2)" opacity=".6"/>`;
+  });
+  // ball
+  let bx, by, still = !anim;
+  const onCurve = w => [X(w), Y(Math.min(loss2(w), LMAX)) - 10];
+  if (anim) {
+    const [x0, y0] = onCurve(anim.w0);
+    const out = anim.w1 < WMIN || anim.w1 > WMAX;
+    const [x1, y1] = out ? [clamp(X(anim.w1), L + 10, L + pw - 10), T + 4] : onCurve(anim.w1);
+    const hh = Math.min(80, Math.abs(x1 - x0) * .4 + 8), k = anim.k;
+    bx = x0 + (x1 - x0) * k; by = y0 + (y1 - y0) * k - 4 * hh * k * (1 - k);
+  } else if (!ball.gone) { [bx, by] = onCurve(ball.w); }
+  if (still && !ball.gone) {
+    // slope line under the ball and the size of the next step
+    const w = ball.w, m = slope2(w), sx = pw / (WMAX - WMIN), sy = ph / LMAX;
+    const dx = 1, dy = -m * sy / sx, len = Math.hypot(dx, dy), ux = dx / len * 56, uy = dy / len * 56;
+    const cx = X(w), cy = Y(loss2(w));
+    s += `<line x1="${cx - ux}" y1="${cy - uy}" x2="${cx + ux}" y2="${cy + uy}" style="stroke:var(--l2)" stroke-width="3.5" stroke-linecap="round"/>`;
+    // label on the valley side of the ball, where the chart is empty
+    const inward = m < 0 ? 1 : -1, lx = cx + inward * 22, ly = clamp(cy - 8, T + 40, T + ph - 30);
+    s += `<text x="${lx}" y="${ly}" text-anchor="${inward > 0 ? 'start' : 'end'}" class="svg-b" style="font-size:14px;fill:var(--l2)">slope ${big(m, 1)}</text>`;
+    const wn = w - rate * m, xa = X(w), xb = clamp(X(wn), L + 4, L + pw - 4), ay = T + 22;
+    if (Math.abs(xb - xa) > 8) {
+      const dir = xb > xa ? 1 : -1;
+      s += `<line x1="${xa}" y1="${ay + 8}" x2="${xa}" y2="${cy - 24}" style="stroke:var(--l5)" stroke-width="1.5" stroke-dasharray="2 4" opacity=".7"/>`;
+      s += `<line x1="${xa}" y1="${ay}" x2="${xb - dir * 6}" y2="${ay}" style="stroke:var(--l5)" stroke-width="3"/><path d="M${xb} ${ay}l${-dir * 10} -6v12Z" style="fill:var(--l5)"/>`;
+      const tx = clamp((xa + xb) / 2, L + 40, L + pw - 40);
+      s += `<text x="${tx}" y="${ay - 9}" text-anchor="middle" class="svg-b" style="font-size:13.5px;fill:var(--l5)">next step</text>`;
+    }
+  }
+  if (bx != null) s += `<circle cx="${bx}" cy="${by}" r="10" style="fill:var(--l4);stroke:var(--paper)" stroke-width="2"/><circle cx="${bx - 3}" cy="${by - 3.5}" r="3" style="fill:#fff" opacity=".6"/>`;
+  if (ball.gone && !anim) {
+    const right = ball.w > WMAX, ex = right ? L + pw - 6 : L + 6, tw = 190;
+    s += `<rect x="${right ? ex - tw - 8 : ex - 8}" y="${T + 2}" width="${tw + 16}" height="46" rx="12" style="fill:var(--paper)" opacity=".92"/>`;
+    s += `<text x="${ex}" y="${T + 20}" text-anchor="${right ? 'end' : 'start'}" class="svg-b" style="font-size:15px;fill:var(--l1)">${right ? 'off the chart →' : '← off the chart'}</text>`;
+    s += `<text x="${ex}" y="${T + 40}" text-anchor="${right ? 'end' : 'start'}" class="svg-t">loss ${big(loss2(ball.w), 0)} and climbing</text>`;
+  }
+  svg.innerHTML = s;
+}
+function drawFit2(w = ball.w, sel2 = '#fit2', h0) {
+  const svg = $(sel2), W = fitSvg(svg, 10), H = h0 || Math.round(clamp(W * .5, 190, 250));
+  svg.setAttribute('viewBox', `0 0 ${W} ${H}`);
+  const L = 30, R = 10, T = 26, B = 26, pw = W - L - R, ph = H - T - B;
+  const X = f => L + f / 10 * pw, Y = d => T + (1 - d / 8) * ph, id = sel2.slice(1) + 'Clip';
+  let s = `<defs><clipPath id="${id}"><rect x="${L}" y="${T}" width="${pw}" height="${ph}"/></clipPath></defs>`;
+  s += `<rect x="${L}" y="${T}" width="${pw}" height="${ph}" rx="6" style="fill:none;stroke:var(--hair)"/>`;
+  [0, 10].forEach(v => { s += `<text x="${X(v)}" y="${T + ph + 18}" text-anchor="${v ? 'end' : 'start'}" class="svg-t">${v}</text>`; });
+  [0, 4, 8].forEach(v => { s += `<text x="${L - 7}" y="${Y(v) + 5}" text-anchor="end" class="svg-t">${v}</text>`; });
+  s += `<text x="${L + pw / 2}" y="${T + ph + 18}" text-anchor="middle" class="svg-t">firmness →</text><text x="${L}" y="${T - 10}" class="svg-t">↑ days until ripe</text>`;
+  const ok = isFinite(w) && Math.abs(w) < 1e6;
+  if (ok) {
+    s += `<g clip-path="url(#${id})">`;
+    D2.forEach(([x, y]) => { s += `<line x1="${X(x)}" y1="${Y(y)}" x2="${X(x)}" y2="${Y(clamp(w * x, -2, 10))}" style="stroke:var(--l1)" stroke-width="2" stroke-dasharray="4 3"/>`; });
+    s += `<line x1="${X(0)}" y1="${Y(0)}" x2="${X(10)}" y2="${Y(clamp(w * 10, -200, 200))}" style="stroke:var(--l2)" stroke-width="3" stroke-linecap="round"/></g>`;
+  } else s += `<text x="${L + pw - 8}" y="${T + ph - 10}" text-anchor="end" class="svg-b" style="font-size:14px;fill:var(--l1)">w blew up: no line to draw</text>`;
+  D2.forEach(([x, y]) => { s += mango(X(x), Y(y) + 1, 1, W < 400 ? .9 : 1); });
+  svg.innerHTML = s;
+}
+function readouts() {
+  const w = ball.w;
+  $('#readouts').innerHTML = `<div><span>Steps</span><b>${ball.steps}</b></div><div><span>Weight w</span><b>${big(w, 3)}</b></div><div><span>Loss</span><b>${big(loss2(w), 2)}</b></div><div><span>Slope</span><b>${big(slope2(w), 1)}</b></div>`;
+}
+function n2(key, html, kind = '') { if (key === lastNote) return; lastNote = key; CS.say($('#n2'), html, kind); }
+function afterStep() {
+  const gap = loss2(ball.w) - L_MIN, atBottom = gap < 0.01, diverged = ball.gone || (ball.steps > 1 && Math.abs(ball.w - W_BEST) > Math.abs(ball.path[ball.path.length - 2] - W_BEST) + 1e-9 && rate > 0.026);
+  if (diverged) { CS.tick('p2', 'huge'); n2('div', `<strong>It blew up.</strong> Each step overshot the valley by more than the one before, so the loss grew instead of shrinking. In real training this looks like a loss that shoots up and then turns into NaN, "not a number". ${CS.ticked('p2', 'good') ? '' : 'Now find a rate that gets to the bottom in 10 steps or fewer.'}`, 'bad'); return; }
+  if (atBottom && ball.steps <= 10) { CS.tick('p2', 'good'); n2('good' + rate, `<strong>The bottom in ${ball.steps} step${ball.steps > 1 ? 's' : ''}.</strong> A rate of ${rate} is big enough to move fast and small enough not to overshoot. The model settled at w = ${ball.w.toFixed(2)}: about ${ball.w.toFixed(1)} days per point of firmness.`, 'good'); return; }
+  if (atBottom) { n2('bottom' + rate, `<strong>At the bottom, after ${ball.steps} steps.</strong> ${CS.ticked('p2', 'good') ? 'It got there.' : 'Can you find a rate that gets there in 10 steps or fewer?'}`); return; }
+  if (rate <= 0.002 && ball.steps >= 20) { CS.tick('p2', 'tiny'); n2('tiny', `<strong>${ball.steps} steps and still not at the bottom.</strong> With a tiny learning rate every step is a shuffle. It would get there eventually, but in real training every step costs time and money. ${CS.ticked('p2', 'huge') ? '' : 'Now try a huge rate.'}`, 'good'); return; }
+  if (rate >= 0.02 && ball.steps >= 1 && ball.path.length > 1 && Math.sign(ball.w - W_BEST) !== Math.sign(ball.path[ball.path.length - 2] - W_BEST)) { n2('bounce' + rate, `<strong>Overshooting.</strong> The ball jumps right across the valley. With this rate it still settles, but it wastes steps bouncing from side to side.`); return; }
+  if (rate <= 0.002) n2('slow', `<strong>Tiny steps.</strong> Where the slope is steep the ball moves a bit, but as the ground flattens the steps get even smaller. Keep going to 20 steps.`);
+  else n2('mid' + rate, `<strong>Downhill.</strong> The step size is learning rate × slope. Watch the steps shrink as the ground flattens.`);
+}
+function hop(w0, w1, ms, tok) {
+  return new Promise(res => {
+    if (reduce) { res(); return; }
+    tween(ms, k => { if (tok === runTok) drawLand({ w0, w1, k: ease(k) }); }, res);
+  });
+}
+function setStepBusy(b) { $('#stepBtn').disabled = b; $('#step20').disabled = b; }
+async function doSteps(n) {
+  const tok = ++runTok; setStepBusy(true);
+  for (let i = 0; i < n; i++) {
+    if (tok !== runTok) return;
+    if (ball.gone && Math.abs(ball.w) > 1e12) break;
+    const w0 = ball.w, w1 = w0 - rate * slope2(w0);
+    if (!ball.gone) await hop(w0, w1, n === 1 ? 560 : 260, tok);
+    if (tok !== runTok) return;
+    ball.w = w1; ball.path.push(w1); ball.steps++;
+    if (w1 < WMIN || w1 > WMAX) ball.gone = true;
+    drawLand(); drawFit2(); readouts(); afterStep();
+  }
+  setStepBusy(false);
+}
+function resetBall() {
+  runTok++; setStepBusy(false);
+  ball = { w: 0, path: [0], steps: 0, gone: false };
+  drawLand(); drawFit2(); readouts();
+}
+$('#rate').addEventListener('input', e => {
+  rate = RATES[+e.target.value];
+  $('#rateVal').textContent = rate.toFixed(3); $('#rateWord').textContent = rateWord(rate);
+  e.target.setAttribute('aria-valuetext', `${rate} (${rateWord(rate)})`);
+  resetBall(); lastNote = '';
+  CS.say($('#n2'), `Learning rate <b>${rate}</b>. The ball is back at the start. Take some steps.`);
+});
+$('#rate').setAttribute('aria-valuetext', '0.01 (medium steps)');
+$('#stepBtn').addEventListener('click', () => doSteps(1));
+$('#step20').addEventListener('click', () => doSteps(20));
+$('#ballReset').addEventListener('click', () => { resetBall(); lastNote = ''; CS.say($('#n2'), 'Back at the start, w = 0.'); });
+onResize($('#land').parentElement, () => drawLand());
+onResize($('#fit2').parentElement, () => drawFit2());
+readouts();
+
+/* ---------------- Part 2b: overfitting ---------------- */
+const TRN = [[0.4, 3.4], [2, 4.2], [2.6, 6], [4.7, 6.8], [5.9, 8.2], [7.2, 7.6], [8.6, 9], [10, 8.1]];
+const TST = [[1, 4.1], [2.2, 4.8], [3.8, 5.8], [5, 7.8], [6.7, 8.4], [7.6, 9], [9, 7.7], [9.6, 7.9]];
+const sx = x => x / 5 - 1;   // scale days to -1..1 so the fit stays stable
+function polyFit(pts, d) {
+  const n = d + 1, A = Array.from({ length: n }, () => Array(n + 1).fill(0));
+  pts.forEach(([x, y]) => { const t = sx(x), p = Array.from({ length: n }, (_, i) => Math.pow(t, i)); for (let i = 0; i < n; i++) { for (let j = 0; j < n; j++) A[i][j] += p[i] * p[j]; A[i][n] += p[i] * y; } });
+  for (let c = 0; c < n; c++) {
+    let m = c; for (let r = c + 1; r < n; r++) if (Math.abs(A[r][c]) > Math.abs(A[m][c])) m = r;
+    [A[c], A[m]] = [A[m], A[c]];
+    for (let r = 0; r < n; r++) if (r !== c) { const k = A[r][c] / A[c][c]; for (let j = c; j <= n; j++) A[r][j] -= k * A[c][j]; }
+  }
+  return A.map((r, i) => r[n] / r[i]);
+}
+const polyAt = (co, x) => co.reduce((s, c, i) => s + c * Math.pow(sx(x), i), 0);
+const mse = (co, pts) => pts.reduce((s, [x, y]) => s + (polyAt(co, x) - y) ** 2, 0) / pts.length;
+const FITS = [1, 2, 3, 4, 5, 6, 7].map(d => polyFit(TRN, d));
+const ERR = FITS.map(co => [mse(co, TRN), mse(co, TST)]);
+const TE_MIN = Math.min(...ERR.map(e => e[1]));
+const FLEX_WORDS = ['a straight line', 'one bend', 'up to two bends', 'up to three bends', 'up to four bends', 'up to five bends', 'enough bends to hit every point'];
+let deg = 1, showTest = false; const tried = new Set([1]);
+function drawOver() {
+  const svg = $('#over'), W = fitSvg(svg, 10), H = Math.round(clamp(W * .66, 240, 340));
+  svg.setAttribute('viewBox', `0 0 ${W} ${H}`);
+  const L = 30, R = 10, T = 26, B = 26, pw = W - L - R, ph = H - T - B;
+  const X = x => L + x / 10.4 * pw, Y = y => T + (1 - y / 11) * ph;
+  const co = FITS[deg - 1];
+  let s = `<defs><clipPath id="overClip"><rect x="${L}" y="${T}" width="${pw}" height="${ph}"/></clipPath></defs>`;
+  s += `<rect x="${L}" y="${T}" width="${pw}" height="${ph}" rx="6" style="fill:none;stroke:var(--hair)"/>`;
+  [0, 10].forEach(v => { s += `<text x="${X(v)}" y="${T + ph + 18}" text-anchor="${v ? 'middle' : 'start'}" class="svg-t">${v}</text>`; });
+  [0, 5, 10].forEach(v => { s += `<text x="${L - 7}" y="${Y(v) + 5}" text-anchor="end" class="svg-t">${v}</text>`; });
+  s += `<text x="${L + pw / 2 + 12}" y="${T + ph + 18}" text-anchor="middle" class="svg-t">days since picking →</text><text x="${L}" y="${T - 10}" class="svg-t">↑ sweetness</text>`;
+  let d = ''; for (let i = 0; i <= 208; i++) { const x = i * .05; d += (i ? 'L' : 'M') + X(x).toFixed(1) + ' ' + Y(clamp(polyAt(co, x), -6, 17)).toFixed(1); }
+  s += `<g clip-path="url(#overClip)">`;
+  if (showTest) TST.forEach(([x, y]) => { s += `<line x1="${X(x)}" y1="${Y(y)}" x2="${X(x)}" y2="${Y(clamp(polyAt(co, x), -6, 17))}" style="stroke:var(--l1)" stroke-width="2" stroke-dasharray="4 3"/>`; });
+  s += `<path d="${d}" style="fill:none;stroke:var(--ink)" stroke-width="3" stroke-linejoin="round" stroke-linecap="round"/></g>`;
+  TRN.forEach(([x, y]) => { s += `<circle cx="${X(x)}" cy="${Y(y)}" r="7" style="fill:var(--l2);stroke:var(--paper)" stroke-width="2"/>`; });
+  if (showTest) TST.forEach(([x, y]) => { s += `<circle cx="${X(x)}" cy="${Y(y)}" r="6.5" style="fill:var(--paper);stroke:var(--l5)" stroke-width="3"/>`; });
+  svg.innerHTML = s;
+}
+function drawU() {
+  const svg = $('#uChart'), W = fitSvg(svg, 10), H = 150;
+  svg.setAttribute('viewBox', `0 0 ${W} ${H}`);
+  const L = 36, R = 14, T = 22, B = 30, pw = W - L - R, ph = H - T - B, YM = 1;
+  const X = d => L + (d - 1) / 6 * pw, Y = v => T + (1 - Math.min(v, YM) / YM) * ph;
+  let s = `<line x1="${L}" x2="${L + pw}" y1="${T + ph}" y2="${T + ph}" style="stroke:var(--hair)" stroke-width="1.5"/>`;
+  [0, 0.5, 1].forEach(v => { s += `<text x="${L - 7}" y="${Y(v) + 5}" text-anchor="end" class="svg-t">${v}</text>`; });
+  for (let d = 1; d <= 7; d++) s += `<text x="${X(d)}" y="${T + ph + 20}" text-anchor="middle" class="svg-t" style="${d === deg ? 'fill:var(--ink);font-weight:700' : ''}">${d}</text>`;
+  const ds = [...tried].sort((a, b) => a - b);
+  const line = (idx, style) => ds.length > 1 ? `<path d="${ds.map((d, i) => (i ? 'L' : 'M') + X(d) + ' ' + Y(ERR[d - 1][idx])).join('')}" style="fill:none;${style}" stroke-width="2.5"/>` : '';
+  s += line(0, 'stroke:var(--l2)');
+  if (showTest) s += line(1, 'stroke:var(--l5)');
+  ds.forEach(d => {
+    s += `<circle cx="${X(d)}" cy="${Y(ERR[d - 1][0])}" r="5.5" style="fill:var(--l2)"/>`;
+    if (showTest) {
+      const v = ERR[d - 1][1];
+      s += `<circle cx="${X(d)}" cy="${Y(v)}" r="5.5" style="fill:var(--paper);stroke:var(--l5)" stroke-width="3"/>`;
+      if (v > YM) s += `<text x="${X(d) - 10}" y="${Y(v) + 5}" text-anchor="end" class="svg-b" style="font-size:13.5px;fill:var(--l5)">↑ ${v.toFixed(2)}</text>`;
+    }
+  });
+  if (!showTest) s += `<text x="${L + pw}" y="${T - 2}" text-anchor="end" class="svg-t" style="font-size:13.5px">Test error shows up once you show the new mangos.</text>`;
+  svg.innerHTML = s;
+}
+function errBars() {
+  const [tr, te] = ERR[deg - 1];
+  $('#trBar').style.width = Math.min(100, tr / 1.2 * 100) + '%'; $('#trVal').textContent = tr.toFixed(2);
+  $('#teBar').style.width = showTest ? Math.min(100, te / 1.2 * 100) + '%' : '0'; $('#teVal').textContent = showTest ? te.toFixed(2) : '?';
+}
+function overNote() {
+  const [tr, te] = ERR[deg - 1], best = showTest && te <= TE_MIN * 1.25, say = (h, k) => CS.say($('#n3'), h, k);
+  if (deg === 7) { say(`<strong>Training error: ${tr.toFixed(2)}.</strong> The curve passes through every training mango exactly. A perfect score, and a terrible model: look at the swings between the points. ${showTest ? `On new mangos its error is ${te.toFixed(2)}, the worst of all. It memorized the training mangos, noise included. That's overfitting.` : 'Press <b>Show new mangos</b> to see how it does on mangos it never saw.'}`, showTest ? 'bad' : 'good'); return; }
+  if (best) { say(`<strong>Test error ${te.toFixed(2)}: about as low as it gets.</strong> This curve follows the real trend, sweetness rising then leveling off, and ignores the random wobble. Settings 2 to 4 all do well here. When settings do about equally well, the simplest one is the safest bet.`, 'good'); return; }
+  if (deg === 1) { say(`A straight line can't follow the real shape: sweetness climbs fast at first, then levels off. That's <b>underfitting</b>: too simple for the pattern. ${showTest ? `Test error ${te.toFixed(2)}.` : ''}`); return; }
+  if (deg >= 5) { say(`<strong>Training error ${tr.toFixed(2)}, still dropping.</strong> The curve is starting to chase individual mangos. ${showTest ? `But test error rose to ${te.toFixed(2)}: fitting the training mangos better made it worse on new ones.` : 'Keep going, or show the new mangos.'}`); return; }
+  say(`<strong>Training error ${tr.toFixed(2)}.</strong> ${showTest ? `Test error ${te.toFixed(2)}.` : 'The curve bends to follow the rise and the leveling off.'}`);
+}
+function overUpdate() {
+  $('#flexN').textContent = deg; $('#flexWord').textContent = FLEX_WORDS[deg - 1];
+  $('#flex').setAttribute('aria-valuetext', `${deg}: ${FLEX_WORDS[deg - 1]}`);
+  drawOver(); drawU(); errBars(); overNote();
+  if (deg === 7) CS.tick('p2', 'flex');
+  if (showTest && ERR[deg - 1][1] <= TE_MIN * 1.25) CS.tick('p2', 'best');
+}
+$('#flex').addEventListener('input', e => { deg = +e.target.value; tried.add(deg); overUpdate(); });
+$('#testBtn').addEventListener('click', e => {
+  showTest = !showTest;
+  e.currentTarget.setAttribute('aria-pressed', showTest); e.currentTarget.textContent = showTest ? 'Hide new mangos' : 'Show new mangos';
+  $('#keyNew').hidden = !showTest;
+  overUpdate();
+});
+$('#flex').setAttribute('aria-valuetext', '1: a straight line');
+onResize($('#over').parentElement, drawOver);
+onResize($('#uChart').parentElement, drawU);
+errBars();
+
+/* ---------------- Part 3: code lab ---------------- */
+const STARTER = `// Each mango: [firmness 1 to 10, days until ripe]
+const mangos = [[9, 6], [7, 5], [8, 6],
+                [3, 2], [5, 4], [2, 1]];
+
+// The model guesses: days = w * firmness
+let w = 0;   // starts knowing nothing
+let learningRate = 0.001;
+
+for (let epoch = 1; epoch <= 20; epoch++) {
+  let loss = 0;       // how wrong, on average
+  let gradient = 0;   // the slope under the ball
+  for (const [firmness, days] of mangos) {
+    const error = w * firmness - days;
+    loss += error * error / mangos.length;
+    gradient += 2 * error * firmness / mangos.length;
+  }
+  console.log("Epoch " + epoch + ": w = " + w.toFixed(3) +
+    ", loss = " + loss.toFixed(3));
+
+  // TODO: move w a small step downhill here
+}`;
+const TARGET = 0.12;
+const labRuns = [];
+function runLab(code) {
+  const logs = [], fmt = v => typeof v === 'string' ? v : (() => { try { return JSON.stringify(v); } catch (e) { return String(v); } })();
+  const con = { log: (...a) => logs.push(a.map(fmt).join(' ')), error: (...a) => logs.push(a.map(fmt).join(' ')) };
+  let error = null, value = null;
+  const guarded = code.replace(/\b(for|while)\s*\(([^)]*)\)\s*\{/g, m => m + ' if (++__g > 1000000) throw new Error("Stopped: the loops ran more than a million times. Is one of them endless?");');
+  try { value = new Function('console', '"use strict"; let __g = 0;\n' + guarded + '\n;return { w: typeof w === "undefined" ? null : w, rate: typeof learningRate === "undefined" ? null : learningRate };')(con); } catch (e) { error = e.name + ': ' + e.message; }
+  const rows = [];
+  logs.forEach(l => { const m = l.match(/Epoch\s+(\d+)\s*:\s*w\s*=\s*(\S+?)\s*,\s*loss\s*=\s*(\S+)/); if (m) rows.push({ e: +m[1], w: Number(m[2]), loss: Number(m[3]) }); });
+  const res = { code, logs, error, rows, rate: value && typeof value.rate === 'number' ? value.rate : null, w: value ? value.w : null };
+  if (rows.length) {
+    const Ls = rows.map(r => r.loss);
+    res.first = Ls[0]; res.last = Ls[Ls.length - 1]; res.epochs = rows[rows.length - 1].e;
+    res.constant = Ls.every(v => Math.abs(v - Ls[0]) < 1e-9);
+    res.exploded = !isFinite(res.last) || res.last > res.first * 1.5;
+    res.decreasing = isFinite(res.last) && res.last < res.first * 0.9;
+    res.growing = !res.constant && !res.decreasing;
+  }
+  if (!error && rows.length) { labRuns.push(res); drawLabSide(); }
+  return res;
+}
+function drawLabSide() {
+  const svg = $('#lossChart'), W = fitSvg(svg, 10), H = 190;
+  svg.setAttribute('viewBox', `0 0 ${W} ${H}`);
+  const L = 34, R = 12, T = 12, B = 34, pw = W - L - R, ph = H - T - B, YM = 25;
+  const cur = labRuns[labRuns.length - 1], prev = labRuns[labRuns.length - 2];
+  const E = Math.max(20, ...(cur ? [cur.epochs] : []), ...(prev ? [prev.epochs] : []));
+  const X = e => L + (e - 1) / (E - 1) * pw, Y = v => T + (1 - Math.min(v, YM) / YM) * ph;
+  let s = `<line x1="${L}" x2="${L + pw}" y1="${T + ph}" y2="${T + ph}" style="stroke:var(--hair)" stroke-width="1.5"/>`;
+  [0, 10, 20].forEach(v => { s += `<text x="${L - 7}" y="${Y(v) + 5}" text-anchor="end" class="svg-t">${v}</text>`; });
+  s += `<text x="${L}" y="${T + ph + 20}" class="svg-t">epoch 1</text><text x="${L + pw}" y="${T + ph + 20}" text-anchor="end" class="svg-t">epoch ${E}</text>`;
+  const path = run => { let d = '', on = false; run.rows.forEach(r => { if (!isFinite(r.loss)) return; d += (on ? 'L' : 'M') + X(r.e).toFixed(1) + ' ' + Y(r.loss).toFixed(1); on = true; }); return d; };
+  if (prev) s += `<path d="${path(prev)}" style="fill:none;stroke:var(--ink-2)" stroke-width="2" opacity=".4"/>`;
+  if (cur) {
+    s += `<path d="${path(cur)}" style="fill:none;stroke:var(--l2)" stroke-width="3.5" stroke-linejoin="round" stroke-linecap="round"/>`;
+    const lr = cur.rows[cur.rows.length - 1];
+    if (!isFinite(lr.loss) || lr.loss > YM) s += `<text x="${L + pw}" y="${T + 30}" text-anchor="end" class="svg-b" style="font-size:14px;fill:var(--l1)">↑ off the chart</text>`;
+    else s += `<circle cx="${X(lr.e)}" cy="${Y(lr.loss)}" r="5.5" style="fill:var(--l2);stroke:var(--paper)" stroke-width="2"/>`;
+  } else s += `<text x="${L + pw / 2}" y="${T + ph / 2 + 5}" text-anchor="middle" class="svg-t">Press Run to draw your first run.</text>`;
+  svg.innerHTML = s;
+  const fr = $('#finalRead');
+  if (cur) {
+    const ok = isFinite(cur.last) && cur.last < TARGET && cur.epochs <= 20;
+    fr.innerHTML = `<span>Epoch ${cur.epochs} loss</span><b>${isFinite(cur.last) ? big(cur.last, 3) : 'NaN'}</b><span class="chip" style="--c:${ok ? 'var(--good)' : 'var(--l4)'}"><i></i>${ok ? 'under the 0.12 target' : 'target: under 0.12'}</span>`;
+  }
+  const lw = cur && cur.rows.length ? cur.rows[cur.rows.length - 1].w : 0;
+  drawFit2(cur ? (cur.w != null ? cur.w : lw) : 0, '#labFit', 170);
+}
+onResize($('#lossChart').parentElement, drawLabSide);
+drawLabSide();
+CS.codeLab($('#lab'), {
+  part: 'p3', mission: $('#mission'), language: 'JavaScript', starter: STARTER,
+  run: runLab,
+  steps: [
+    { t: 'Run the loop', how: 'Press Run and read the loss for each epoch.', hint: 'Just press <b>Run</b>. Then look at the loss column in the output.',
+      check: r => r.rows.length >= 10, nudge: () => 'Nothing was printed. Did the console.log line get deleted? Press Reset code to start again.' },
+    { t: 'Nudge w downhill', how: 'The loss never changes, because w never moves. Replace the TODO line with the learning step, then Run.', hint: 'Replace the line <code>// TODO: move w a small step downhill here</code> with <code>w = w - learningRate * gradient;</code> and press Run.',
+      check: r => !!r.decreasing, nudge: r => r.constant ? 'The loss is still the same every epoch, so w never changes. Add <code>w = w - learningRate * gradient;</code> where the TODO is.' : r.growing ? 'The loss is growing: that step goes uphill. Subtract the gradient, don\'t add it.' : '' },
+    { t: 'Break it with a huge rate', how: 'Change <code>learningRate</code> to <code>0.05</code> and Run. What happens to the loss?', hint: 'Change the line to <code>let learningRate = 0.05;</code> and press Run.',
+      check: r => !!r.exploded && r.rate > 0.026 && !r.constant, nudge: r => r.decreasing ? `Still learning calmly with ${r.rate}. Make the rate much bigger, like 0.05.` : '' },
+    { t: 'Hit the target: loss under 0.12', how: 'Find a learning rate that gets the epoch 20 loss below 0.12. Keep it at 20 epochs.', hint: 'Somewhere between 0.001 (too slow) and 0.05 (explodes). Try <code>let learningRate = 0.01;</code>',
+      check: r => r.epochs === 20 && r.rows.length === 20 && isFinite(r.last) && r.last < TARGET, nudge: r => r.epochs !== 20 ? 'Keep the loop at 20 epochs. The challenge is to learn fast, so change the learning rate instead.' : r.exploded ? 'Too big: the loss blew up. Try a rate between the two you\'ve used so far.' : `Epoch 20 loss: ${big(r.last, 3)}. Not under 0.12 yet. The steps are too small, so try a bigger rate.` }
+  ],
+  explainError: err => /SyntaxError/.test(err) ? 'That looks like a typing slip. Check that the line you added ends with a semicolon and that every bracket is closed. Or press Reset code.' : /is not defined/.test(err) ? 'A name is misspelled. It should match the code exactly, capitals included: <code>learningRate</code>, <code>gradient</code>, <code>w</code>.' : /constant variable/.test(err) ? 'That variable was declared with <code>const</code>, so it can\'t change. Keep <code>let w = 0;</code> as it was.' : '',
+  doneTutor: '<b>Mission complete!</b> Guess, measure the loss, find the slope, step downhill, repeat. That loop trains every neural network, from this one weight to the billions in a language model. And you felt both failure modes: too small crawls, too big explodes.'
+});
+
+/* ---------------- Part 3b: scale ladder and next-token trainer ---------------- */
+(function ladder() {
+  const R = [
+    ['The days model in Part 2', '', 1, 'var(--l3)'],
+    ['Your mango neuron', '2 weights and a bias', 3, 'var(--l4)'],
+    ['A small network that reads handwritten digits', '', 1e5, 'var(--l5)'],
+    ['GPT-2', 'OpenAI, 2019', 1.5e9, 'var(--l2)'],
+    ['GPT-3', 'OpenAI, 2020', 175e9, 'var(--l1)']
+  ];
+  const lab = ['1 weight', '3 numbers', 'about 100,000', '1.5 billion', '175 billion'];
+  const top = Math.log10(175e9) + 1;
+  $('#ladder').innerHTML = R.map(([nm, sub, n, c], i) => `<div class="rung"><div class="nm">${nm}${sub ? `<small>${sub}</small>` : ''}</div><div class="track"><i style="--c:${c}; width:calc((100% - 7.5em) * ${((Math.log10(n) + 1) / top).toFixed(3)}); animation-delay:${i * 90}ms"></i><b>${lab[i]}</b></div></div>`).join('');
+})();
+const TOK = [['green', 1.0], ['sweet', 0.6], ['fresh', 0.5], ['sour', 0.3], ['loud', -0.8]];
+let logits = TOK.map(t => t[1]), tokSteps = 0;
+const softmax = v => { const m = Math.max(...v), e = v.map(x => Math.exp(x - m)), s = e.reduce((a, b) => a + b, 0); return e.map(x => x / s); };
+function drawTok() {
+  const p = softmax(logits);
+  $('#tokBars').innerHTML = TOK.map(([w], i) => `<div class="bar${i === 1 ? ' target' : ''}" style="--c:${i === 1 ? 'var(--l4)' : 'var(--l2)'}"><span class="wd">${w}</span><span class="tr"><i style="width:${(p[i] * 100).toFixed(1)}%"></i></span><span class="pc">${Math.round(p[i] * 100)}%</span></div>`).join('');
+  const loss = -Math.log(p[1]);
+  $('#tokStats').innerHTML = tokSteps === 0
+    ? `Chance of the real word, "sweet": <b>${Math.round(p[1] * 100)}%</b>. Loss: <b>${loss.toFixed(2)}</b>. The model is surprised, so the loss is high.`
+    : `After ${tokSteps} step${tokSteps > 1 ? 's' : ''}: chance of "sweet" <b>${Math.round(p[1] * 100)}%</b>, loss <b>${loss.toFixed(2)}</b>. ${p[1] > .9 ? 'Barely surprised any more. Every other word lost chance to make room.' : 'Each step moves chance toward the word that really came next.'}`;
+}
+$('#tokTrain').addEventListener('click', () => { const p = softmax(logits); logits = logits.map((z, i) => z + 1.2 * ((i === 1 ? 1 : 0) - p[i])); tokSteps++; drawTok(); });
+$('#tokReset').addEventListener('click', () => { logits = TOK.map(t => t[1]); tokSteps = 0; drawTok(); });
+drawTok();
+
+/* ---------------- Part 4: steer the AI ---------------- */
+CS.steer($('#steer'), [
+  { ai: "Good news: the ripeness checker scores 100% on the 800 photos I trained it on. It's ready for the stand.",
+    opts: [["100% is as good as it gets, so it's ready. Put it in front of customers.", 0, "A perfect score on training photos can mean it memorized them, like the wiggly curve in Part 2. It says nothing about new mangos."],
+           ["That only shows it fits photos it has already seen. Test it on photos it never trained on, taken in different light and on different phones, and tell me that score.", 1, "Yes. Only unseen examples show how it will do for real customers, and realistic variety matters too."],
+           ["Train it for more epochs on the same photos to make sure the 100% holds.", 0, "More training on the same photos makes memorizing more likely, not less. What's missing is a test on new photos."]] },
+  { ai: "To sort customer messages into orders, complaints and questions, I'll gather 5,000 labeled messages and train our own neural network.",
+    opts: [["Great plan. Build the training pipeline and start labeling the messages.", 0, "Training means collecting and labeling data, paying for computing time, and maintaining the model. For simple sorting, an existing model can often do it from a prompt."],
+           ["Gather 50,000 messages instead, so the network ends up even more accurate.", 0, "More data costs more and still skips the cheap first step: checking whether a prompt already does the job."],
+           ["First try a prompt to an existing model, with a few examples of each type, and test it on 100 real messages. Only train our own if that isn't good, cheap or fast enough.", 1, "Right. Large models have already learned language. A prompt with examples is often enough and takes minutes to try. Train only when the test results say so."]] },
+  { ai: "I trained the model on all 1,000 labeled photos, then checked it on those same photos: 97% accurate.",
+    opts: [["Before training, set aside about 20% of the photos. Never train on them, and report the accuracy on those.", 1, "Exactly. A held-out test set is the honest measure of how the model does on mangos it hasn't seen."],
+           ["97% on 1,000 photos is a great result. Let's launch it at the stand.", 0, "Checking on training photos is like grading a student with the exact questions they practiced. The real score is probably lower."],
+           ["Check it on the same photos again with a fresh run, to confirm the 97%.", 0, "The same photos give the same flattering answer. You need photos the model never saw."]] },
+  { ai: "Training was slow, so I raised the learning rate from 0.001 to 1.0. Now the loss says NaN after a few epochs.",
+    opts: [["NaN means it finished learning early. Great, use the model as it is.", 0, "NaN means \"not a number\": the loss grew so large the math broke. The weights are garbage now."],
+           ["The steps are overshooting and the loss blew up. Go back to a smaller rate, try a few like 0.01 and 0.003, and pick the one whose loss falls fastest without jumping around.", 1, "Yes. A rate that's too big overshoots the valley, like the ball in Part 2. Trying a few rates and watching the loss curve is standard practice."],
+           ["Keep the rate, and train for more epochs so the loss has time to recover.", 0, "Every extra step at this rate overshoots even further. More epochs won't help until the rate comes down."]] }
+], { part: 'p4', counter: $('#steerCount') });
+
+/* ---------------- Part 5: quiz ---------------- */
+CS.quiz($('#quiz'), [
+  { q: "What are a neural network's weights?", a: [['Rules a programmer writes by hand, one for each situation', 0], ['Copies of the training examples, kept so the model can look them up', 0], ['Numbers that set how much each input counts, adjusted during training', 1]], why: "A network's behavior lives in its weights. Nobody writes them: training nudges them until the guesses get good." },
+  { q: 'What does the loss measure?', a: [["How wrong the model's guesses are, summed up as one number", 1], ['How much data was lost during training', 0], ['How long training took', 0]], why: "Training's whole job is to push this number down. Lower loss means guesses closer to the real answers, at least on the data being measured." },
+  { q: 'During training, the loss jumps around and gets bigger every epoch. What is the most likely cause?', a: [['There is not enough training data', 0], ['The learning rate is too big', 1], ['The learning rate is too small', 0]], why: 'A rate that is too big overshoots the bottom of the valley, each time by more. A rate that is too small makes the loss fall slowly, not grow.' },
+  { q: 'A model scores 100% on its training data but 70% on new data. What is happening?', a: [['The new data must be labeled wrong, since training went perfectly', 0], ['It stopped too early and needs many more epochs on the same data', 0], ["It's overfitting: it memorized the training examples instead of the general pattern", 1]], why: 'A big gap between training and test scores is the telltale sign. Simpler models, more varied data, or stopping training earlier all help.' },
+  { q: 'How does a large language model learn during pretraining?', a: [['People write grammar rules and facts into it, and it follows them when you ask', 0], ['It predicts the next token of real text, over and over, nudging its weights so the real next token becomes more likely', 1], ['It stores all the text it reads in a database and searches it when you ask', 0]], why: "It's the same loop as your mango model: guess, measure the loss, nudge the weights downhill. Just with billions of weights and trillions of tokens." }
+], { part: 'p5', doneCard: $('#doneCard'), doneTitle: 'You know how machines learn.', doneText: 'Weights and biases, loss, gradient descent, learning rates, overfitting and test sets: the ideas behind every neural network, from one mango neuron to a large language model.' });
+})();
+</script>
+</body>
+</html>
